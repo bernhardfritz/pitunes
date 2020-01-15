@@ -1,24 +1,4 @@
-CREATE TABLE IF NOT EXISTS "artist" (
-	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-	"guid" BLOB NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
-	"created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	"name"	TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS "album" (
-	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-	"guid" BLOB NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
-	"created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	"name"	TEXT NOT NULL,
-	"artist_id"	INTEGER,
-	FOREIGN KEY("artist_id") REFERENCES "artist"("id") ON UPDATE CASCADE ON DELETE SET NULL
-);
-CREATE TABLE IF NOT EXISTS "genre" (
-	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-	"guid" BLOB NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
-	"created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	"name"	TEXT NOT NULL
-);
-INSERT INTO "genre"("name") VALUES
+INSERT INTO genres(name) VALUES
     ('Blues'),
     ('Classic rock'),
     ('Country'),
@@ -210,19 +190,4 @@ INSERT INTO "genre"("name") VALUES
     ('G-Funk'),
     ('Dubstep'),
     ('Garage Rock'),
-    ('Psybient');
-CREATE TABLE IF NOT EXISTS "song" (
-	"id"	INTEGER PRIMARY KEY AUTOINCREMENT,
-	"guid" BLOB NOT NULL UNIQUE DEFAULT (lower(hex(randomblob(16)))),
-	"created_at" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	"name"	TEXT NOT NULL,
-	"duration"	INTEGER NOT NULL,
-	"artist_id"	INTEGER,
-	"album_id"	INTEGER,
-	"genre_id"	INTEGER,
-	"track_number"	INTEGER,
-	FOREIGN KEY("artist_id") REFERENCES "artist"("id") ON UPDATE CASCADE ON DELETE SET NULL,
-	FOREIGN KEY("album_id") REFERENCES "album"("id") ON UPDATE CASCADE ON DELETE SET NULL,
-	FOREIGN KEY("genre_id") REFERENCES "genre"("id") ON UPDATE CASCADE ON DELETE SET NULL,
-	UNIQUE("album_id","track_number")
-);
+    ('Psybient')

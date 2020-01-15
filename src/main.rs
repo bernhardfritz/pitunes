@@ -2,16 +2,18 @@
 extern crate actix_web;
 #[macro_use]
 extern crate clap;
+#[macro_use]
+extern crate diesel;
 
 use actix_files::Files;
 use actix_web::{App, HttpServer};
-use r2d2_sqlite::SqliteConnectionManager;
+use crate::graphql_schema::{create_schema, Context};
 
-mod album_service;
-mod artist_service;
-mod genre_service;
-mod migration;
-mod song_service;
+mod db;
+mod graphql_schema;
+mod graphql_service;
+mod models;
+mod schema;
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
@@ -29,21 +31,18 @@ async fn main() -> std::io::Result<()> {
     let port = value_t!(matches, "port", u16).unwrap_or(8080);
 
     // r2d2 pool
-    let manager = SqliteConnectionManager::file("pitunes.db");
-    let pool = r2d2::Pool::new(manager).unwrap();
-    migration::migrate(&pool).unwrap();
+    let pool = db::establish_connection();
+    let ctx = Context {
+        pool: pool.clone(),
+    };
+    let st = std::sync::Arc::new(create_schema());
 
     HttpServer::new(move || {
         App::new()
-            .data(pool.clone()) // <- store db pool in app state
-            .service(album_service::get_album)
-            .service(album_service::get_albums)
-            .service(artist_service::get_artist)
-            .service(artist_service::get_artists)
-            .service(genre_service::get_genre)
-            .service(genre_service::get_genres)
-            .service(song_service::get_song)
-            .service(song_service::get_songs)
+            .data(st.clone())
+            .data(ctx.clone())
+            .service(graphql_service::graphql)
+            .service(graphql_service::graphiql)
             .service(Files::new("/static", "static"))
     })
     .bind(format!("127.0.0.1:{}", port))?
