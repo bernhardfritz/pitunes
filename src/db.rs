@@ -1,7 +1,8 @@
-use diesel::sqlite::SqliteConnection;
+use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool, PoolError};
-use dotenv::dotenv;
-use std::env;
+use diesel::sqlite::SqliteConnection;
+
+embed_migrations!();
 
 pub type SqlitePool = Pool<ConnectionManager<SqliteConnection>>;
 
@@ -11,8 +12,8 @@ fn init_pool(database_url: &str) -> Result<SqlitePool, PoolError> {
 }
 
 pub fn establish_connection() -> SqlitePool {
-    dotenv().ok();
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    init_pool(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+    let database_url = "pitunes.db";
+    let conn = SqliteConnection::establish(&database_url).unwrap();
+    embedded_migrations::run(&conn).unwrap();
+    init_pool(database_url).unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }

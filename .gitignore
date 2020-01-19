@@ -1,4 +1,7 @@
 /target
 **/*.rs.bk
+.env
 pitunes.db
 *.mp3
+/static/*.*
+!/**/.gitkeep

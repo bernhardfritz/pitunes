@@ -1,1 +1,0 @@
-DROP TRIGGER after_update_on_tracks
