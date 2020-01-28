@@ -1,0 +1,10 @@
+query GenreQuery($id: Int!) {
+  genre(id: $id) {
+    id
+    name
+    tracks {
+      id
+      name
+    }
+  }
+}

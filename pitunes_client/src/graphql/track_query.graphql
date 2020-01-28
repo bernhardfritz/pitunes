@@ -1,0 +1,6 @@
+query TrackQuery($id: Int!) {
+  track(id: $id) {
+    id
+    name
+  }
+}
