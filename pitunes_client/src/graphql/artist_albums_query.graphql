@@ -1,0 +1,10 @@
+query ArtistAlbumsQuery($id: Int!) {
+  artist(id: $id) {
+    id
+    name
+    albums {
+      id
+      name
+    }
+  }
+}

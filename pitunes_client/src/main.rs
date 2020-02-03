@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate clap;
+
 #[allow(dead_code)]
 mod event;
 
@@ -29,10 +32,18 @@ pub struct AlbumsQuery;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
-    query_path = "src/graphql/artist_query.graphql",
+    query_path = "src/graphql/artist_albums_query.graphql",
     response_derives = "Debug"
 )]
-pub struct ArtistQuery;
+pub struct ArtistAlbumsQuery;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/artist_tracks_query.graphql",
+    response_derives = "Debug"
+)]
+pub struct ArtistTracksQuery;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -83,11 +94,20 @@ impl From<album_query::AlbumQueryAlbumTracks> for tracks_query::TracksQueryTrack
     }
 }
 
-impl From<artist_query::ArtistQueryArtistAlbums> for albums_query::AlbumsQueryAlbums {
-    fn from(album: artist_query::ArtistQueryArtistAlbums) -> albums_query::AlbumsQueryAlbums {
+impl From<artist_albums_query::ArtistAlbumsQueryArtistAlbums> for albums_query::AlbumsQueryAlbums {
+    fn from(album: artist_albums_query::ArtistAlbumsQueryArtistAlbums) -> albums_query::AlbumsQueryAlbums {
         albums_query::AlbumsQueryAlbums {
             id: album.id,
             name: album.name,
+        }
+    }
+}
+
+impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for tracks_query::TracksQueryTracks {
+    fn from(track: artist_tracks_query::ArtistTracksQueryArtistTracks) -> tracks_query::TracksQueryTracks {
+        tracks_query::TracksQueryTracks {
+            id: track.id,
+            name: track.name,
         }
     }
 }
@@ -108,6 +128,7 @@ struct App<T> {
     items: Vec<String>, // todo static lifetime
     selected: Option<usize>,
     client: reqwest::blocking::Client,
+    graphql_endpoint: String,
 }
 
 struct ClientlessApp<T> {
@@ -118,12 +139,12 @@ struct ClientlessApp<T> {
 
 struct RootView;
 struct AlbumsView {
-    parent: AlbumsViewParent,
+    parent: ClientlessApp<RootView>,
     albums: Vec<albums_query::AlbumsQueryAlbums>,
 }
-enum AlbumsViewParent {
-    RootView(ClientlessApp<RootView>),
-    ArtistsView(ClientlessApp<ArtistsView>),
+struct ArtistView {
+    parent: ClientlessApp<ArtistsView>,
+    albums: Vec<albums_query::AlbumsQueryAlbums>,
 }
 struct ArtistsView {
     parent: ClientlessApp<RootView>,
@@ -140,11 +161,12 @@ struct TracksView {
 enum TracksViewParent {
     RootView(ClientlessApp<RootView>),
     AlbumsView(ClientlessApp<AlbumsView>),
+    ArtistView(ClientlessApp<ArtistView>),
     GenresView(ClientlessApp<GenresView>),
 }
 
 impl App<RootView> {
-    fn new() -> Self {
+    fn new(graphql_endpoint: String) -> Self {
         App {
             state: RootView {},
             items: vec![
@@ -155,6 +177,7 @@ impl App<RootView> {
             ],
             selected: Some(0),
             client: reqwest::blocking::Client::new(),
+            graphql_endpoint,
         }
     }
 }
@@ -164,7 +187,7 @@ impl From<App<RootView>> for App<AlbumsView> {
         let request_body = AlbumsQuery::build_query(albums_query::Variables {});
         let res = app
             .client
-            .post("http://localhost:8080/graphql")
+            .post(&app.graphql_endpoint[..])
             .json(&request_body)
             .send()
             .unwrap();
@@ -173,16 +196,17 @@ impl From<App<RootView>> for App<AlbumsView> {
         let items: Vec<String> = albums.iter().map(|album| album.name.clone()).collect();
         App {
             state: AlbumsView {
-                parent: AlbumsViewParent::RootView(ClientlessApp {
+                parent: ClientlessApp {
                     state: app.state,
                     items: app.items,
                     selected: app.selected,
-                }),
+                },
                 albums,
             },
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
+            graphql_endpoint: app.graphql_endpoint,
         }
     }
 }
@@ -193,7 +217,7 @@ impl From<App<AlbumsView>> for App<TracksView> {
         let request_body = AlbumQuery::build_query(album_query::Variables { id: album.id });
         let res = app
             .client
-            .post("http://localhost:8080/graphql")
+            .post(&app.graphql_endpoint[..])
             .json(&request_body)
             .send()
             .unwrap();
@@ -218,6 +242,7 @@ impl From<App<AlbumsView>> for App<TracksView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
+            graphql_endpoint: app.graphql_endpoint,
         }
     }
 }
@@ -227,7 +252,7 @@ impl From<App<RootView>> for App<ArtistsView> {
         let request_body = ArtistsQuery::build_query(artists_query::Variables {});
         let res = app
             .client
-            .post("http://localhost:8080/graphql")
+            .post(&app.graphql_endpoint[..])
             .json(&request_body)
             .send()
             .unwrap();
@@ -246,21 +271,93 @@ impl From<App<RootView>> for App<ArtistsView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
+            graphql_endpoint: app.graphql_endpoint,
         }
     }
 }
 
-impl From<App<ArtistsView>> for App<AlbumsView> {
-    fn from(app: App<ArtistsView>) -> App<AlbumsView> {
+impl From<App<ArtistView>> for App<TracksView> {
+    fn from(app: App<ArtistView>) -> App<TracksView> {
+        let selected = app.selected.unwrap();
+        if selected == 0 {
+            let artist = &app.state.parent.state.artists[app.state.parent.selected.unwrap()];
+            let request_body = ArtistTracksQuery::build_query(artist_tracks_query::Variables { id: artist.id });
+            let res = app
+                .client
+                .post(&app.graphql_endpoint[..])
+                .json(&request_body)
+                .send()
+                .unwrap();
+            let response_body: Response<artist_tracks_query::ResponseData> = res.json().unwrap();
+            let tracks = response_body
+                .data
+                .map(|data| data.artist)
+                .map(|artist| artist.tracks)
+                .unwrap();
+            let tracks: Vec<tracks_query::TracksQueryTracks> =
+                tracks.into_iter().map(|track| track.into()).collect();
+            let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
+            App {
+                state: TracksView {
+                    parent: TracksViewParent::ArtistView(ClientlessApp {
+                        state: app.state,
+                        items: app.items,
+                        selected: app.selected,
+                    }),
+                    tracks,
+                },
+                items,
+                selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+                client: app.client,
+                graphql_endpoint: app.graphql_endpoint,
+            }
+        } else {
+            let album = &app.state.albums[app.selected.unwrap() - 1]; // -1 due to "All tracks" item
+            let request_body = AlbumQuery::build_query(album_query::Variables { id: album.id });
+            let res = app
+                .client
+                .post(&app.graphql_endpoint[..])
+                .json(&request_body)
+                .send()
+                .unwrap();
+            let response_body: Response<album_query::ResponseData> = res.json().unwrap();
+            let tracks = response_body
+                .data
+                .map(|data| data.album)
+                .map(|album| album.tracks)
+                .unwrap();
+            let tracks: Vec<tracks_query::TracksQueryTracks> =
+                tracks.into_iter().map(|track| track.into()).collect();
+            let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
+            App {
+                state: TracksView {
+                    parent: TracksViewParent::ArtistView(ClientlessApp {
+                        state: app.state,
+                        items: app.items,
+                        selected: app.selected,
+                    }),
+                    tracks,
+                },
+                items,
+                selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+                client: app.client,
+                graphql_endpoint: app.graphql_endpoint,
+            }
+        }
+    }
+}
+
+impl From<App<ArtistsView>> for App<ArtistView> {
+    fn from(app: App<ArtistsView>) -> App<ArtistView> {
         let artist = &app.state.artists[app.selected.unwrap()];
-        let request_body = ArtistQuery::build_query(artist_query::Variables { id: artist.id });
+        let request_body = ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
         let res = app
             .client
-            .post("http://localhost:8080/graphql")
+            .post(&app.graphql_endpoint[..])
             .json(&request_body)
             .send()
             .unwrap();
-        let response_body: Response<artist_query::ResponseData> = res.json().unwrap();
+        let response_body: Response<artist_albums_query::ResponseData> = res.json().unwrap();
         let albums = response_body
             .data
             .map(|data| data.artist)
@@ -268,19 +365,21 @@ impl From<App<ArtistsView>> for App<AlbumsView> {
             .unwrap();
         let albums: Vec<albums_query::AlbumsQueryAlbums> =
             albums.into_iter().map(|album| album.into()).collect();
-        let items: Vec<String> = albums.iter().map(|album| album.name.clone()).collect();
+        let mut items: Vec<String> = albums.iter().map(|album| album.name.clone()).collect();
+        items.insert(0, String::from("All tracks"));
         App {
-            state: AlbumsView {
-                parent: AlbumsViewParent::ArtistsView(ClientlessApp {
+            state: ArtistView {
+                parent: ClientlessApp {
                     state: app.state,
                     items: app.items,
                     selected: app.selected,
-                }),
+                },
                 albums,
             },
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
+            graphql_endpoint: app.graphql_endpoint,
         }
     }
 }
@@ -290,7 +389,7 @@ impl From<App<RootView>> for App<GenresView> {
         let request_body = GenresQuery::build_query(genres_query::Variables {});
         let res = app
             .client
-            .post("http://localhost:8080/graphql")
+            .post(&app.graphql_endpoint[..])
             .json(&request_body)
             .send()
             .unwrap();
@@ -309,6 +408,7 @@ impl From<App<RootView>> for App<GenresView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
+            graphql_endpoint: app.graphql_endpoint,
         }
     }
 }
@@ -319,7 +419,7 @@ impl From<App<GenresView>> for App<TracksView> {
         let request_body = GenreQuery::build_query(genre_query::Variables { id: genre.id });
         let res = app
             .client
-            .post("http://localhost:8080/graphql")
+            .post(&app.graphql_endpoint[..])
             .json(&request_body)
             .send()
             .unwrap();
@@ -344,6 +444,7 @@ impl From<App<GenresView>> for App<TracksView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
+            graphql_endpoint: app.graphql_endpoint,
         }
     }
 }
@@ -353,7 +454,7 @@ impl From<App<RootView>> for App<TracksView> {
         let request_body = TracksQuery::build_query(tracks_query::Variables {});
         let res = app
             .client
-            .post("http://localhost:8080/graphql")
+            .post(&app.graphql_endpoint[..])
             .json(&request_body)
             .send()
             .unwrap();
@@ -375,6 +476,7 @@ impl From<App<RootView>> for App<TracksView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
+            graphql_endpoint: app.graphql_endpoint,
         }
     }
 }
@@ -382,6 +484,7 @@ impl From<App<RootView>> for App<TracksView> {
 enum AppWrapper {
     RootView(App<RootView>),
     AlbumsView(App<AlbumsView>),
+    ArtistView(App<ArtistView>),
     ArtistsView(App<ArtistsView>),
     GenresView(App<GenresView>),
     TracksView(App<TracksView>),
@@ -408,7 +511,8 @@ impl AppWrapper {
                 }
             }
             AppWrapper::AlbumsView(app) => AppWrapper::TracksView(app.into()),
-            AppWrapper::ArtistsView(app) => AppWrapper::AlbumsView(app.into()),
+            AppWrapper::ArtistView(app) => AppWrapper::TracksView(app.into()),
+            AppWrapper::ArtistsView(app) => AppWrapper::ArtistView(app.into()),
             AppWrapper::GenresView(app) => AppWrapper::GenresView(app),
             AppWrapper::TracksView(app) => AppWrapper::TracksView(app),
         }
@@ -417,33 +521,33 @@ impl AppWrapper {
     fn backward(self) -> Self {
         match self {
             AppWrapper::RootView(app) => AppWrapper::RootView(app),
-            AppWrapper::AlbumsView(app) => {
-                match app.state.parent {
-                    AlbumsViewParent::RootView(clientless_app) => AppWrapper::RootView(App {
-                        state: clientless_app.state,
-                        items: clientless_app.items,
-                        selected: clientless_app.selected,
-                        client: app.client,
-                    }),
-                    AlbumsViewParent::ArtistsView(clientless_app) => AppWrapper::ArtistsView(App {
-                        state: clientless_app.state,
-                        items: clientless_app.items,
-                        selected: clientless_app.selected,
-                        client: app.client,
-                    }),
-                } // TODO remove impl From<_> for App<RootView> and do same for others
-            }
+            AppWrapper::AlbumsView(app) => AppWrapper::RootView(App {
+                state: app.state.parent.state,
+                items: app.state.parent.items,
+                selected: app.state.parent.selected,
+                client: app.client,
+                graphql_endpoint: app.graphql_endpoint,
+            }),
+            AppWrapper::ArtistView(app) => AppWrapper::ArtistsView(App {
+                state: app.state.parent.state,
+                items: app.state.parent.items,
+                selected: app.state.parent.selected,
+                client: app.client,
+                graphql_endpoint: app.graphql_endpoint,
+            }),
             AppWrapper::ArtistsView(app) => AppWrapper::RootView(App {
                 state: app.state.parent.state,
                 items: app.state.parent.items,
                 selected: app.state.parent.selected,
                 client: app.client,
+                graphql_endpoint: app.graphql_endpoint,
             }),
             AppWrapper::GenresView(app) => AppWrapper::RootView(App {
                 state: app.state.parent.state,
                 items: app.state.parent.items,
                 selected: app.state.parent.selected,
                 client: app.client,
+                graphql_endpoint: app.graphql_endpoint,
             }),
             AppWrapper::TracksView(app) => match app.state.parent {
                 TracksViewParent::RootView(clientless_app) => AppWrapper::RootView(App {
@@ -451,18 +555,28 @@ impl AppWrapper {
                     items: clientless_app.items,
                     selected: clientless_app.selected,
                     client: app.client,
+                    graphql_endpoint: app.graphql_endpoint,
                 }),
                 TracksViewParent::AlbumsView(clientless_app) => AppWrapper::AlbumsView(App {
                     state: clientless_app.state,
                     items: clientless_app.items,
                     selected: clientless_app.selected,
                     client: app.client,
+                    graphql_endpoint: app.graphql_endpoint,
+                }),
+                TracksViewParent::ArtistView(clientless_app) => AppWrapper::ArtistView(App {
+                    state: clientless_app.state,
+                    items: clientless_app.items,
+                    selected: clientless_app.selected,
+                    client: app.client,
+                    graphql_endpoint: app.graphql_endpoint,
                 }),
                 TracksViewParent::GenresView(clientless_app) => AppWrapper::GenresView(App {
                     state: clientless_app.state,
                     items: clientless_app.items,
                     selected: clientless_app.selected,
                     client: app.client,
+                    graphql_endpoint: app.graphql_endpoint,
                 }),
             },
         }
@@ -472,6 +586,7 @@ impl AppWrapper {
         match self {
             AppWrapper::RootView(app) => &app.items,
             AppWrapper::AlbumsView(app) => &app.items,
+            AppWrapper::ArtistView(app) => &app.items,
             AppWrapper::ArtistsView(app) => &app.items,
             AppWrapper::GenresView(app) => &app.items,
             AppWrapper::TracksView(app) => &app.items,
@@ -482,6 +597,7 @@ impl AppWrapper {
         match self {
             AppWrapper::RootView(app) => app.selected,
             AppWrapper::AlbumsView(app) => app.selected,
+            AppWrapper::ArtistView(app) => app.selected,
             AppWrapper::ArtistsView(app) => app.selected,
             AppWrapper::GenresView(app) => app.selected,
             AppWrapper::TracksView(app) => app.selected,
@@ -492,6 +608,7 @@ impl AppWrapper {
         match self {
             AppWrapper::RootView(app) => app.selected = selected,
             AppWrapper::AlbumsView(app) => app.selected = selected,
+            AppWrapper::ArtistView(app) => app.selected = selected,
             AppWrapper::ArtistsView(app) => app.selected = selected,
             AppWrapper::GenresView(app) => app.selected = selected,
             AppWrapper::TracksView(app) => app.selected = selected,
@@ -500,13 +617,27 @@ impl AppWrapper {
 }
 
 fn main() -> Result<(), failure::Error> {
+    let matches = clap::App::new("piTunes client")
+        .version("0.1.0")
+        .about("A client that allows you to browse and play songs from your personal music collection hosted by a piTunes server")
+        .author("Bernhard Fritz <bernhard.e.fritz@gmail.com>")
+        .arg(
+            clap::Arg::with_name("SERVER")
+                .help("piTunes server to connect to")
+                .required(true)
+                .index(1)
+        )
+        .get_matches();
+    let mut graphql_endpoint = value_t!(matches, "SERVER", String).unwrap();
+    graphql_endpoint.push_str("/graphql");
+
     // Terminal initialization
     let stdout = io::stdout().into_raw_mode()?;
     let backend = TermionBackend::new(stdout); // TODO: consider crossterm https://docs.rs/tui/0.8.0/tui/index.html#adding-tui-as-a-dependency
     let mut terminal = Terminal::new(backend)?;
     terminal.hide_cursor()?;
 
-    let mut app_wrapper = AppWrapper::RootView(App::new());
+    let mut app_wrapper = AppWrapper::RootView(App::new(graphql_endpoint));
     let highlight_style = Style::default().modifier(Modifier::BOLD);
     let events = Events::new();
 
