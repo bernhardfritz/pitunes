@@ -5,13 +5,17 @@ extern crate clap;
 mod event;
 
 use graphql_client::{GraphQLQuery, Response};
-use std::io;
+use std::cell::Cell;
+use std::io::{self, copy, Cursor};
 use termion::event::Key;
 use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
 use tui::style::{Modifier, Style};
 use tui::widgets::{SelectableList, Widget};
 use tui::Terminal;
+
+const GRAPHQL: &str = "graphql";
+const STATIC: &str = "static";
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -95,7 +99,9 @@ impl From<album_query::AlbumQueryAlbumTracks> for tracks_query::TracksQueryTrack
 }
 
 impl From<artist_albums_query::ArtistAlbumsQueryArtistAlbums> for albums_query::AlbumsQueryAlbums {
-    fn from(album: artist_albums_query::ArtistAlbumsQueryArtistAlbums) -> albums_query::AlbumsQueryAlbums {
+    fn from(
+        album: artist_albums_query::ArtistAlbumsQueryArtistAlbums,
+    ) -> albums_query::AlbumsQueryAlbums {
         albums_query::AlbumsQueryAlbums {
             id: album.id,
             name: album.name,
@@ -104,7 +110,9 @@ impl From<artist_albums_query::ArtistAlbumsQueryArtistAlbums> for albums_query::
 }
 
 impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for tracks_query::TracksQueryTracks {
-    fn from(track: artist_tracks_query::ArtistTracksQueryArtistTracks) -> tracks_query::TracksQueryTracks {
+    fn from(
+        track: artist_tracks_query::ArtistTracksQueryArtistTracks,
+    ) -> tracks_query::TracksQueryTracks {
         tracks_query::TracksQueryTracks {
             id: track.id,
             name: track.name,
@@ -128,7 +136,9 @@ struct App<T> {
     items: Vec<String>, // todo static lifetime
     selected: Option<usize>,
     client: reqwest::blocking::Client,
-    graphql_endpoint: String,
+    server_url: String,
+    device: rodio::Device,
+    sink: Cell<rodio::Sink>,
 }
 
 struct ClientlessApp<T> {
@@ -166,7 +176,7 @@ enum TracksViewParent {
 }
 
 impl App<RootView> {
-    fn new(graphql_endpoint: String) -> Self {
+    fn new(server_url: String, device: rodio::Device) -> Self {
         App {
             state: RootView {},
             items: vec![
@@ -177,20 +187,18 @@ impl App<RootView> {
             ],
             selected: Some(0),
             client: reqwest::blocking::Client::new(),
-            graphql_endpoint,
+            server_url,
+            device,
+            sink: std::cell::Cell::new(rodio::Sink::new_idle().0),
         }
     }
 }
 
 impl From<App<RootView>> for App<AlbumsView> {
     fn from(app: App<RootView>) -> App<AlbumsView> {
+        let url = format!("{}/{}", app.server_url, GRAPHQL);
         let request_body = AlbumsQuery::build_query(albums_query::Variables {});
-        let res = app
-            .client
-            .post(&app.graphql_endpoint[..])
-            .json(&request_body)
-            .send()
-            .unwrap();
+        let res = app.client.post(&url).json(&request_body).send().unwrap();
         let response_body: Response<albums_query::ResponseData> = res.json().unwrap();
         let albums = response_body.data.map(|data| data.albums).unwrap();
         let items: Vec<String> = albums.iter().map(|album| album.name.clone()).collect();
@@ -206,21 +214,19 @@ impl From<App<RootView>> for App<AlbumsView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
-            graphql_endpoint: app.graphql_endpoint,
+            server_url: app.server_url,
+            device: app.device,
+            sink: app.sink,
         }
     }
 }
 
 impl From<App<AlbumsView>> for App<TracksView> {
     fn from(app: App<AlbumsView>) -> App<TracksView> {
+        let url = format!("{}/{}", app.server_url, GRAPHQL);
         let album = &app.state.albums[app.selected.unwrap()];
         let request_body = AlbumQuery::build_query(album_query::Variables { id: album.id });
-        let res = app
-            .client
-            .post(&app.graphql_endpoint[..])
-            .json(&request_body)
-            .send()
-            .unwrap();
+        let res = app.client.post(&url).json(&request_body).send().unwrap();
         let response_body: Response<album_query::ResponseData> = res.json().unwrap();
         let tracks = response_body
             .data
@@ -242,20 +248,18 @@ impl From<App<AlbumsView>> for App<TracksView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
-            graphql_endpoint: app.graphql_endpoint,
+            server_url: app.server_url,
+            device: app.device,
+            sink: app.sink,
         }
     }
 }
 
 impl From<App<RootView>> for App<ArtistsView> {
     fn from(app: App<RootView>) -> App<ArtistsView> {
+        let url = format!("{}/{}", app.server_url, GRAPHQL);
         let request_body = ArtistsQuery::build_query(artists_query::Variables {});
-        let res = app
-            .client
-            .post(&app.graphql_endpoint[..])
-            .json(&request_body)
-            .send()
-            .unwrap();
+        let res = app.client.post(&url).json(&request_body).send().unwrap();
         let response_body: Response<artists_query::ResponseData> = res.json().unwrap();
         let artists = response_body.data.map(|data| data.artists).unwrap();
         let items: Vec<String> = artists.iter().map(|artist| artist.name.clone()).collect();
@@ -271,7 +275,9 @@ impl From<App<RootView>> for App<ArtistsView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
-            graphql_endpoint: app.graphql_endpoint,
+            server_url: app.server_url,
+            device: app.device,
+            sink: app.sink,
         }
     }
 }
@@ -280,14 +286,11 @@ impl From<App<ArtistView>> for App<TracksView> {
     fn from(app: App<ArtistView>) -> App<TracksView> {
         let selected = app.selected.unwrap();
         if selected == 0 {
+            let url = format!("{}/{}", app.server_url, GRAPHQL);
             let artist = &app.state.parent.state.artists[app.state.parent.selected.unwrap()];
-            let request_body = ArtistTracksQuery::build_query(artist_tracks_query::Variables { id: artist.id });
-            let res = app
-                .client
-                .post(&app.graphql_endpoint[..])
-                .json(&request_body)
-                .send()
-                .unwrap();
+            let request_body =
+                ArtistTracksQuery::build_query(artist_tracks_query::Variables { id: artist.id });
+            let res = app.client.post(&url).json(&request_body).send().unwrap();
             let response_body: Response<artist_tracks_query::ResponseData> = res.json().unwrap();
             let tracks = response_body
                 .data
@@ -309,17 +312,15 @@ impl From<App<ArtistView>> for App<TracksView> {
                 items,
                 selected: Some(0), // TODO: could there potentially be None items? add check to be safe
                 client: app.client,
-                graphql_endpoint: app.graphql_endpoint,
+                server_url: app.server_url,
+                device: app.device,
+                sink: app.sink,
             }
         } else {
+            let url = format!("{}/{}", app.server_url, GRAPHQL);
             let album = &app.state.albums[app.selected.unwrap() - 1]; // -1 due to "All tracks" item
             let request_body = AlbumQuery::build_query(album_query::Variables { id: album.id });
-            let res = app
-                .client
-                .post(&app.graphql_endpoint[..])
-                .json(&request_body)
-                .send()
-                .unwrap();
+            let res = app.client.post(&url).json(&request_body).send().unwrap();
             let response_body: Response<album_query::ResponseData> = res.json().unwrap();
             let tracks = response_body
                 .data
@@ -341,7 +342,9 @@ impl From<App<ArtistView>> for App<TracksView> {
                 items,
                 selected: Some(0), // TODO: could there potentially be None items? add check to be safe
                 client: app.client,
-                graphql_endpoint: app.graphql_endpoint,
+                server_url: app.server_url,
+                device: app.device,
+                sink: app.sink,
             }
         }
     }
@@ -349,14 +352,11 @@ impl From<App<ArtistView>> for App<TracksView> {
 
 impl From<App<ArtistsView>> for App<ArtistView> {
     fn from(app: App<ArtistsView>) -> App<ArtistView> {
+        let url = format!("{}/{}", app.server_url, GRAPHQL);
         let artist = &app.state.artists[app.selected.unwrap()];
-        let request_body = ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
-        let res = app
-            .client
-            .post(&app.graphql_endpoint[..])
-            .json(&request_body)
-            .send()
-            .unwrap();
+        let request_body =
+            ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
+        let res = app.client.post(&url).json(&request_body).send().unwrap();
         let response_body: Response<artist_albums_query::ResponseData> = res.json().unwrap();
         let albums = response_body
             .data
@@ -379,20 +379,18 @@ impl From<App<ArtistsView>> for App<ArtistView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
-            graphql_endpoint: app.graphql_endpoint,
+            server_url: app.server_url,
+            device: app.device,
+            sink: app.sink,
         }
     }
 }
 
 impl From<App<RootView>> for App<GenresView> {
     fn from(app: App<RootView>) -> App<GenresView> {
+        let url = format!("{}/{}", app.server_url, GRAPHQL);
         let request_body = GenresQuery::build_query(genres_query::Variables {});
-        let res = app
-            .client
-            .post(&app.graphql_endpoint[..])
-            .json(&request_body)
-            .send()
-            .unwrap();
+        let res = app.client.post(&url).json(&request_body).send().unwrap();
         let response_body: Response<genres_query::ResponseData> = res.json().unwrap();
         let genres = response_body.data.map(|data| data.genres).unwrap();
         let items: Vec<String> = genres.iter().map(|genre| genre.name.clone()).collect();
@@ -408,21 +406,19 @@ impl From<App<RootView>> for App<GenresView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
-            graphql_endpoint: app.graphql_endpoint,
+            server_url: app.server_url,
+            device: app.device,
+            sink: app.sink,
         }
     }
 }
 
 impl From<App<GenresView>> for App<TracksView> {
     fn from(app: App<GenresView>) -> App<TracksView> {
+        let url = format!("{}/{}", app.server_url, GRAPHQL);
         let genre = &app.state.genres[app.selected.unwrap()];
         let request_body = GenreQuery::build_query(genre_query::Variables { id: genre.id });
-        let res = app
-            .client
-            .post(&app.graphql_endpoint[..])
-            .json(&request_body)
-            .send()
-            .unwrap();
+        let res = app.client.post(&url).json(&request_body).send().unwrap();
         let response_body: Response<genre_query::ResponseData> = res.json().unwrap();
         let tracks = response_body
             .data
@@ -444,20 +440,18 @@ impl From<App<GenresView>> for App<TracksView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
-            graphql_endpoint: app.graphql_endpoint,
+            server_url: app.server_url,
+            device: app.device,
+            sink: app.sink,
         }
     }
 }
 
 impl From<App<RootView>> for App<TracksView> {
     fn from(app: App<RootView>) -> App<TracksView> {
+        let url = format!("{}/{}", app.server_url, GRAPHQL);
         let request_body = TracksQuery::build_query(tracks_query::Variables {});
-        let res = app
-            .client
-            .post(&app.graphql_endpoint[..])
-            .json(&request_body)
-            .send()
-            .unwrap();
+        let res = app.client.post(&url).json(&request_body).send().unwrap();
         let response_body: Response<tracks_query::ResponseData> = res.json().unwrap();
         let tracks = response_body.data.map(|data| data.tracks).unwrap();
         let items: Vec<String> = tracks
@@ -476,7 +470,9 @@ impl From<App<RootView>> for App<TracksView> {
             items,
             selected: Some(0), // TODO: could there potentially be None items? add check to be safe
             client: app.client,
-            graphql_endpoint: app.graphql_endpoint,
+            server_url: app.server_url,
+            device: app.device,
+            sink: app.sink,
         }
     }
 }
@@ -514,7 +510,20 @@ impl AppWrapper {
             AppWrapper::ArtistView(app) => AppWrapper::TracksView(app.into()),
             AppWrapper::ArtistsView(app) => AppWrapper::ArtistView(app.into()),
             AppWrapper::GenresView(app) => AppWrapper::GenresView(app),
-            AppWrapper::TracksView(app) => AppWrapper::TracksView(app),
+            AppWrapper::TracksView(app) => {
+                if let Some(selected) = app.selected {
+                    let track = &app.state.tracks[selected];
+                    let url = format!("{}/{}/{}.mp3", app.server_url, STATIC, track.id);
+                    let mut res = app.client.get(&url).send().unwrap();
+                    let mut buf: Vec<u8> = vec![];
+                    copy(&mut res, &mut buf).unwrap();
+                    let source = rodio::Decoder::new(Cursor::new(buf)).unwrap();
+                    let sink = rodio::Sink::new(&app.device);
+                    sink.append(source);
+                    app.sink.set(sink); // stops the previous sound by dropping the old sink and replacing it with a new sink
+                }
+                AppWrapper::TracksView(app)
+            }
         }
     }
 
@@ -526,28 +535,36 @@ impl AppWrapper {
                 items: app.state.parent.items,
                 selected: app.state.parent.selected,
                 client: app.client,
-                graphql_endpoint: app.graphql_endpoint,
+                server_url: app.server_url,
+                sink: app.sink,
+                device: app.device,
             }),
             AppWrapper::ArtistView(app) => AppWrapper::ArtistsView(App {
                 state: app.state.parent.state,
                 items: app.state.parent.items,
                 selected: app.state.parent.selected,
                 client: app.client,
-                graphql_endpoint: app.graphql_endpoint,
+                server_url: app.server_url,
+                sink: app.sink,
+                device: app.device,
             }),
             AppWrapper::ArtistsView(app) => AppWrapper::RootView(App {
                 state: app.state.parent.state,
                 items: app.state.parent.items,
                 selected: app.state.parent.selected,
                 client: app.client,
-                graphql_endpoint: app.graphql_endpoint,
+                server_url: app.server_url,
+                sink: app.sink,
+                device: app.device,
             }),
             AppWrapper::GenresView(app) => AppWrapper::RootView(App {
                 state: app.state.parent.state,
                 items: app.state.parent.items,
                 selected: app.state.parent.selected,
                 client: app.client,
-                graphql_endpoint: app.graphql_endpoint,
+                server_url: app.server_url,
+                sink: app.sink,
+                device: app.device,
             }),
             AppWrapper::TracksView(app) => match app.state.parent {
                 TracksViewParent::RootView(clientless_app) => AppWrapper::RootView(App {
@@ -555,28 +572,36 @@ impl AppWrapper {
                     items: clientless_app.items,
                     selected: clientless_app.selected,
                     client: app.client,
-                    graphql_endpoint: app.graphql_endpoint,
+                    server_url: app.server_url,
+                    sink: app.sink,
+                    device: app.device,
                 }),
                 TracksViewParent::AlbumsView(clientless_app) => AppWrapper::AlbumsView(App {
                     state: clientless_app.state,
                     items: clientless_app.items,
                     selected: clientless_app.selected,
                     client: app.client,
-                    graphql_endpoint: app.graphql_endpoint,
+                    server_url: app.server_url,
+                    sink: app.sink,
+                    device: app.device,
                 }),
                 TracksViewParent::ArtistView(clientless_app) => AppWrapper::ArtistView(App {
                     state: clientless_app.state,
                     items: clientless_app.items,
                     selected: clientless_app.selected,
                     client: app.client,
-                    graphql_endpoint: app.graphql_endpoint,
+                    server_url: app.server_url,
+                    sink: app.sink,
+                    device: app.device,
                 }),
                 TracksViewParent::GenresView(clientless_app) => AppWrapper::GenresView(App {
                     state: clientless_app.state,
                     items: clientless_app.items,
                     selected: clientless_app.selected,
                     client: app.client,
-                    graphql_endpoint: app.graphql_endpoint,
+                    server_url: app.server_url,
+                    sink: app.sink,
+                    device: app.device,
                 }),
             },
         }
@@ -622,14 +647,14 @@ fn main() -> Result<(), failure::Error> {
         .about("A client that allows you to browse and play songs from your personal music collection hosted by a piTunes server")
         .author("Bernhard Fritz <bernhard.e.fritz@gmail.com>")
         .arg(
-            clap::Arg::with_name("SERVER")
+            clap::Arg::with_name("server-url")
                 .help("piTunes server to connect to")
                 .required(true)
                 .index(1)
         )
         .get_matches();
-    let mut graphql_endpoint = value_t!(matches, "SERVER", String).unwrap();
-    graphql_endpoint.push_str("/graphql");
+    let server_url = value_t!(matches, "server-url", String).unwrap();
+    let device = rodio::default_output_device().unwrap();
 
     // Terminal initialization
     let stdout = io::stdout().into_raw_mode()?;
@@ -637,7 +662,7 @@ fn main() -> Result<(), failure::Error> {
     let mut terminal = Terminal::new(backend)?;
     terminal.hide_cursor()?;
 
-    let mut app_wrapper = AppWrapper::RootView(App::new(graphql_endpoint));
+    let mut app_wrapper = AppWrapper::RootView(App::new(server_url, device));
     let highlight_style = Style::default().modifier(Modifier::BOLD);
     let events = Events::new();
 
