@@ -4,14 +4,18 @@ extern crate clap;
 #[allow(dead_code)]
 mod event;
 
+mod http_stream_reader;
+use http_stream_reader::HttpStreamReader;
+
 use graphql_client::{GraphQLQuery, Response};
-use std::cell::Cell;
-use std::io::{self, copy, Cursor};
+use std::cell::RefCell;
+use std::io;
 use termion::event::Key;
 use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
+use tui::layout::{Constraint, Layout};
 use tui::style::{Modifier, Style};
-use tui::widgets::{SelectableList, Widget};
+use tui::widgets::{Block, Borders, SelectableList, Widget};
 use tui::Terminal;
 
 const GRAPHQL: &str = "graphql";
@@ -133,17 +137,17 @@ use crate::event::{Event, Events};
 
 struct App<T> {
     state: T,
-    items: Vec<String>, // todo static lifetime
+    items: Vec<String>,
     selected: Option<usize>,
     client: reqwest::blocking::Client,
     server_url: String,
     device: rodio::Device,
-    sink: Cell<rodio::Sink>,
+    sink: RefCell<rodio::Sink>,
 }
 
 struct ClientlessApp<T> {
     state: T,
-    items: Vec<String>, // todo static lifetime
+    items: Vec<String>,
     selected: Option<usize>,
 }
 
@@ -189,7 +193,7 @@ impl App<RootView> {
             client: reqwest::blocking::Client::new(),
             server_url,
             device,
-            sink: std::cell::Cell::new(rodio::Sink::new_idle().0),
+            sink: std::cell::RefCell::new(rodio::Sink::new_idle().0),
         }
     }
 }
@@ -202,6 +206,12 @@ impl From<App<RootView>> for App<AlbumsView> {
         let response_body: Response<albums_query::ResponseData> = res.json().unwrap();
         let albums = response_body.data.map(|data| data.albums).unwrap();
         let items: Vec<String> = albums.iter().map(|album| album.name.clone()).collect();
+        let selected;
+        if items.is_empty() {
+            selected = None;
+        } else {
+            selected = Some(0);
+        }
         App {
             state: AlbumsView {
                 parent: ClientlessApp {
@@ -212,7 +222,7 @@ impl From<App<RootView>> for App<AlbumsView> {
                 albums,
             },
             items,
-            selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+            selected,
             client: app.client,
             server_url: app.server_url,
             device: app.device,
@@ -236,6 +246,12 @@ impl From<App<AlbumsView>> for App<TracksView> {
         let tracks: Vec<tracks_query::TracksQueryTracks> =
             tracks.into_iter().map(|track| track.into()).collect();
         let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
+        let selected;
+        if items.is_empty() {
+            selected = None;
+        } else {
+            selected = Some(0);
+        }
         App {
             state: TracksView {
                 parent: TracksViewParent::AlbumsView(ClientlessApp {
@@ -246,7 +262,7 @@ impl From<App<AlbumsView>> for App<TracksView> {
                 tracks,
             },
             items,
-            selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+            selected,
             client: app.client,
             server_url: app.server_url,
             device: app.device,
@@ -263,6 +279,12 @@ impl From<App<RootView>> for App<ArtistsView> {
         let response_body: Response<artists_query::ResponseData> = res.json().unwrap();
         let artists = response_body.data.map(|data| data.artists).unwrap();
         let items: Vec<String> = artists.iter().map(|artist| artist.name.clone()).collect();
+        let selected;
+        if items.is_empty() {
+            selected = None;
+        } else {
+            selected = Some(0);
+        }
         App {
             state: ArtistsView {
                 parent: ClientlessApp {
@@ -273,7 +295,7 @@ impl From<App<RootView>> for App<ArtistsView> {
                 artists,
             },
             items,
-            selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+            selected,
             client: app.client,
             server_url: app.server_url,
             device: app.device,
@@ -300,6 +322,12 @@ impl From<App<ArtistView>> for App<TracksView> {
             let tracks: Vec<tracks_query::TracksQueryTracks> =
                 tracks.into_iter().map(|track| track.into()).collect();
             let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
+            let selected;
+            if items.is_empty() {
+                selected = None;
+            } else {
+                selected = Some(0);
+            }
             App {
                 state: TracksView {
                     parent: TracksViewParent::ArtistView(ClientlessApp {
@@ -310,7 +338,7 @@ impl From<App<ArtistView>> for App<TracksView> {
                     tracks,
                 },
                 items,
-                selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+                selected,
                 client: app.client,
                 server_url: app.server_url,
                 device: app.device,
@@ -330,6 +358,12 @@ impl From<App<ArtistView>> for App<TracksView> {
             let tracks: Vec<tracks_query::TracksQueryTracks> =
                 tracks.into_iter().map(|track| track.into()).collect();
             let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
+            let selected;
+            if items.is_empty() {
+                selected = None;
+            } else {
+                selected = Some(0);
+            }
             App {
                 state: TracksView {
                     parent: TracksViewParent::ArtistView(ClientlessApp {
@@ -340,7 +374,7 @@ impl From<App<ArtistView>> for App<TracksView> {
                     tracks,
                 },
                 items,
-                selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+                selected,
                 client: app.client,
                 server_url: app.server_url,
                 device: app.device,
@@ -377,7 +411,7 @@ impl From<App<ArtistsView>> for App<ArtistView> {
                 albums,
             },
             items,
-            selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+            selected: Some(0),
             client: app.client,
             server_url: app.server_url,
             device: app.device,
@@ -394,6 +428,12 @@ impl From<App<RootView>> for App<GenresView> {
         let response_body: Response<genres_query::ResponseData> = res.json().unwrap();
         let genres = response_body.data.map(|data| data.genres).unwrap();
         let items: Vec<String> = genres.iter().map(|genre| genre.name.clone()).collect();
+        let selected;
+        if items.is_empty() {
+            selected = None;
+        } else {
+            selected = Some(0);
+        }
         App {
             state: GenresView {
                 parent: ClientlessApp {
@@ -404,7 +444,7 @@ impl From<App<RootView>> for App<GenresView> {
                 genres,
             },
             items,
-            selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+            selected,
             client: app.client,
             server_url: app.server_url,
             device: app.device,
@@ -428,6 +468,12 @@ impl From<App<GenresView>> for App<TracksView> {
         let tracks: Vec<tracks_query::TracksQueryTracks> =
             tracks.into_iter().map(|track| track.into()).collect();
         let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
+        let selected;
+        if items.is_empty() {
+            selected = None;
+        } else {
+            selected = Some(0);
+        }
         App {
             state: TracksView {
                 parent: TracksViewParent::GenresView(ClientlessApp {
@@ -438,7 +484,7 @@ impl From<App<GenresView>> for App<TracksView> {
                 tracks,
             },
             items,
-            selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+            selected,
             client: app.client,
             server_url: app.server_url,
             device: app.device,
@@ -454,10 +500,13 @@ impl From<App<RootView>> for App<TracksView> {
         let res = app.client.post(&url).json(&request_body).send().unwrap();
         let response_body: Response<tracks_query::ResponseData> = res.json().unwrap();
         let tracks = response_body.data.map(|data| data.tracks).unwrap();
-        let items: Vec<String> = tracks
-            .iter()
-            .map(|track| track.name.clone()) // TODO maybe reference
-            .collect();
+        let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
+        let selected;
+        if items.is_empty() {
+            selected = None;
+        } else {
+            selected = Some(0);
+        }
         App {
             state: TracksView {
                 parent: TracksViewParent::RootView(ClientlessApp {
@@ -468,7 +517,7 @@ impl From<App<RootView>> for App<TracksView> {
                 tracks,
             },
             items,
-            selected: Some(0), // TODO: could there potentially be None items? add check to be safe
+            selected,
             client: app.client,
             server_url: app.server_url,
             device: app.device,
@@ -512,15 +561,12 @@ impl AppWrapper {
             AppWrapper::GenresView(app) => AppWrapper::GenresView(app),
             AppWrapper::TracksView(app) => {
                 if let Some(selected) = app.selected {
+                    app.sink.replace(rodio::Sink::new(&app.device)); // stops the previous sound by dropping the old sink and replacing it with a new sink
                     let track = &app.state.tracks[selected];
                     let url = format!("{}/{}/{}.mp3", app.server_url, STATIC, track.id);
-                    let mut res = app.client.get(&url).send().unwrap();
-                    let mut buf: Vec<u8> = vec![];
-                    copy(&mut res, &mut buf).unwrap();
-                    let source = rodio::Decoder::new(Cursor::new(buf)).unwrap();
-                    let sink = rodio::Sink::new(&app.device);
+                    let source = rodio::Decoder::new(HttpStreamReader::new(url)).unwrap();
+                    let sink = app.sink.borrow();
                     sink.append(source);
-                    app.sink.set(sink); // stops the previous sound by dropping the old sink and replacing it with a new sink
                 }
                 AppWrapper::TracksView(app)
             }
@@ -661,6 +707,7 @@ fn main() -> Result<(), failure::Error> {
     let backend = TermionBackend::new(stdout); // TODO: consider crossterm https://docs.rs/tui/0.8.0/tui/index.html#adding-tui-as-a-dependency
     let mut terminal = Terminal::new(backend)?;
     terminal.hide_cursor()?;
+    terminal.clear().unwrap();
 
     let mut app_wrapper = AppWrapper::RootView(App::new(server_url, device));
     let highlight_style = Style::default().modifier(Modifier::BOLD);
@@ -669,11 +716,19 @@ fn main() -> Result<(), failure::Error> {
     loop {
         terminal.draw(|mut f| {
             let size = f.size();
+            Block::default()
+                .borders(Borders::ALL)
+                .title("π")
+                .render(&mut f, size);
+            let chunks = Layout::default()
+                .constraints([Constraint::Percentage(100)].as_ref())
+                .margin(1)
+                .split(f.size());
             SelectableList::default()
                 .items(app_wrapper.get_items())
                 .select(app_wrapper.get_selected())
                 .highlight_style(highlight_style)
-                .render(&mut f, size)
+                .render(&mut f, chunks[0]);
         })?;
 
         match events.next()? {
@@ -714,6 +769,8 @@ fn main() -> Result<(), failure::Error> {
             Event::Tick => {}
         }
     }
+
+    terminal.clear().unwrap();
 
     Ok(())
 }
