@@ -7,15 +7,20 @@ mod event;
 mod http_stream_reader;
 use http_stream_reader::HttpStreamReader;
 
+#[allow(dead_code)]
+mod selectable_list_2;
+use selectable_list_2::SelectableList2;
+
 use graphql_client::{GraphQLQuery, Response};
-use std::cell::RefCell;
 use std::io;
+use std::sync::{Arc, RwLock};
+use std::thread;
 use termion::event::Key;
 use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Layout};
 use tui::style::{Modifier, Style};
-use tui::widgets::{Block, Borders, SelectableList, Widget};
+use tui::widgets::{Block, Borders, Widget};
 use tui::Terminal;
 
 const GRAPHQL: &str = "graphql";
@@ -142,7 +147,7 @@ struct App<T> {
     client: reqwest::blocking::Client,
     server_url: String,
     device: rodio::Device,
-    sink: RefCell<rodio::Sink>,
+    currently_playing: Arc<(RwLock<Option<i64>>, rodio::Sink)>,
 }
 
 struct ClientlessApp<T> {
@@ -193,7 +198,7 @@ impl App<RootView> {
             client: reqwest::blocking::Client::new(),
             server_url,
             device,
-            sink: std::cell::RefCell::new(rodio::Sink::new_idle().0),
+            currently_playing: Arc::new((RwLock::new(None), rodio::Sink::new_idle().0)),
         }
     }
 }
@@ -226,7 +231,7 @@ impl From<App<RootView>> for App<AlbumsView> {
             client: app.client,
             server_url: app.server_url,
             device: app.device,
-            sink: app.sink,
+            currently_playing: app.currently_playing,
         }
     }
 }
@@ -266,7 +271,7 @@ impl From<App<AlbumsView>> for App<TracksView> {
             client: app.client,
             server_url: app.server_url,
             device: app.device,
-            sink: app.sink,
+            currently_playing: app.currently_playing,
         }
     }
 }
@@ -299,7 +304,7 @@ impl From<App<RootView>> for App<ArtistsView> {
             client: app.client,
             server_url: app.server_url,
             device: app.device,
-            sink: app.sink,
+            currently_playing: app.currently_playing,
         }
     }
 }
@@ -342,7 +347,7 @@ impl From<App<ArtistView>> for App<TracksView> {
                 client: app.client,
                 server_url: app.server_url,
                 device: app.device,
-                sink: app.sink,
+                currently_playing: app.currently_playing,
             }
         } else {
             let url = format!("{}/{}", app.server_url, GRAPHQL);
@@ -378,7 +383,7 @@ impl From<App<ArtistView>> for App<TracksView> {
                 client: app.client,
                 server_url: app.server_url,
                 device: app.device,
-                sink: app.sink,
+                currently_playing: app.currently_playing,
             }
         }
     }
@@ -415,7 +420,7 @@ impl From<App<ArtistsView>> for App<ArtistView> {
             client: app.client,
             server_url: app.server_url,
             device: app.device,
-            sink: app.sink,
+            currently_playing: app.currently_playing,
         }
     }
 }
@@ -448,7 +453,7 @@ impl From<App<RootView>> for App<GenresView> {
             client: app.client,
             server_url: app.server_url,
             device: app.device,
-            sink: app.sink,
+            currently_playing: app.currently_playing,
         }
     }
 }
@@ -488,7 +493,7 @@ impl From<App<GenresView>> for App<TracksView> {
             client: app.client,
             server_url: app.server_url,
             device: app.device,
-            sink: app.sink,
+            currently_playing: app.currently_playing,
         }
     }
 }
@@ -521,7 +526,7 @@ impl From<App<RootView>> for App<TracksView> {
             client: app.client,
             server_url: app.server_url,
             device: app.device,
-            sink: app.sink,
+            currently_playing: app.currently_playing,
         }
     }
 }
@@ -561,14 +566,28 @@ impl AppWrapper {
             AppWrapper::GenresView(app) => AppWrapper::GenresView(app),
             AppWrapper::TracksView(app) => {
                 if let Some(selected) = app.selected {
-                    app.sink.replace(rodio::Sink::new(&app.device)); // stops the previous sound by dropping the old sink and replacing it with a new sink
                     let track = &app.state.tracks[selected];
                     let url = format!("{}/{}/{}.mp3", app.server_url, STATIC, track.id);
                     let source = rodio::Decoder::new(HttpStreamReader::new(url)).unwrap();
-                    let sink = app.sink.borrow();
+                    let &(ref _track_id_lock, ref sink) = &*app.currently_playing;
+                    sink.stop();
+                    let sink = rodio::Sink::new(&app.device);
                     sink.append(source);
+                    let currently_playing = Arc::new((RwLock::new(Some(track.id)), sink));
+                    let currently_playing_clone = currently_playing.clone();
+                    thread::spawn(move || {
+                        let &(ref track_id_lock, ref sink) = &*currently_playing_clone;
+                        sink.sleep_until_end();
+                        let mut track_id = track_id_lock.write().unwrap();
+                        *track_id = None;
+                    });
+                    AppWrapper::TracksView(App::<TracksView> {
+                        currently_playing,
+                        ..app
+                    })
+                } else {
+                    AppWrapper::TracksView(app)
                 }
-                AppWrapper::TracksView(app)
             }
         }
     }
@@ -582,7 +601,7 @@ impl AppWrapper {
                 selected: app.state.parent.selected,
                 client: app.client,
                 server_url: app.server_url,
-                sink: app.sink,
+                currently_playing: app.currently_playing,
                 device: app.device,
             }),
             AppWrapper::ArtistView(app) => AppWrapper::ArtistsView(App {
@@ -591,7 +610,7 @@ impl AppWrapper {
                 selected: app.state.parent.selected,
                 client: app.client,
                 server_url: app.server_url,
-                sink: app.sink,
+                currently_playing: app.currently_playing,
                 device: app.device,
             }),
             AppWrapper::ArtistsView(app) => AppWrapper::RootView(App {
@@ -600,7 +619,7 @@ impl AppWrapper {
                 selected: app.state.parent.selected,
                 client: app.client,
                 server_url: app.server_url,
-                sink: app.sink,
+                currently_playing: app.currently_playing,
                 device: app.device,
             }),
             AppWrapper::GenresView(app) => AppWrapper::RootView(App {
@@ -609,7 +628,7 @@ impl AppWrapper {
                 selected: app.state.parent.selected,
                 client: app.client,
                 server_url: app.server_url,
-                sink: app.sink,
+                currently_playing: app.currently_playing,
                 device: app.device,
             }),
             AppWrapper::TracksView(app) => match app.state.parent {
@@ -619,7 +638,7 @@ impl AppWrapper {
                     selected: clientless_app.selected,
                     client: app.client,
                     server_url: app.server_url,
-                    sink: app.sink,
+                    currently_playing: app.currently_playing,
                     device: app.device,
                 }),
                 TracksViewParent::AlbumsView(clientless_app) => AppWrapper::AlbumsView(App {
@@ -628,7 +647,7 @@ impl AppWrapper {
                     selected: clientless_app.selected,
                     client: app.client,
                     server_url: app.server_url,
-                    sink: app.sink,
+                    currently_playing: app.currently_playing,
                     device: app.device,
                 }),
                 TracksViewParent::ArtistView(clientless_app) => AppWrapper::ArtistView(App {
@@ -637,7 +656,7 @@ impl AppWrapper {
                     selected: clientless_app.selected,
                     client: app.client,
                     server_url: app.server_url,
-                    sink: app.sink,
+                    currently_playing: app.currently_playing,
                     device: app.device,
                 }),
                 TracksViewParent::GenresView(clientless_app) => AppWrapper::GenresView(App {
@@ -646,7 +665,7 @@ impl AppWrapper {
                     selected: clientless_app.selected,
                     client: app.client,
                     server_url: app.server_url,
-                    sink: app.sink,
+                    currently_playing: app.currently_playing,
                     device: app.device,
                 }),
             },
@@ -685,6 +704,28 @@ impl AppWrapper {
             AppWrapper::TracksView(app) => app.selected = selected,
         }
     }
+
+    fn get_active(&self) -> Option<usize> {
+        match self {
+            AppWrapper::RootView(_app) => None,
+            AppWrapper::AlbumsView(_app) => None,
+            AppWrapper::ArtistView(_app) => None,
+            AppWrapper::ArtistsView(_app) => None,
+            AppWrapper::GenresView(_app) => None,
+            AppWrapper::TracksView(app) => {
+                let &(ref track_id_lock, ref _sink) = &*app.currently_playing;
+                let track_id = track_id_lock.read().unwrap();
+                if let Some(track_id) = *track_id {
+                    app.state
+                        .tracks
+                        .iter()
+                        .position(|track| track.id == track_id)
+                } else {
+                    None
+                }
+            }
+        }
+    }
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -718,16 +759,18 @@ fn main() -> Result<(), failure::Error> {
             let size = f.size();
             Block::default()
                 .borders(Borders::ALL)
-                .title("π")
+                .title(" π ")
                 .render(&mut f, size);
             let chunks = Layout::default()
                 .constraints([Constraint::Percentage(100)].as_ref())
-                .margin(1)
+                .margin(2)
                 .split(f.size());
-            SelectableList::default()
+            SelectableList2::default()
                 .items(app_wrapper.get_items())
                 .select(app_wrapper.get_selected())
-                .highlight_style(highlight_style)
+                .highlight_symbol(">")
+                .active(app_wrapper.get_active())
+                .active_style(highlight_style)
                 .render(&mut f, chunks[0]);
         })?;
 
