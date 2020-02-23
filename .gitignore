@@ -4,4 +4,6 @@
 pitunes.db
 *.mp3
 /static/*.*
+*.pem
+pitunes.toml
 !/**/.gitkeep

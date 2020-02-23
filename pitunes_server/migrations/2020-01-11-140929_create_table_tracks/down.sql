@@ -1,1 +1,1 @@
-DELETE TABLE tracks
+DROP TABLE tracks

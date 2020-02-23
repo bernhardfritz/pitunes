@@ -3,15 +3,16 @@ use std::str::FromStr;
 
 pub struct HttpStreamReader {
     url: String,
+    api_key: String,
     client: reqwest::blocking::Client,
     start: u64,
     end: u64,
 }
 
 impl HttpStreamReader {
-    pub fn new(url: String) -> Self {
+    pub fn new(url: String, api_key: String) -> Self {
         let client = reqwest::blocking::Client::new();
-        let res = client.head(&url).send().unwrap();
+        let res = client.head(&url).bearer_auth(&api_key[..]).send().unwrap();
         let length = res
             .headers()
             .get(reqwest::header::CONTENT_LENGTH)
@@ -22,6 +23,7 @@ impl HttpStreamReader {
             .unwrap();
         HttpStreamReader {
             url,
+            api_key,
             client,
             start: 0,
             end: length - 1,
@@ -48,6 +50,7 @@ impl Read for HttpStreamReader {
             let mut res = self
                 .client
                 .get(&self.url)
+                .bearer_auth(&self.api_key[..])
                 .header(reqwest::header::RANGE, range)
                 .send()
                 .unwrap();

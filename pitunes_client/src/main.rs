@@ -11,7 +11,9 @@ use http_stream_reader::HttpStreamReader;
 mod selectable_list_2;
 use selectable_list_2::SelectableList2;
 
+use dotenv::dotenv;
 use graphql_client::{GraphQLQuery, Response};
+use std::env;
 use std::io;
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -146,6 +148,7 @@ struct App<T> {
     selected: Option<usize>,
     client: reqwest::blocking::Client,
     server_url: String,
+    api_key: String,
     device: rodio::Device,
     currently_playing: Arc<(RwLock<Option<i64>>, rodio::Sink)>,
 }
@@ -185,7 +188,7 @@ enum TracksViewParent {
 }
 
 impl App<RootView> {
-    fn new(server_url: String, device: rodio::Device) -> Self {
+    fn new(server_url: String, api_key: String, device: rodio::Device) -> Self {
         App {
             state: RootView {},
             items: vec![
@@ -197,6 +200,7 @@ impl App<RootView> {
             selected: Some(0),
             client: reqwest::blocking::Client::new(),
             server_url,
+            api_key,
             device,
             currently_playing: Arc::new((RwLock::new(None), rodio::Sink::new_idle().0)),
         }
@@ -207,7 +211,13 @@ impl From<App<RootView>> for App<AlbumsView> {
     fn from(app: App<RootView>) -> App<AlbumsView> {
         let url = format!("{}/{}", app.server_url, GRAPHQL);
         let request_body = AlbumsQuery::build_query(albums_query::Variables {});
-        let res = app.client.post(&url).json(&request_body).send().unwrap();
+        let res = app
+            .client
+            .post(&url)
+            .bearer_auth(&app.api_key[..])
+            .json(&request_body)
+            .send()
+            .unwrap();
         let response_body: Response<albums_query::ResponseData> = res.json().unwrap();
         let albums = response_body.data.map(|data| data.albums).unwrap();
         let items: Vec<String> = albums.iter().map(|album| album.name.clone()).collect();
@@ -230,6 +240,7 @@ impl From<App<RootView>> for App<AlbumsView> {
             selected,
             client: app.client,
             server_url: app.server_url,
+            api_key: app.api_key,
             device: app.device,
             currently_playing: app.currently_playing,
         }
@@ -241,7 +252,13 @@ impl From<App<AlbumsView>> for App<TracksView> {
         let url = format!("{}/{}", app.server_url, GRAPHQL);
         let album = &app.state.albums[app.selected.unwrap()];
         let request_body = AlbumQuery::build_query(album_query::Variables { id: album.id });
-        let res = app.client.post(&url).json(&request_body).send().unwrap();
+        let res = app
+            .client
+            .post(&url)
+            .bearer_auth(&app.api_key[..])
+            .json(&request_body)
+            .send()
+            .unwrap();
         let response_body: Response<album_query::ResponseData> = res.json().unwrap();
         let tracks = response_body
             .data
@@ -270,6 +287,7 @@ impl From<App<AlbumsView>> for App<TracksView> {
             selected,
             client: app.client,
             server_url: app.server_url,
+            api_key: app.api_key,
             device: app.device,
             currently_playing: app.currently_playing,
         }
@@ -280,7 +298,13 @@ impl From<App<RootView>> for App<ArtistsView> {
     fn from(app: App<RootView>) -> App<ArtistsView> {
         let url = format!("{}/{}", app.server_url, GRAPHQL);
         let request_body = ArtistsQuery::build_query(artists_query::Variables {});
-        let res = app.client.post(&url).json(&request_body).send().unwrap();
+        let res = app
+            .client
+            .post(&url)
+            .bearer_auth(&app.api_key[..])
+            .json(&request_body)
+            .send()
+            .unwrap();
         let response_body: Response<artists_query::ResponseData> = res.json().unwrap();
         let artists = response_body.data.map(|data| data.artists).unwrap();
         let items: Vec<String> = artists.iter().map(|artist| artist.name.clone()).collect();
@@ -303,6 +327,7 @@ impl From<App<RootView>> for App<ArtistsView> {
             selected,
             client: app.client,
             server_url: app.server_url,
+            api_key: app.api_key,
             device: app.device,
             currently_playing: app.currently_playing,
         }
@@ -317,7 +342,13 @@ impl From<App<ArtistView>> for App<TracksView> {
             let artist = &app.state.parent.state.artists[app.state.parent.selected.unwrap()];
             let request_body =
                 ArtistTracksQuery::build_query(artist_tracks_query::Variables { id: artist.id });
-            let res = app.client.post(&url).json(&request_body).send().unwrap();
+            let res = app
+                .client
+                .post(&url)
+                .bearer_auth(&app.api_key[..])
+                .json(&request_body)
+                .send()
+                .unwrap();
             let response_body: Response<artist_tracks_query::ResponseData> = res.json().unwrap();
             let tracks = response_body
                 .data
@@ -346,6 +377,7 @@ impl From<App<ArtistView>> for App<TracksView> {
                 selected,
                 client: app.client,
                 server_url: app.server_url,
+                api_key: app.api_key,
                 device: app.device,
                 currently_playing: app.currently_playing,
             }
@@ -353,7 +385,13 @@ impl From<App<ArtistView>> for App<TracksView> {
             let url = format!("{}/{}", app.server_url, GRAPHQL);
             let album = &app.state.albums[app.selected.unwrap() - 1]; // -1 due to "All tracks" item
             let request_body = AlbumQuery::build_query(album_query::Variables { id: album.id });
-            let res = app.client.post(&url).json(&request_body).send().unwrap();
+            let res = app
+                .client
+                .post(&url)
+                .bearer_auth(&app.api_key[..])
+                .json(&request_body)
+                .send()
+                .unwrap();
             let response_body: Response<album_query::ResponseData> = res.json().unwrap();
             let tracks = response_body
                 .data
@@ -382,6 +420,7 @@ impl From<App<ArtistView>> for App<TracksView> {
                 selected,
                 client: app.client,
                 server_url: app.server_url,
+                api_key: app.api_key,
                 device: app.device,
                 currently_playing: app.currently_playing,
             }
@@ -395,7 +434,13 @@ impl From<App<ArtistsView>> for App<ArtistView> {
         let artist = &app.state.artists[app.selected.unwrap()];
         let request_body =
             ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
-        let res = app.client.post(&url).json(&request_body).send().unwrap();
+        let res = app
+            .client
+            .post(&url)
+            .bearer_auth(&app.api_key[..])
+            .json(&request_body)
+            .send()
+            .unwrap();
         let response_body: Response<artist_albums_query::ResponseData> = res.json().unwrap();
         let albums = response_body
             .data
@@ -419,6 +464,7 @@ impl From<App<ArtistsView>> for App<ArtistView> {
             selected: Some(0),
             client: app.client,
             server_url: app.server_url,
+            api_key: app.api_key,
             device: app.device,
             currently_playing: app.currently_playing,
         }
@@ -429,7 +475,13 @@ impl From<App<RootView>> for App<GenresView> {
     fn from(app: App<RootView>) -> App<GenresView> {
         let url = format!("{}/{}", app.server_url, GRAPHQL);
         let request_body = GenresQuery::build_query(genres_query::Variables {});
-        let res = app.client.post(&url).json(&request_body).send().unwrap();
+        let res = app
+            .client
+            .post(&url)
+            .bearer_auth(&app.api_key[..])
+            .json(&request_body)
+            .send()
+            .unwrap();
         let response_body: Response<genres_query::ResponseData> = res.json().unwrap();
         let genres = response_body.data.map(|data| data.genres).unwrap();
         let items: Vec<String> = genres.iter().map(|genre| genre.name.clone()).collect();
@@ -452,6 +504,7 @@ impl From<App<RootView>> for App<GenresView> {
             selected,
             client: app.client,
             server_url: app.server_url,
+            api_key: app.api_key,
             device: app.device,
             currently_playing: app.currently_playing,
         }
@@ -463,7 +516,13 @@ impl From<App<GenresView>> for App<TracksView> {
         let url = format!("{}/{}", app.server_url, GRAPHQL);
         let genre = &app.state.genres[app.selected.unwrap()];
         let request_body = GenreQuery::build_query(genre_query::Variables { id: genre.id });
-        let res = app.client.post(&url).json(&request_body).send().unwrap();
+        let res = app
+            .client
+            .post(&url)
+            .bearer_auth(&app.api_key[..])
+            .json(&request_body)
+            .send()
+            .unwrap();
         let response_body: Response<genre_query::ResponseData> = res.json().unwrap();
         let tracks = response_body
             .data
@@ -492,6 +551,7 @@ impl From<App<GenresView>> for App<TracksView> {
             selected,
             client: app.client,
             server_url: app.server_url,
+            api_key: app.api_key,
             device: app.device,
             currently_playing: app.currently_playing,
         }
@@ -502,7 +562,13 @@ impl From<App<RootView>> for App<TracksView> {
     fn from(app: App<RootView>) -> App<TracksView> {
         let url = format!("{}/{}", app.server_url, GRAPHQL);
         let request_body = TracksQuery::build_query(tracks_query::Variables {});
-        let res = app.client.post(&url).json(&request_body).send().unwrap();
+        let res = app
+            .client
+            .post(&url)
+            .bearer_auth(&app.api_key[..])
+            .json(&request_body)
+            .send()
+            .unwrap();
         let response_body: Response<tracks_query::ResponseData> = res.json().unwrap();
         let tracks = response_body.data.map(|data| data.tracks).unwrap();
         let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
@@ -525,6 +591,7 @@ impl From<App<RootView>> for App<TracksView> {
             selected,
             client: app.client,
             server_url: app.server_url,
+            api_key: app.api_key,
             device: app.device,
             currently_playing: app.currently_playing,
         }
@@ -568,7 +635,9 @@ impl AppWrapper {
                 if let Some(selected) = app.selected {
                     let track = &app.state.tracks[selected];
                     let url = format!("{}/{}/{}.mp3", app.server_url, STATIC, track.id);
-                    let source = rodio::Decoder::new(HttpStreamReader::new(url)).unwrap();
+                    let source =
+                        rodio::Decoder::new(HttpStreamReader::new(url, app.api_key.clone()))
+                            .unwrap();
                     let &(ref _track_id_lock, ref sink) = &*app.currently_playing;
                     sink.stop();
                     let sink = rodio::Sink::new(&app.device);
@@ -601,6 +670,7 @@ impl AppWrapper {
                 selected: app.state.parent.selected,
                 client: app.client,
                 server_url: app.server_url,
+                api_key: app.api_key,
                 currently_playing: app.currently_playing,
                 device: app.device,
             }),
@@ -610,6 +680,7 @@ impl AppWrapper {
                 selected: app.state.parent.selected,
                 client: app.client,
                 server_url: app.server_url,
+                api_key: app.api_key,
                 currently_playing: app.currently_playing,
                 device: app.device,
             }),
@@ -619,6 +690,7 @@ impl AppWrapper {
                 selected: app.state.parent.selected,
                 client: app.client,
                 server_url: app.server_url,
+                api_key: app.api_key,
                 currently_playing: app.currently_playing,
                 device: app.device,
             }),
@@ -628,6 +700,7 @@ impl AppWrapper {
                 selected: app.state.parent.selected,
                 client: app.client,
                 server_url: app.server_url,
+                api_key: app.api_key,
                 currently_playing: app.currently_playing,
                 device: app.device,
             }),
@@ -638,6 +711,7 @@ impl AppWrapper {
                     selected: clientless_app.selected,
                     client: app.client,
                     server_url: app.server_url,
+                    api_key: app.api_key,
                     currently_playing: app.currently_playing,
                     device: app.device,
                 }),
@@ -647,6 +721,7 @@ impl AppWrapper {
                     selected: clientless_app.selected,
                     client: app.client,
                     server_url: app.server_url,
+                    api_key: app.api_key,
                     currently_playing: app.currently_playing,
                     device: app.device,
                 }),
@@ -656,6 +731,7 @@ impl AppWrapper {
                     selected: clientless_app.selected,
                     client: app.client,
                     server_url: app.server_url,
+                    api_key: app.api_key,
                     currently_playing: app.currently_playing,
                     device: app.device,
                 }),
@@ -665,6 +741,7 @@ impl AppWrapper {
                     selected: clientless_app.selected,
                     client: app.client,
                     server_url: app.server_url,
+                    api_key: app.api_key,
                     currently_playing: app.currently_playing,
                     device: app.device,
                 }),
@@ -741,6 +818,8 @@ fn main() -> Result<(), failure::Error> {
         )
         .get_matches();
     let server_url = value_t!(matches, "server-url", String).unwrap();
+    dotenv().ok();
+    let api_key = env::var("API_KEY").expect("Environment variable API_KEY is not present");
     let device = rodio::default_output_device().unwrap();
 
     // Terminal initialization
@@ -750,7 +829,7 @@ fn main() -> Result<(), failure::Error> {
     terminal.hide_cursor()?;
     terminal.clear().unwrap();
 
-    let mut app_wrapper = AppWrapper::RootView(App::new(server_url, device));
+    let mut app_wrapper = AppWrapper::RootView(App::new(server_url, api_key, device));
     let highlight_style = Style::default().modifier(Modifier::BOLD);
     let events = Events::new();
 

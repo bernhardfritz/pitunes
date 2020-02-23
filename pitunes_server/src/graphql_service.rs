@@ -6,10 +6,10 @@ use std::sync::Arc;
 
 #[get("/graphiql")]
 async fn graphiql() -> HttpResponse {
-    let html = graphiql_source("http://localhost:8080/graphql");
+    let html = graphiql_source("https://localhost:8080/graphql"); // TODO: hardcoded
     HttpResponse::Ok()
         .content_type("text/html; charset=utf-8")
-        .body(html)
+        .body(html) // TODO: html needs to be adapted to allow entering of api_key to be used for requests
 }
 
 #[post("/graphql")]
