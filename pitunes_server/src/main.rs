@@ -10,6 +10,7 @@ extern crate diesel_migrations;
 extern crate lazy_static;
 
 mod db;
+mod graphiql;
 mod graphql_schema;
 mod graphql_service;
 mod models;
@@ -18,7 +19,7 @@ mod upload_service;
 
 use actix_files::Files;
 use actix_web::dev::ServiceRequest;
-use actix_web::{error, App, Error, HttpServer};
+use actix_web::{error, web, App, Error, HttpServer};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use actix_web_httpauth::middleware::HttpAuthentication;
 use base64;
@@ -69,6 +70,10 @@ async fn validator(req: ServiceRequest, bearer: BearerAuth) -> Result<ServiceReq
     }
 }
 
+struct AppState {
+    port: u16,
+}
+
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     let matches = clap::App::new("piTunes")
@@ -105,13 +110,17 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let auth = HttpAuthentication::bearer(validator);
         App::new()
+            .data(AppState { port })
             .data(st.clone())
             .data(ctx.clone())
-            .wrap(auth)
-            .service(graphql_service::graphql)
             .service(graphql_service::graphiql)
-            .service(upload_service::upload)
-            .service(Files::new("/static", "static"))
+            .service(
+                web::scope("")
+                    .wrap(auth)
+                    .service(graphql_service::graphql)
+                    .service(upload_service::upload)
+                    .service(Files::new("/static", "static")),
+            )
     })
     .bind_openssl(format!("127.0.0.1:{}", port), builder)?
     .run()
