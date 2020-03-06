@@ -180,12 +180,7 @@ fn get_albums(client: &reqwest::blocking::Client, server_url: &str, api_key: &st
     let response_body: Response<albums_query::ResponseData> = res.json().unwrap();
     let albums = response_body.data.map(|data| data.albums).unwrap();
     let items: Vec<String> = albums.iter().map(|album| album.name.clone()).collect();
-    let selected;
-    if items.is_empty() {
-        selected = None;
-    } else {
-        selected = Some(0);
-    }
+    let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Albums { albums },
         items,
@@ -205,12 +200,7 @@ fn get_artists(client: &reqwest::blocking::Client, server_url: &str, api_key: &s
     let response_body: Response<artists_query::ResponseData> = res.json().unwrap();
     let artists = response_body.data.map(|data| data.artists).unwrap();
     let items: Vec<String> = artists.iter().map(|artist| artist.name.clone()).collect();
-    let selected;
-    if items.is_empty() {
-        selected = None;
-    } else {
-        selected = Some(0);
-    }
+    let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Artists { artists },
         items,
@@ -230,12 +220,7 @@ fn get_genres(client: &reqwest::blocking::Client, server_url: &str, api_key: &st
     let response_body: Response<genres_query::ResponseData> = res.json().unwrap();
     let genres = response_body.data.map(|data| data.genres).unwrap();
     let items: Vec<String> = genres.iter().map(|genre| genre.name.clone()).collect();
-    let selected;
-    if items.is_empty() {
-        selected = None;
-    } else {
-        selected = Some(0);
-    }
+    let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Genres { genres },
         items,
@@ -255,12 +240,7 @@ fn get_tracks(client: &reqwest::blocking::Client, server_url: &str, api_key: &st
     let response_body: Response<tracks_query::ResponseData> = res.json().unwrap();
     let tracks = response_body.data.map(|data| data.tracks).unwrap();
     let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
-    let selected;
-    if items.is_empty() {
-        selected = None;
-    } else {
-        selected = Some(0);
-    }
+    let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Tracks { tracks },
         items,
@@ -386,12 +366,7 @@ fn get_tracks_of_genre(
     let tracks: Vec<tracks_query::TracksQueryTracks> =
         tracks.into_iter().map(|track| track.into()).collect();
     let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
-    let selected;
-    if items.is_empty() {
-        selected = None;
-    } else {
-        selected = Some(0);
-    }
+    let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Tracks { tracks },
         items,
@@ -533,7 +508,7 @@ fn main() -> Result<(), failure::Error> {
                     }
                 }
                 Key::Char('\n') => {
-                    let foo = if let Some(last) = stack.last() {
+                    let app = if let Some(last) = stack.last() {
                         match &last.state {
                             State::Albums { albums } => {
                                 if let Some(selected) = last.selected {
@@ -632,8 +607,8 @@ fn main() -> Result<(), failure::Error> {
                     } else {
                         None
                     };
-                    if let Some(foo) = foo {
-                        stack.push(foo);
+                    if let Some(app) = app {
+                        stack.push(app);
                     }
                 }
                 Key::Char('q') => {
