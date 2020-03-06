@@ -21,7 +21,7 @@ pub fn graphiql_source(graphql_endpoint_url: &str) -> String {
             };
             let apiKey = document.getElementById('api-key');
             if (apiKey) {
-                headers['Authorization'] = 'Bearer ' + apiKey.value;
+                headers['Authorization'] = `Bearer ${apiKey.value}`;
             }
             return fetch(GRAPHQL_URL, {
                 method: 'post',
