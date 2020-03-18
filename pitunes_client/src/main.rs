@@ -87,6 +87,22 @@ pub struct GenresQuery;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/playlist_query.graphql",
+    response_derives = "Debug"
+)]
+pub struct PlaylistQuery;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/playlists_query.graphql",
+    response_derives = "Debug"
+)]
+pub struct PlaylistsQuery;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
     query_path = "src/graphql/track_query.graphql",
     response_derives = "Debug"
 )]
@@ -140,6 +156,15 @@ impl From<genre_query::GenreQueryGenreTracks> for tracks_query::TracksQueryTrack
     }
 }
 
+impl From<playlist_query::PlaylistQueryPlaylistTracks> for tracks_query::TracksQueryTracks {
+    fn from(track: playlist_query::PlaylistQueryPlaylistTracks) -> tracks_query::TracksQueryTracks {
+        tracks_query::TracksQueryTracks {
+            id: track.id,
+            name: track.name,
+        }
+    }
+}
+
 use crate::event::{Event, Events};
 
 enum State {
@@ -155,6 +180,9 @@ enum State {
     },
     Genres {
         genres: Vec<genres_query::GenresQueryGenres>,
+    },
+    Playlists {
+        playlists: Vec<playlists_query::PlaylistsQueryPlaylists>
     },
     Root,
     Tracks {
@@ -223,6 +251,26 @@ fn get_genres(client: &reqwest::blocking::Client, server_url: &str, api_key: &st
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Genres { genres },
+        items,
+        selected,
+    }
+}
+
+fn get_playlists(client: &reqwest::blocking::Client, server_url: &str, api_key: &str) -> App {
+    let url = format!("{}/{}", server_url, GRAPHQL);
+    let request_body = PlaylistsQuery::build_query(playlists_query::Variables {});
+    let res = client
+        .post(&url)
+        .bearer_auth(api_key)
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<playlists_query::ResponseData> = res.json().unwrap();
+    let playlists = response_body.data.map(|data| data.playlists).unwrap();
+    let items: Vec<String> = playlists.iter().map(|playlist| playlist.name.clone()).collect();
+    let selected = if items.is_empty() { None } else { Some(0) };
+    App {
+        state: State::Playlists { playlists },
         items,
         selected,
     }
@@ -374,6 +422,37 @@ fn get_tracks_of_genre(
     }
 }
 
+fn get_tracks_of_playlist(
+    client: &reqwest::blocking::Client,
+    server_url: &str,
+    api_key: &str,
+    playlist: &playlists_query::PlaylistsQueryPlaylists,
+) -> App {
+    let url = format!("{}/{}", server_url, GRAPHQL);
+    let request_body = PlaylistQuery::build_query(playlist_query::Variables { id: playlist.id });
+    let res = client
+        .post(&url)
+        .bearer_auth(api_key)
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<playlist_query::ResponseData> = res.json().unwrap();
+    let tracks = response_body
+        .data
+        .map(|data| data.playlist)
+        .map(|playlist| playlist.tracks)
+        .unwrap();
+    let tracks: Vec<tracks_query::TracksQueryTracks> =
+        tracks.into_iter().map(|track| track.into()).collect();
+    let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
+    let selected = if items.is_empty() { None } else { Some(0) };
+    App {
+        state: State::Tracks { tracks },
+        items,
+        selected,
+    }
+}
+
 fn play_track(
     server_url: &str,
     api_key: &str,
@@ -435,6 +514,7 @@ fn main() -> Result<(), failure::Error> {
             String::from("Albums"),
             String::from("Artists"),
             String::from("Genres"),
+            String::from("Playlists"),
             String::from("Tracks"),
         ],
         selected: Some(0),
@@ -568,6 +648,18 @@ fn main() -> Result<(), failure::Error> {
                                     None
                                 }
                             }
+                            State::Playlists { playlists } => {
+                                if let Some(selected) = last.selected {
+                                    Some(get_tracks_of_playlist(
+                                        &client,
+                                        &server_url[..],
+                                        &api_key[..],
+                                        &playlists[selected],
+                                    ))
+                                } else {
+                                    None
+                                }
+                            }
                             State::Root => {
                                 if let Some(selected) = last.selected {
                                     match &last.items[selected][..] {
@@ -581,7 +673,10 @@ fn main() -> Result<(), failure::Error> {
                                         )),
                                         "Genres" => {
                                             Some(get_genres(&client, &server_url[..], &api_key[..]))
-                                        }
+                                        },
+                                        "Playlists" => {
+                                            Some(get_playlists(&client, &server_url[..], &api_key[..]))
+                                        },
                                         "Tracks" => {
                                             Some(get_tracks(&client, &server_url[..], &api_key[..]))
                                         }

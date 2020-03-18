@@ -1,7 +1,7 @@
 use crate::db::SqlitePool;
 use crate::models::{
     Album, AlbumChangeset, Artist, ArtistChangeset, Genre, GenreChangeset, NewAlbum, NewArtist,
-    NewGenre, Track,
+    NewGenre, Track, Playlist
 };
 use crate::schema;
 use diesel::prelude::*;
@@ -69,6 +69,18 @@ impl Query {
         schema::tracks::table
             .load::<Track>(&conn)
             .expect("Error loading tracks")
+    }
+
+    fn playlist(context: &Context, id: i32) -> juniper::FieldResult<Playlist> {
+        let conn = context.pool.get().unwrap();
+        Ok(schema::playlists::table.find(id).get_result(&conn)?)
+    }
+
+    fn playlists(context: &Context) -> Vec<Playlist> {
+        let conn = context.pool.get().unwrap();
+        schema::playlists::table
+            .load::<Playlist>(&conn)
+            .expect("Error loading playlists")
     }
 }
 

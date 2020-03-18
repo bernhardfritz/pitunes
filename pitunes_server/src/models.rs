@@ -1,5 +1,5 @@
 use crate::graphql_schema::Context;
-use crate::schema::{albums, artists, genres, tracks};
+use crate::schema::{albums, artists, genres, tracks, playlists, playlists_tracks};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::Serialize;
@@ -7,13 +7,18 @@ use serde::Serialize;
 #[derive(Identifiable, Queryable)]
 pub struct Album {
     pub id: i32,
-    name: String,
+    pub created_at: NaiveDateTime,
+    pub name: String,
 }
 
 #[juniper::object(Context = Context)]
 impl Album {
     pub fn id(&self) -> i32 {
         self.id
+    }
+
+    pub fn created_at(&self) -> NaiveDateTime {
+        self.created_at
     }
 
     pub fn name(&self) -> &str {
@@ -38,19 +43,24 @@ pub struct NewAlbum {
 #[table_name = "albums"]
 pub struct AlbumChangeset {
     pub id: i32,
-    name: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Identifiable, Queryable)]
 pub struct Artist {
     pub id: i32,
-    name: String,
+    pub created_at: NaiveDateTime,
+    pub name: String,
 }
 
 #[juniper::object(Context = Context)]
 impl Artist {
     pub fn id(&self) -> i32 {
         self.id
+    }
+
+    pub fn created_at(&self) -> NaiveDateTime {
+        self.created_at
     }
 
     pub fn name(&self) -> &str {
@@ -93,22 +103,27 @@ pub struct NewArtist {
 #[table_name = "artists"]
 pub struct ArtistChangeset {
     pub id: i32,
-    name: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Identifiable, Queryable)]
 pub struct Genre {
     pub id: i32,
-    name: String,
+    pub created_at: NaiveDateTime,
+    pub name: String,
 }
 
 #[juniper::object(Context = Context)]
 impl Genre {
-    fn id(&self) -> i32 {
+    pub fn id(&self) -> i32 {
         self.id
     }
 
-    fn name(&self) -> &str {
+    pub fn created_at(&self) -> NaiveDateTime {
+        self.created_at
+    }
+
+    pub fn name(&self) -> &str {
         &self.name[..]
     }
 
@@ -130,7 +145,7 @@ pub struct NewGenre {
 #[table_name = "genres"]
 pub struct GenreChangeset {
     pub id: i32,
-    name: Option<String>,
+    pub name: Option<String>,
 }
 
 #[derive(Identifiable, Associations, Queryable, Serialize)]
@@ -138,47 +153,47 @@ pub struct GenreChangeset {
 #[belongs_to(Artist)]
 #[belongs_to(Genre)]
 pub struct Track {
-    id: i32,
-    created_at: NaiveDateTime,
-    name: String,
-    duration: Option<i32>,
-    album_id: Option<i32>,
-    artist_id: Option<i32>,
-    genre_id: Option<i32>,
-    track_number: Option<i32>,
+    pub id: i32,
+    pub created_at: NaiveDateTime,
+    pub name: String,
+    pub duration: Option<i32>,
+    pub album_id: Option<i32>,
+    pub artist_id: Option<i32>,
+    pub genre_id: Option<i32>,
+    pub track_number: Option<i32>,
 }
 
 #[juniper::object(Context = Context)]
 impl Track {
-    fn id(&self) -> i32 {
+    pub fn id(&self) -> i32 {
         self.id
     }
 
-    fn created_at(&self) -> NaiveDateTime {
+    pub fn created_at(&self) -> NaiveDateTime {
         self.created_at
     }
 
-    fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         &self.name[..]
     }
 
-    fn duration(&self) -> Option<i32> {
+    pub fn duration(&self) -> Option<i32> {
         self.duration
     }
 
-    fn album_id(&self) -> Option<i32> {
+    pub fn album_id(&self) -> Option<i32> {
         self.album_id
     }
 
-    fn artist_id(&self) -> Option<i32> {
+    pub fn artist_id(&self) -> Option<i32> {
         self.artist_id
     }
 
-    fn genre_id(&self) -> Option<i32> {
+    pub fn genre_id(&self) -> Option<i32> {
         self.genre_id
     }
 
-    fn track_number(&self) -> Option<i32> {
+    pub fn track_number(&self) -> Option<i32> {
         self.track_number
     }
 }
@@ -192,4 +207,46 @@ pub struct NewTrack {
     pub artist_id: Option<i32>,
     pub genre_id: Option<i32>,
     pub track_number: Option<i32>,
+}
+
+#[derive(Identifiable, Queryable)]
+pub struct Playlist {
+    pub id: i32,
+    pub created_at: NaiveDateTime,
+    pub name: String,
+}
+
+#[juniper::object(Context = Context)]
+impl Playlist {
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+
+    pub fn created_at(&self) -> NaiveDateTime {
+        self.created_at
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name[..]
+    }
+
+    pub fn tracks(&self, context: &Context) -> Vec<Track> {
+        let conn = context.pool.get().unwrap();
+        PlaylistsTracks::belonging_to(self)
+            .inner_join(tracks::table)
+            .select(tracks::all_columns)
+            .load::<Track>(&conn)
+            .expect("Error loading tracks")
+    }
+}
+
+#[derive(Identifiable, Associations)]
+#[belongs_to(Playlist)]
+#[belongs_to(Track)]
+#[table_name = "playlists_tracks"]
+pub struct PlaylistsTracks {
+    pub id: i32,
+    pub created_at: NaiveDateTime,
+    pub playlist_id: i32,
+    pub track_id: i32,
 }
