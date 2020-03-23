@@ -16,7 +16,7 @@ use graphql_client::{GraphQLQuery, Response};
 use std::env;
 use std::io;
 use std::sync::{Arc, RwLock};
-use std::thread;
+use std::thread::{self, JoinHandle};
 use termion::event::Key;
 use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
@@ -182,7 +182,7 @@ enum State {
         genres: Vec<genres_query::GenresQueryGenres>,
     },
     Playlists {
-        playlists: Vec<playlists_query::PlaylistsQueryPlaylists>
+        playlists: Vec<playlists_query::PlaylistsQueryPlaylists>,
     },
     Root,
     Tracks {
@@ -196,12 +196,13 @@ struct App {
     selected: Option<usize>,
 }
 
-fn get_albums(client: &reqwest::blocking::Client, server_url: &str, api_key: &str) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+fn get_albums(context: Arc<Context>) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = AlbumsQuery::build_query(albums_query::Variables {});
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
@@ -216,12 +217,13 @@ fn get_albums(client: &reqwest::blocking::Client, server_url: &str, api_key: &st
     }
 }
 
-fn get_artists(client: &reqwest::blocking::Client, server_url: &str, api_key: &str) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+fn get_artists(context: Arc<Context>) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = ArtistsQuery::build_query(artists_query::Variables {});
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
@@ -236,12 +238,13 @@ fn get_artists(client: &reqwest::blocking::Client, server_url: &str, api_key: &s
     }
 }
 
-fn get_genres(client: &reqwest::blocking::Client, server_url: &str, api_key: &str) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+fn get_genres(context: Arc<Context>) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = GenresQuery::build_query(genres_query::Variables {});
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
@@ -256,18 +259,22 @@ fn get_genres(client: &reqwest::blocking::Client, server_url: &str, api_key: &st
     }
 }
 
-fn get_playlists(client: &reqwest::blocking::Client, server_url: &str, api_key: &str) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+fn get_playlists(context: Arc<Context>) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = PlaylistsQuery::build_query(playlists_query::Variables {});
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
     let response_body: Response<playlists_query::ResponseData> = res.json().unwrap();
     let playlists = response_body.data.map(|data| data.playlists).unwrap();
-    let items: Vec<String> = playlists.iter().map(|playlist| playlist.name.clone()).collect();
+    let items: Vec<String> = playlists
+        .iter()
+        .map(|playlist| playlist.name.clone())
+        .collect();
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Playlists { playlists },
@@ -276,12 +283,13 @@ fn get_playlists(client: &reqwest::blocking::Client, server_url: &str, api_key: 
     }
 }
 
-fn get_tracks(client: &reqwest::blocking::Client, server_url: &str, api_key: &str) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+fn get_tracks(context: Arc<Context>) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = TracksQuery::build_query(tracks_query::Variables {});
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
@@ -296,17 +304,13 @@ fn get_tracks(client: &reqwest::blocking::Client, server_url: &str, api_key: &st
     }
 }
 
-fn get_tracks_of_album(
-    client: &reqwest::blocking::Client,
-    server_url: &str,
-    api_key: &str,
-    album: &albums_query::AlbumsQueryAlbums,
-) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+fn get_tracks_of_album(context: Arc<Context>, album: &albums_query::AlbumsQueryAlbums) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = AlbumQuery::build_query(album_query::Variables { id: album.id });
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
@@ -327,18 +331,14 @@ fn get_tracks_of_album(
     }
 }
 
-fn get_tracks_of_artist(
-    client: &reqwest::blocking::Client,
-    server_url: &str,
-    api_key: &str,
-    artist_id: i64,
-) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+fn get_tracks_of_artist(context: Arc<Context>, artist_id: i64) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         ArtistTracksQuery::build_query(artist_tracks_query::Variables { id: artist_id });
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
@@ -359,18 +359,14 @@ fn get_tracks_of_artist(
     }
 }
 
-fn get_artist(
-    client: &reqwest::blocking::Client,
-    server_url: &str,
-    api_key: &str,
-    artist: &artists_query::ArtistsQueryArtists,
-) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+fn get_artist(context: Arc<Context>, artist: &artists_query::ArtistsQueryArtists) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
@@ -391,17 +387,13 @@ fn get_artist(
     }
 }
 
-fn get_tracks_of_genre(
-    client: &reqwest::blocking::Client,
-    server_url: &str,
-    api_key: &str,
-    genre: &genres_query::GenresQueryGenres,
-) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+fn get_tracks_of_genre(context: Arc<Context>, genre: &genres_query::GenresQueryGenres) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = GenreQuery::build_query(genre_query::Variables { id: genre.id });
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
@@ -423,16 +415,15 @@ fn get_tracks_of_genre(
 }
 
 fn get_tracks_of_playlist(
-    client: &reqwest::blocking::Client,
-    server_url: &str,
-    api_key: &str,
+    context: Arc<Context>,
     playlist: &playlists_query::PlaylistsQueryPlaylists,
 ) -> App {
-    let url = format!("{}/{}", server_url, GRAPHQL);
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = PlaylistQuery::build_query(playlist_query::Variables { id: playlist.id });
-    let res = client
+    let res = context
+        .client
         .post(&url)
-        .bearer_auth(api_key)
+        .bearer_auth(&context.api_key[..])
         .json(&request_body)
         .send()
         .unwrap();
@@ -453,28 +444,70 @@ fn get_tracks_of_playlist(
     }
 }
 
-fn play_track(
-    server_url: &str,
-    api_key: &str,
-    device: &rodio::Device,
-    currently_playing: Arc<(RwLock<Option<i64>>, rodio::Sink)>,
-    track: &tracks_query::TracksQueryTracks,
-) -> Arc<(RwLock<Option<i64>>, rodio::Sink)> {
-    let url = format!("{}/{}/{}.mp3", server_url, STATIC, track.id);
-    let source = rodio::Decoder::new(HttpStreamReader::new(url, api_key.to_string())).unwrap();
-    let &(ref _track_id_lock, ref sink) = &*currently_playing;
-    sink.stop();
-    let sink = rodio::Sink::new(device);
-    sink.append(source);
-    let currently_playing = Arc::new((RwLock::new(Some(track.id)), sink));
-    let currently_playing_clone = currently_playing.clone();
-    thread::spawn(move || {
-        let &(ref track_id_lock, ref sink) = &*currently_playing_clone;
-        sink.sleep_until_end();
-        let mut track_id = track_id_lock.write().unwrap();
-        *track_id = None;
-    });
-    currently_playing
+fn play_queue(
+    context: Arc<Context>,
+    queue: Vec<i64>,
+    join_handle: Option<JoinHandle<()>>,
+) -> Option<JoinHandle<()>> {
+    {
+        let mut queue_guard = context.queue_lock.write().unwrap();
+        queue_guard.clear();
+    }
+    {
+        let sink_guard = context.sink_lock.read().unwrap();
+        sink_guard.stop();
+    }
+    if let Some(join_handle) = join_handle {
+        join_handle.join().unwrap();
+    }
+    if queue.is_empty() {
+        None
+    } else {
+        {
+            let mut queue_guard = context.queue_lock.write().unwrap();
+            *queue_guard = queue;
+        }
+        {
+            let mut sink_guard = context.sink_lock.write().unwrap();
+            *sink_guard = rodio::Sink::new(&context.device);
+        }
+        Some(thread::spawn(move || loop {
+            let url;
+            {
+                let queue_guard = context.queue_lock.read().unwrap();
+                url = queue_guard
+                    .first()
+                    .map(|first| format!("{}/{}/{}.mp3", context.server_url, STATIC, first));
+            }
+            if let Some(url) = url {
+                let source =
+                    rodio::Decoder::new(HttpStreamReader::new(url, context.api_key.to_string()))
+                        .unwrap();
+                {
+                    let sink_guard = context.sink_lock.read().unwrap();
+                    sink_guard.append(source);
+                    sink_guard.sleep_until_end();
+                }
+                {
+                    let mut queue_guard = context.queue_lock.write().unwrap();
+                    if !queue_guard.is_empty() {
+                        queue_guard.rotate_left(1);
+                    }
+                }
+            } else {
+                break;
+            }
+        }))
+    }
+}
+
+struct Context {
+    server_url: String,
+    api_key: String,
+    client: reqwest::blocking::Client,
+    device: rodio::Device,
+    sink_lock: RwLock<rodio::Sink>,
+    queue_lock: RwLock<Vec<i64>>,
 }
 
 fn main() -> Result<(), failure::Error> {
@@ -505,7 +538,19 @@ fn main() -> Result<(), failure::Error> {
 
     let client = reqwest::blocking::Client::new();
     let device = rodio::default_output_device().unwrap();
-    let mut currently_playing = Arc::new((RwLock::new(None), rodio::Sink::new_idle().0));
+    let sink_lock = RwLock::new(rodio::Sink::new_idle().0);
+    let queue_lock = RwLock::new(vec![]);
+
+    let context = Arc::new(Context {
+        server_url,
+        api_key,
+        client,
+        device,
+        sink_lock,
+        queue_lock,
+    });
+
+    let mut join_handle: Option<JoinHandle<()>> = None;
 
     let mut stack = Vec::new();
     stack.push(App {
@@ -523,10 +568,9 @@ fn main() -> Result<(), failure::Error> {
     loop {
         if let Some(last) = stack.last() {
             let active = if let State::Tracks { tracks } = &last.state {
-                let &(ref track_id_lock, ref _sink) = &*currently_playing;
-                let track_id = track_id_lock.read().unwrap();
-                if let Some(track_id) = *track_id {
-                    tracks.iter().position(|track| track.id == track_id)
+                let queue_guard = context.queue_lock.read().unwrap();
+                if let Some(first) = queue_guard.first() {
+                    tracks.iter().position(|track| track.id == *first)
                 } else {
                     None
                 }
@@ -556,7 +600,7 @@ fn main() -> Result<(), failure::Error> {
 
         match events.next()? {
             Event::Input(input) => match input {
-                Key::Backspace => {
+                Key::Esc => {
                     if stack.len() > 1 {
                         stack.pop();
                     }
@@ -592,12 +636,7 @@ fn main() -> Result<(), failure::Error> {
                         match &last.state {
                             State::Albums { albums } => {
                                 if let Some(selected) = last.selected {
-                                    Some(get_tracks_of_album(
-                                        &client,
-                                        &server_url[..],
-                                        &api_key[..],
-                                        &albums[selected],
-                                    ))
+                                    Some(get_tracks_of_album(context.clone(), &albums[selected]))
                                 } else {
                                     None
                                 }
@@ -606,17 +645,10 @@ fn main() -> Result<(), failure::Error> {
                                 if let Some(selected) = last.selected {
                                     if selected == 0 {
                                         // All tracks
-                                        Some(get_tracks_of_artist(
-                                            &client,
-                                            &server_url[..],
-                                            &api_key[..],
-                                            *artist_id,
-                                        ))
+                                        Some(get_tracks_of_artist(context.clone(), *artist_id))
                                     } else {
                                         Some(get_tracks_of_album(
-                                            &client,
-                                            &server_url[..],
-                                            &api_key[..],
+                                            context.clone(),
                                             &albums[selected - 1],
                                         ))
                                     }
@@ -626,24 +658,14 @@ fn main() -> Result<(), failure::Error> {
                             }
                             State::Artists { artists } => {
                                 if let Some(selected) = last.selected {
-                                    Some(get_artist(
-                                        &client,
-                                        &server_url[..],
-                                        &api_key[..],
-                                        &artists[selected],
-                                    ))
+                                    Some(get_artist(context.clone(), &artists[selected]))
                                 } else {
                                     None
                                 }
                             }
                             State::Genres { genres } => {
                                 if let Some(selected) = last.selected {
-                                    Some(get_tracks_of_genre(
-                                        &client,
-                                        &server_url[..],
-                                        &api_key[..],
-                                        &genres[selected],
-                                    ))
+                                    Some(get_tracks_of_genre(context.clone(), &genres[selected]))
                                 } else {
                                     None
                                 }
@@ -651,9 +673,7 @@ fn main() -> Result<(), failure::Error> {
                             State::Playlists { playlists } => {
                                 if let Some(selected) = last.selected {
                                     Some(get_tracks_of_playlist(
-                                        &client,
-                                        &server_url[..],
-                                        &api_key[..],
+                                        context.clone(),
                                         &playlists[selected],
                                     ))
                                 } else {
@@ -663,23 +683,11 @@ fn main() -> Result<(), failure::Error> {
                             State::Root => {
                                 if let Some(selected) = last.selected {
                                     match &last.items[selected][..] {
-                                        "Albums" => {
-                                            Some(get_albums(&client, &server_url[..], &api_key[..]))
-                                        }
-                                        "Artists" => Some(get_artists(
-                                            &client,
-                                            &server_url[..],
-                                            &api_key[..],
-                                        )),
-                                        "Genres" => {
-                                            Some(get_genres(&client, &server_url[..], &api_key[..]))
-                                        },
-                                        "Playlists" => {
-                                            Some(get_playlists(&client, &server_url[..], &api_key[..]))
-                                        },
-                                        "Tracks" => {
-                                            Some(get_tracks(&client, &server_url[..], &api_key[..]))
-                                        }
+                                        "Albums" => Some(get_albums(context.clone())),
+                                        "Artists" => Some(get_artists(context.clone())),
+                                        "Genres" => Some(get_genres(context.clone())),
+                                        "Playlists" => Some(get_playlists(context.clone())),
+                                        "Tracks" => Some(get_tracks(context.clone())),
                                         _ => None,
                                     }
                                 } else {
@@ -688,13 +696,10 @@ fn main() -> Result<(), failure::Error> {
                             }
                             State::Tracks { tracks } => {
                                 if let Some(selected) = last.selected {
-                                    currently_playing = play_track(
-                                        &server_url[..],
-                                        &api_key[..],
-                                        &device,
-                                        currently_playing,
-                                        &tracks[selected],
-                                    );
+                                    let mut queue: Vec<i64> =
+                                        tracks.iter().map(|track| track.id).collect();
+                                    queue.rotate_left(selected);
+                                    join_handle = play_queue(context.clone(), queue, join_handle);
                                 }
                                 None
                             }
@@ -706,7 +711,15 @@ fn main() -> Result<(), failure::Error> {
                         stack.push(app);
                     }
                 }
-                Key::Char('q') => {
+                Key::Char(' ') => {
+                    let sink_guard = context.sink_lock.read().unwrap();
+                    if sink_guard.is_paused() {
+                        sink_guard.play();
+                    } else {
+                        sink_guard.pause();
+                    }
+                }
+                Key::Ctrl('c') => {
                     break;
                 }
                 _ => {}

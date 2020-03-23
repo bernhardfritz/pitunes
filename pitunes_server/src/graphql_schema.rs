@@ -1,7 +1,7 @@
 use crate::db::SqlitePool;
 use crate::models::{
     Album, AlbumChangeset, Artist, ArtistChangeset, Genre, GenreChangeset, NewAlbum, NewArtist,
-    NewGenre, Track, Playlist
+    NewGenre, Playlist, Track,
 };
 use crate::schema;
 use diesel::prelude::*;

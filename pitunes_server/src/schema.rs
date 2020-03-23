@@ -58,11 +58,4 @@ joinable!(tracks -> albums (album_id));
 joinable!(tracks -> artists (artist_id));
 joinable!(tracks -> genres (genre_id));
 
-allow_tables_to_appear_in_same_query!(
-    albums,
-    artists,
-    genres,
-    playlists,
-    playlists_tracks,
-    tracks,
-);
+allow_tables_to_appear_in_same_query!(albums, artists, genres, playlists, playlists_tracks, tracks,);

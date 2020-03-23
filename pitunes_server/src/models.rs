@@ -1,5 +1,5 @@
 use crate::graphql_schema::Context;
-use crate::schema::{albums, artists, genres, tracks, playlists, playlists_tracks};
+use crate::schema::{albums, artists, genres, playlists, playlists_tracks, tracks};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use serde::Serialize;
