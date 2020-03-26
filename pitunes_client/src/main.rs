@@ -196,7 +196,7 @@ struct App {
     selected: Option<usize>,
 }
 
-fn get_albums(context: Arc<Context>) -> App {
+fn get_albums(context: &Arc<Context>) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = AlbumsQuery::build_query(albums_query::Variables {});
     let res = context
@@ -217,7 +217,7 @@ fn get_albums(context: Arc<Context>) -> App {
     }
 }
 
-fn get_artists(context: Arc<Context>) -> App {
+fn get_artists(context: &Arc<Context>) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = ArtistsQuery::build_query(artists_query::Variables {});
     let res = context
@@ -238,7 +238,7 @@ fn get_artists(context: Arc<Context>) -> App {
     }
 }
 
-fn get_genres(context: Arc<Context>) -> App {
+fn get_genres(context: &Arc<Context>) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = GenresQuery::build_query(genres_query::Variables {});
     let res = context
@@ -259,7 +259,7 @@ fn get_genres(context: Arc<Context>) -> App {
     }
 }
 
-fn get_playlists(context: Arc<Context>) -> App {
+fn get_playlists(context: &Arc<Context>) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = PlaylistsQuery::build_query(playlists_query::Variables {});
     let res = context
@@ -283,7 +283,7 @@ fn get_playlists(context: Arc<Context>) -> App {
     }
 }
 
-fn get_tracks(context: Arc<Context>) -> App {
+fn get_tracks(context: &Arc<Context>) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = TracksQuery::build_query(tracks_query::Variables {});
     let res = context
@@ -304,7 +304,7 @@ fn get_tracks(context: Arc<Context>) -> App {
     }
 }
 
-fn get_tracks_of_album(context: Arc<Context>, album: &albums_query::AlbumsQueryAlbums) -> App {
+fn get_tracks_of_album(context: &Arc<Context>, album: &albums_query::AlbumsQueryAlbums) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = AlbumQuery::build_query(album_query::Variables { id: album.id });
     let res = context
@@ -331,7 +331,7 @@ fn get_tracks_of_album(context: Arc<Context>, album: &albums_query::AlbumsQueryA
     }
 }
 
-fn get_tracks_of_artist(context: Arc<Context>, artist_id: i64) -> App {
+fn get_tracks_of_artist(context: &Arc<Context>, artist_id: i64) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         ArtistTracksQuery::build_query(artist_tracks_query::Variables { id: artist_id });
@@ -359,7 +359,7 @@ fn get_tracks_of_artist(context: Arc<Context>, artist_id: i64) -> App {
     }
 }
 
-fn get_artist(context: Arc<Context>, artist: &artists_query::ArtistsQueryArtists) -> App {
+fn get_artist(context: &Arc<Context>, artist: &artists_query::ArtistsQueryArtists) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
@@ -387,7 +387,7 @@ fn get_artist(context: Arc<Context>, artist: &artists_query::ArtistsQueryArtists
     }
 }
 
-fn get_tracks_of_genre(context: Arc<Context>, genre: &genres_query::GenresQueryGenres) -> App {
+fn get_tracks_of_genre(context: &Arc<Context>, genre: &genres_query::GenresQueryGenres) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = GenreQuery::build_query(genre_query::Variables { id: genre.id });
     let res = context
@@ -415,7 +415,7 @@ fn get_tracks_of_genre(context: Arc<Context>, genre: &genres_query::GenresQueryG
 }
 
 fn get_tracks_of_playlist(
-    context: Arc<Context>,
+    context: &Arc<Context>,
     playlist: &playlists_query::PlaylistsQueryPlaylists,
 ) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
@@ -636,7 +636,7 @@ fn main() -> Result<(), failure::Error> {
                         match &last.state {
                             State::Albums { albums } => {
                                 if let Some(selected) = last.selected {
-                                    Some(get_tracks_of_album(context.clone(), &albums[selected]))
+                                    Some(get_tracks_of_album(&context, &albums[selected]))
                                 } else {
                                     None
                                 }
@@ -645,12 +645,9 @@ fn main() -> Result<(), failure::Error> {
                                 if let Some(selected) = last.selected {
                                     if selected == 0 {
                                         // All tracks
-                                        Some(get_tracks_of_artist(context.clone(), *artist_id))
+                                        Some(get_tracks_of_artist(&context, *artist_id))
                                     } else {
-                                        Some(get_tracks_of_album(
-                                            context.clone(),
-                                            &albums[selected - 1],
-                                        ))
+                                        Some(get_tracks_of_album(&context, &albums[selected - 1]))
                                     }
                                 } else {
                                     None
@@ -658,24 +655,21 @@ fn main() -> Result<(), failure::Error> {
                             }
                             State::Artists { artists } => {
                                 if let Some(selected) = last.selected {
-                                    Some(get_artist(context.clone(), &artists[selected]))
+                                    Some(get_artist(&context, &artists[selected]))
                                 } else {
                                     None
                                 }
                             }
                             State::Genres { genres } => {
                                 if let Some(selected) = last.selected {
-                                    Some(get_tracks_of_genre(context.clone(), &genres[selected]))
+                                    Some(get_tracks_of_genre(&context, &genres[selected]))
                                 } else {
                                     None
                                 }
                             }
                             State::Playlists { playlists } => {
                                 if let Some(selected) = last.selected {
-                                    Some(get_tracks_of_playlist(
-                                        context.clone(),
-                                        &playlists[selected],
-                                    ))
+                                    Some(get_tracks_of_playlist(&context, &playlists[selected]))
                                 } else {
                                     None
                                 }
@@ -683,11 +677,11 @@ fn main() -> Result<(), failure::Error> {
                             State::Root => {
                                 if let Some(selected) = last.selected {
                                     match &last.items[selected][..] {
-                                        "Albums" => Some(get_albums(context.clone())),
-                                        "Artists" => Some(get_artists(context.clone())),
-                                        "Genres" => Some(get_genres(context.clone())),
-                                        "Playlists" => Some(get_playlists(context.clone())),
-                                        "Tracks" => Some(get_tracks(context.clone())),
+                                        "Albums" => Some(get_albums(&context)),
+                                        "Artists" => Some(get_artists(&context)),
+                                        "Genres" => Some(get_genres(&context)),
+                                        "Playlists" => Some(get_playlists(&context)),
+                                        "Tracks" => Some(get_tracks(&context)),
                                         _ => None,
                                     }
                                 } else {
