@@ -28,6 +28,14 @@ use tui::Terminal;
 const GRAPHQL: &str = "graphql";
 const STATIC: &str = "static";
 
+const PI_SYMBOL: &str = "π";
+const ALBUMS: &str = "Albums";
+const ARTISTS: &str = "Artists";
+const GENRES: &str = "Genres";
+const PLAYLISTS: &str = "Playlists";
+const TRACKS: &str = "Tracks";
+const ALL_TRACKS: &str = "All tracks";
+
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
@@ -192,6 +200,7 @@ enum State {
 
 struct App {
     state: State,
+    breadcrumb: String,
     items: Vec<String>,
     selected: Option<usize>,
 }
@@ -212,6 +221,7 @@ fn get_albums(context: &Arc<Context>) -> App {
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Albums { albums },
+        breadcrumb: String::from(ALBUMS),
         items,
         selected,
     }
@@ -233,6 +243,7 @@ fn get_artists(context: &Arc<Context>) -> App {
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Artists { artists },
+        breadcrumb: String::from(ARTISTS),
         items,
         selected,
     }
@@ -254,6 +265,7 @@ fn get_genres(context: &Arc<Context>) -> App {
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Genres { genres },
+        breadcrumb: String::from(GENRES),
         items,
         selected,
     }
@@ -278,6 +290,7 @@ fn get_playlists(context: &Arc<Context>) -> App {
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Playlists { playlists },
+        breadcrumb: String::from(PLAYLISTS),
         items,
         selected,
     }
@@ -299,6 +312,7 @@ fn get_tracks(context: &Arc<Context>) -> App {
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Tracks { tracks },
+        breadcrumb: String::from(TRACKS),
         items,
         selected,
     }
@@ -326,6 +340,7 @@ fn get_tracks_of_album(context: &Arc<Context>, album: &albums_query::AlbumsQuery
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Tracks { tracks },
+        breadcrumb: album.name.clone(),
         items,
         selected,
     }
@@ -354,6 +369,7 @@ fn get_tracks_of_artist(context: &Arc<Context>, artist_id: i64) -> App {
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Tracks { tracks },
+        breadcrumb: String::from(ALL_TRACKS),
         items,
         selected,
     }
@@ -379,9 +395,10 @@ fn get_artist(context: &Arc<Context>, artist: &artists_query::ArtistsQueryArtist
         .map(|album| album.into())
         .collect();
     let mut items: Vec<String> = albums.iter().map(|album| album.name.clone()).collect();
-    items.insert(0, String::from("All tracks"));
+    items.insert(0, String::from(ALL_TRACKS));
     App {
         state: State::Artist { artist_id, albums },
+        breadcrumb: artist.name.clone(),
         items,
         selected: Some(0),
     }
@@ -409,6 +426,7 @@ fn get_tracks_of_genre(context: &Arc<Context>, genre: &genres_query::GenresQuery
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Tracks { tracks },
+        breadcrumb: genre.name.clone(),
         items,
         selected,
     }
@@ -439,6 +457,7 @@ fn get_tracks_of_playlist(
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
         state: State::Tracks { tracks },
+        breadcrumb: playlist.name.clone(),
         items,
         selected,
     }
@@ -501,6 +520,17 @@ fn play_queue(
     }
 }
 
+fn generate_title_from_stack(stack: &Vec<App>) -> String {
+    format!(
+        " {} ",
+        stack
+            .iter()
+            .map(|item| &item.breadcrumb[..])
+            .collect::<Vec<&str>>()
+            .join(" / ")
+    )
+}
+
 struct Context {
     server_url: String,
     api_key: String,
@@ -555,15 +585,18 @@ fn main() -> Result<(), failure::Error> {
     let mut stack = Vec::new();
     stack.push(App {
         state: State::Root,
+        breadcrumb: String::from(PI_SYMBOL),
         items: vec![
-            String::from("Albums"),
-            String::from("Artists"),
-            String::from("Genres"),
-            String::from("Playlists"),
-            String::from("Tracks"),
+            String::from(ALBUMS),
+            String::from(ARTISTS),
+            String::from(GENRES),
+            String::from(PLAYLISTS),
+            String::from(TRACKS),
         ],
         selected: Some(0),
     });
+
+    let mut title = generate_title_from_stack(&stack);
 
     loop {
         if let Some(last) = stack.last() {
@@ -582,7 +615,7 @@ fn main() -> Result<(), failure::Error> {
                 let size = f.size();
                 Block::default()
                     .borders(Borders::ALL)
-                    .title(" π ")
+                    .title(&title[..])
                     .render(&mut f, size);
                 let chunks = Layout::default()
                     .constraints([Constraint::Percentage(100)].as_ref())
@@ -600,9 +633,10 @@ fn main() -> Result<(), failure::Error> {
 
         match events.next()? {
             Event::Input(input) => match input {
-                Key::Esc => {
+                Key::Backspace => {
                     if stack.len() > 1 {
                         stack.pop();
+                        title = generate_title_from_stack(&stack);
                     }
                 }
                 Key::Up => {
@@ -677,11 +711,11 @@ fn main() -> Result<(), failure::Error> {
                             State::Root => {
                                 if let Some(selected) = last.selected {
                                     match &last.items[selected][..] {
-                                        "Albums" => Some(get_albums(&context)),
-                                        "Artists" => Some(get_artists(&context)),
-                                        "Genres" => Some(get_genres(&context)),
-                                        "Playlists" => Some(get_playlists(&context)),
-                                        "Tracks" => Some(get_tracks(&context)),
+                                        ALBUMS => Some(get_albums(&context)),
+                                        ARTISTS => Some(get_artists(&context)),
+                                        GENRES => Some(get_genres(&context)),
+                                        PLAYLISTS => Some(get_playlists(&context)),
+                                        TRACKS => Some(get_tracks(&context)),
                                         _ => None,
                                     }
                                 } else {
@@ -703,6 +737,7 @@ fn main() -> Result<(), failure::Error> {
                     };
                     if let Some(app) = app {
                         stack.push(app);
+                        title = generate_title_from_stack(&stack);
                     }
                 }
                 Key::Char(' ') => {
