@@ -1,9 +1,9 @@
 use crate::db::SqlitePool;
 use crate::models::{
     Album, AlbumChangeset, Artist, ArtistChangeset, Genre, GenreChangeset, NewAlbum, NewArtist,
-    NewGenre, Playlist, Track,
+    NewGenre, NewPlaylist, NewPlaylistTrack, Playlist, PlaylistChangeset, Track, TrackChangeset,
 };
-use crate::schema;
+use crate::schema::{albums, artists, genres, playlists, playlists_tracks, tracks};
 use diesel::prelude::*;
 
 #[derive(Clone)]
@@ -24,63 +24,53 @@ pub struct Query;
 )]
 impl Query {
     fn album(context: &Context, id: i32) -> juniper::FieldResult<Album> {
-        let conn = context.pool.get().unwrap();
-        Ok(schema::albums::table.find(id).get_result(&conn)?)
+        let conn = context.pool.get()?;
+        Ok(albums::table.find(id).get_result(&conn)?)
     }
 
-    fn albums(context: &Context) -> Vec<Album> {
-        let conn = context.pool.get().unwrap();
-        schema::albums::table
-            .load::<Album>(&conn)
-            .expect("Error loading albums")
+    fn albums(context: &Context) -> juniper::FieldResult<Vec<Album>> {
+        let conn = context.pool.get()?;
+        Ok(albums::table.load::<Album>(&conn)?)
     }
 
     fn artist(context: &Context, id: i32) -> juniper::FieldResult<Artist> {
-        let conn = context.pool.get().unwrap();
-        Ok(schema::artists::table.find(id).get_result(&conn)?)
+        let conn = context.pool.get()?;
+        Ok(artists::table.find(id).get_result(&conn)?)
     }
 
-    fn artists(context: &Context) -> Vec<Artist> {
-        let conn = context.pool.get().unwrap();
-        schema::artists::table
-            .load::<Artist>(&conn)
-            .expect("Error loading artists")
+    fn artists(context: &Context) -> juniper::FieldResult<Vec<Artist>> {
+        let conn = context.pool.get()?;
+        Ok(artists::table.load::<Artist>(&conn)?)
     }
 
     fn genre(context: &Context, id: i32) -> juniper::FieldResult<Genre> {
-        let conn = context.pool.get().unwrap();
-        Ok(schema::genres::table.find(id).get_result(&conn)?)
+        let conn = context.pool.get()?;
+        Ok(genres::table.find(id).get_result(&conn)?)
     }
 
-    fn genres(context: &Context) -> Vec<Genre> {
-        let conn = context.pool.get().unwrap();
-        schema::genres::table
-            .load::<Genre>(&conn)
-            .expect("Error loading genres")
+    fn genres(context: &Context) -> juniper::FieldResult<Vec<Genre>> {
+        let conn = context.pool.get()?;
+        Ok(genres::table.load::<Genre>(&conn)?)
     }
 
     fn track(context: &Context, id: i32) -> juniper::FieldResult<Track> {
-        let conn = context.pool.get().unwrap();
-        Ok(schema::tracks::table.find(id).get_result(&conn)?)
+        let conn = context.pool.get()?;
+        Ok(tracks::table.find(id).get_result(&conn)?)
     }
 
-    fn tracks(context: &Context) -> Vec<Track> {
-        let conn = context.pool.get().unwrap();
-        schema::tracks::table
-            .load::<Track>(&conn)
-            .expect("Error loading tracks")
+    fn tracks(context: &Context) -> juniper::FieldResult<Vec<Track>> {
+        let conn = context.pool.get()?;
+        Ok(tracks::table.load::<Track>(&conn)?)
     }
 
     fn playlist(context: &Context, id: i32) -> juniper::FieldResult<Playlist> {
-        let conn = context.pool.get().unwrap();
-        Ok(schema::playlists::table.find(id).get_result(&conn)?)
+        let conn = context.pool.get()?;
+        Ok(playlists::table.find(id).get_result(&conn)?)
     }
 
-    fn playlists(context: &Context) -> Vec<Playlist> {
-        let conn = context.pool.get().unwrap();
-        schema::playlists::table
-            .load::<Playlist>(&conn)
-            .expect("Error loading playlists")
+    fn playlists(context: &Context) -> juniper::FieldResult<Vec<Playlist>> {
+        let conn = context.pool.get()?;
+        Ok(playlists::table.load::<Playlist>(&conn)?)
     }
 }
 
@@ -89,15 +79,12 @@ pub struct Mutation;
 #[juniper::object(Context = Context)]
 impl Mutation {
     fn create_album(context: &Context, new_album: NewAlbum) -> juniper::FieldResult<Album> {
-        let conn = context.pool.get().unwrap();
+        let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(schema::albums::table)
+            diesel::insert_into(albums::table)
                 .values(&new_album)
-                .execute(&conn)
-                .expect("Error saving new album");
-            schema::albums::table
-                .order(schema::albums::id.desc())
-                .first::<Album>(&conn)
+                .execute(&conn)?;
+            albums::table.order(albums::id.desc()).first::<Album>(&conn)
         })?)
     }
 
@@ -105,26 +92,28 @@ impl Mutation {
         context: &Context,
         album_changeset: AlbumChangeset,
     ) -> juniper::FieldResult<Album> {
-        let conn = context.pool.get().unwrap();
+        let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::update(schema::albums::table)
+            diesel::update(albums::table.find(album_changeset.id))
                 .set(&album_changeset)
                 .execute(&conn)?;
-            schema::albums::table
-                .find(album_changeset.id)
-                .get_result(&conn)
+            albums::table.find(album_changeset.id).get_result(&conn)
         })?)
     }
 
+    fn delete_album(context: &Context, album_id: i32) -> juniper::FieldResult<bool> {
+        let conn = context.pool.get()?;
+        Ok(diesel::delete(albums::table.find(album_id)).execute(&conn)? == 1)
+    }
+
     fn create_artist(context: &Context, new_artist: NewArtist) -> juniper::FieldResult<Artist> {
-        let conn = context.pool.get().unwrap();
+        let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(schema::artists::table)
+            diesel::insert_into(artists::table)
                 .values(&new_artist)
-                .execute(&conn)
-                .expect("Error saving new artist");
-            schema::artists::table
-                .order(schema::artists::id.desc())
+                .execute(&conn)?;
+            artists::table
+                .order(artists::id.desc())
                 .first::<Artist>(&conn)
         })?)
     }
@@ -133,27 +122,27 @@ impl Mutation {
         context: &Context,
         artist_changeset: ArtistChangeset,
     ) -> juniper::FieldResult<Artist> {
-        let conn = context.pool.get().unwrap();
+        let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::update(schema::artists::table)
+            diesel::update(artists::table.find(artist_changeset.id))
                 .set(&artist_changeset)
                 .execute(&conn)?;
-            schema::artists::table
-                .find(artist_changeset.id)
-                .get_result(&conn)
+            artists::table.find(artist_changeset.id).get_result(&conn)
         })?)
     }
 
+    fn delete_artist(context: &Context, artist_id: i32) -> juniper::FieldResult<bool> {
+        let conn = context.pool.get()?;
+        Ok(diesel::delete(artists::table.find(artist_id)).execute(&conn)? == 1)
+    }
+
     fn create_genre(context: &Context, new_genre: NewGenre) -> juniper::FieldResult<Genre> {
-        let conn = context.pool.get().unwrap();
+        let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(schema::genres::table)
+            diesel::insert_into(genres::table)
                 .values(&new_genre)
-                .execute(&conn)
-                .expect("Error saving new artist");
-            schema::genres::table
-                .order(schema::genres::id.desc())
-                .first::<Genre>(&conn)
+                .execute(&conn)?;
+            genres::table.order(genres::id.desc()).first::<Genre>(&conn)
         })?)
     }
 
@@ -161,16 +150,86 @@ impl Mutation {
         context: &Context,
         genre_changeset: GenreChangeset,
     ) -> juniper::FieldResult<Genre> {
-        let conn = context.pool.get().unwrap();
+        let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::update(schema::genres::table)
+            diesel::update(genres::table.find(genre_changeset.id))
                 .set(&genre_changeset)
                 .execute(&conn)?;
-            schema::genres::table
-                .find(genre_changeset.id)
+            genres::table.find(genre_changeset.id).get_result(&conn)
+        })?)
+    }
+
+    fn delete_genre(context: &Context, genre_id: i32) -> juniper::FieldResult<bool> {
+        let conn = context.pool.get()?;
+        Ok(diesel::delete(genres::table.find(genre_id)).execute(&conn)? == 1)
+    }
+
+    fn update_track(
+        context: &Context,
+        track_changeset: TrackChangeset,
+    ) -> juniper::FieldResult<Track> {
+        let conn = context.pool.get()?;
+        Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
+            diesel::update(tracks::table.find(track_changeset.id))
+                .set(&track_changeset)
+                .execute(&conn)?;
+            tracks::table.find(track_changeset.id).get_result(&conn)
+        })?)
+    }
+
+    fn create_playlist(
+        context: &Context,
+        new_playlist: NewPlaylist,
+    ) -> juniper::FieldResult<Playlist> {
+        let conn = context.pool.get()?;
+        Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
+            diesel::insert_into(playlists::table)
+                .values(&new_playlist)
+                .execute(&conn)?;
+            playlists::table
+                .order(playlists::id.desc())
+                .first::<Playlist>(&conn)
+        })?)
+    }
+
+    fn update_playlist(
+        context: &Context,
+        playlist_changeset: PlaylistChangeset,
+    ) -> juniper::FieldResult<Playlist> {
+        let conn = context.pool.get()?;
+        Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
+            diesel::update(playlists::table.find(playlist_changeset.id))
+                .set(&playlist_changeset)
+                .execute(&conn)?;
+            playlists::table
+                .find(playlist_changeset.id)
                 .get_result(&conn)
         })?)
     }
+
+    fn delete_playlist(context: &Context, playlist_id: i32) -> juniper::FieldResult<bool> {
+        let conn = context.pool.get()?;
+        Ok(diesel::delete(playlists::table.find(playlist_id)).execute(&conn)? == 1)
+    }
+
+    fn create_playlist_track(
+        context: &Context,
+        new_playlist_track: NewPlaylistTrack,
+    ) -> juniper::FieldResult<Playlist> {
+        let conn = context.pool.get()?;
+        Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
+            diesel::insert_into(playlists_tracks::table)
+                .values(&new_playlist_track)
+                .execute(&conn)?;
+            playlists::table
+                .find(new_playlist_track.playlist_id)
+                .get_result(&conn)
+        })?)
+    }
+
+    // TODO: update_playlist_track should allow to change playlist track order
+
+    // TODO: delete_playlist_track
 }
 
 pub type Schema = juniper::RootNode<'static, Query, Mutation>;

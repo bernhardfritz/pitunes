@@ -25,11 +25,9 @@ impl Album {
         &self.name[..]
     }
 
-    pub fn tracks(&self, context: &Context) -> Vec<Track> {
-        let conn = context.pool.get().unwrap();
-        Track::belonging_to(self)
-            .load::<Track>(&conn)
-            .expect("Error loading tracks")
+    pub fn tracks(&self, context: &Context) -> juniper::FieldResult<Vec<Track>> {
+        let conn = context.pool.get()?;
+        Ok(Track::belonging_to(self).load::<Track>(&conn)?)
     }
 }
 
@@ -67,29 +65,24 @@ impl Artist {
         &self.name[..]
     }
 
-    pub fn albums(&self, context: &Context) -> Vec<Album> {
-        use self::albums::dsl::*;
-        let conn = context.pool.get().unwrap();
+    pub fn albums(&self, context: &Context) -> juniper::FieldResult<Vec<Album>> {
+        let conn = context.pool.get()?;
         let album_ids: Vec<i32> = Track::belonging_to(self)
             .select(tracks::album_id)
             .distinct()
             .filter(tracks::album_id.is_not_null())
-            .load::<Option<i32>>(&conn)
-            .unwrap()
+            .load::<Option<i32>>(&conn)?
             .into_iter()
             .flatten()
             .collect();
-        albums
-            .filter(id.eq_any(album_ids))
-            .load::<Album>(&conn)
-            .unwrap()
+        Ok(albums::table
+            .filter(albums::id.eq_any(album_ids))
+            .load::<Album>(&conn)?)
     }
 
-    pub fn tracks(&self, context: &Context) -> Vec<Track> {
-        let conn = context.pool.get().unwrap();
-        Track::belonging_to(self)
-            .load::<Track>(&conn)
-            .expect("Error loading tracks")
+    pub fn tracks(&self, context: &Context) -> juniper::FieldResult<Vec<Track>> {
+        let conn = context.pool.get()?;
+        Ok(Track::belonging_to(self).load::<Track>(&conn)?)
     }
 }
 
@@ -127,11 +120,9 @@ impl Genre {
         &self.name[..]
     }
 
-    pub fn tracks(&self, context: &Context) -> Vec<Track> {
-        let conn = context.pool.get().unwrap();
-        Track::belonging_to(self)
-            .load::<Track>(&conn)
-            .expect("Error loading tracks")
+    pub fn tracks(&self, context: &Context) -> juniper::FieldResult<Vec<Track>> {
+        let conn = context.pool.get()?;
+        Ok(Track::belonging_to(self).load::<Track>(&conn)?)
     }
 }
 
@@ -209,6 +200,18 @@ pub struct NewTrack {
     pub track_number: Option<i32>,
 }
 
+#[derive(AsChangeset, juniper::GraphQLInputObject)]
+#[table_name = "tracks"]
+pub struct TrackChangeset {
+    pub id: i32,
+    pub name: Option<String>,
+    pub duration: Option<i32>,
+    pub album_id: Option<i32>,
+    pub artist_id: Option<i32>,
+    pub genre_id: Option<i32>,
+    pub track_number: Option<i32>,
+}
+
 #[derive(Identifiable, Queryable)]
 pub struct Playlist {
     pub id: i32,
@@ -230,23 +233,42 @@ impl Playlist {
         &self.name[..]
     }
 
-    pub fn tracks(&self, context: &Context) -> Vec<Track> {
-        let conn = context.pool.get().unwrap();
-        PlaylistsTracks::belonging_to(self)
+    pub fn tracks(&self, context: &Context) -> juniper::FieldResult<Vec<Track>> {
+        let conn = context.pool.get()?;
+        Ok(PlaylistTrack::belonging_to(self)
             .inner_join(tracks::table)
             .select(tracks::all_columns)
-            .load::<Track>(&conn)
-            .expect("Error loading tracks")
+            .load::<Track>(&conn)?)
     }
+}
+
+#[derive(Insertable, juniper::GraphQLInputObject)]
+#[table_name = "playlists"]
+pub struct NewPlaylist {
+    pub name: String,
+}
+
+#[derive(AsChangeset, juniper::GraphQLInputObject)]
+#[table_name = "playlists"]
+pub struct PlaylistChangeset {
+    pub id: i32,
+    pub name: Option<String>,
 }
 
 #[derive(Identifiable, Associations)]
 #[belongs_to(Playlist)]
 #[belongs_to(Track)]
 #[table_name = "playlists_tracks"]
-pub struct PlaylistsTracks {
+pub struct PlaylistTrack {
     pub id: i32,
     pub created_at: NaiveDateTime,
+    pub playlist_id: i32,
+    pub track_id: i32,
+}
+
+#[derive(Insertable, juniper::GraphQLInputObject)]
+#[table_name = "playlists_tracks"]
+pub struct NewPlaylistTrack {
     pub playlist_id: i32,
     pub track_id: i32,
 }
