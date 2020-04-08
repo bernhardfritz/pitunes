@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::Path;
 
 use crate::graphql_schema::Context;
-use crate::models::{Album, Artist, Genre, NewAlbum, NewArtist, NewGenre, NewTrack, Track};
+use crate::models::{Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Track, TrackInput};
 use crate::schema::{albums, artists, genres, tracks};
 use actix_multipart::Multipart;
 use actix_web::{web, Error, HttpResponse};
@@ -45,7 +45,7 @@ async fn upload(
                     let track_album_id = match tag.album() {
                         Some(album_name) => {
                             use self::albums::dsl::*;
-                            let new_album = NewAlbum {
+                            let album_input = AlbumInput {
                                 name: String::from(album_name),
                             };
                             let album_result =
@@ -54,7 +54,7 @@ async fn upload(
                                 Ok(album) => Some(album.id),
                                 Err(_) => {
                                     diesel::insert_into(albums)
-                                        .values(&new_album)
+                                        .values(&album_input)
                                         .execute(&conn)
                                         .expect("Error saving new album");
                                     let album_result =
@@ -71,7 +71,7 @@ async fn upload(
                     let track_artist_id = match tag.artist() {
                         Some(artist_name) => {
                             use self::artists::dsl::*;
-                            let new_artist = NewArtist {
+                            let artist_input = ArtistInput {
                                 name: String::from(artist_name),
                             };
                             let artist_result =
@@ -80,7 +80,7 @@ async fn upload(
                                 Ok(artist) => Some(artist.id),
                                 Err(_) => {
                                     diesel::insert_into(artists)
-                                        .values(&new_artist)
+                                        .values(&artist_input)
                                         .execute(&conn)
                                         .expect("Error saving new artist");
                                     let artist_result =
@@ -97,7 +97,7 @@ async fn upload(
                     let track_genre_id = match tag.genre() {
                         Some(genre_name) => {
                             use self::genres::dsl::*;
-                            let new_genre = NewGenre {
+                            let genre_input = GenreInput {
                                 name: String::from(genre_name),
                             };
                             let genre_result =
@@ -106,7 +106,7 @@ async fn upload(
                                 Ok(genre) => Some(genre.id),
                                 Err(_) => {
                                     diesel::insert_into(genres)
-                                        .values(&new_genre)
+                                        .values(&genre_input)
                                         .execute(&conn)
                                         .expect("Error saving new genre");
                                     let genre_result =
@@ -121,7 +121,7 @@ async fn upload(
                         None => None,
                     };
                     let track_track_number = tag.track();
-                    let new_track = NewTrack {
+                    let track_input = TrackInput {
                         name: track_name,
                         duration: track_duration.map(|td| td as i32),
                         album_id: track_album_id,
@@ -131,7 +131,7 @@ async fn upload(
                     };
                     use self::tracks::dsl::*;
                     diesel::insert_into(tracks)
-                        .values(new_track)
+                        .values(track_input)
                         .execute(&conn)
                         .expect("Error saving new track");
                     tracks.order(id.desc()).first::<Track>(&conn)
@@ -142,7 +142,7 @@ async fn upload(
                     let path = Path::new(filename);
                     let file_stem = path.file_stem().unwrap();
                     let track_name = file_stem.to_str().unwrap();
-                    let new_track = NewTrack {
+                    let track_input = TrackInput {
                         name: String::from(track_name),
                         duration: None,
                         album_id: None,
@@ -152,7 +152,7 @@ async fn upload(
                     };
                     use self::tracks::dsl::*;
                     diesel::insert_into(tracks)
-                        .values(new_track)
+                        .values(track_input)
                         .execute(&conn)
                         .expect("Error saving new track");
                     tracks.order(id.desc()).first::<Track>(&conn)

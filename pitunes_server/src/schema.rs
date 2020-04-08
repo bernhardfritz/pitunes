@@ -36,6 +36,7 @@ table! {
         created_at -> Timestamp,
         playlist_id -> Integer,
         track_id -> Integer,
+        position -> Integer,
     }
 }
 

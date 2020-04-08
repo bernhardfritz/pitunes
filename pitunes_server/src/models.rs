@@ -31,17 +31,10 @@ impl Album {
     }
 }
 
-#[derive(Insertable, juniper::GraphQLInputObject)]
+#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
 #[table_name = "albums"]
-pub struct NewAlbum {
+pub struct AlbumInput {
     pub name: String,
-}
-
-#[derive(AsChangeset, juniper::GraphQLInputObject)]
-#[table_name = "albums"]
-pub struct AlbumChangeset {
-    pub id: i32,
-    pub name: Option<String>,
 }
 
 #[derive(Identifiable, Queryable)]
@@ -86,17 +79,10 @@ impl Artist {
     }
 }
 
-#[derive(Insertable, juniper::GraphQLInputObject)]
+#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
 #[table_name = "artists"]
-pub struct NewArtist {
+pub struct ArtistInput {
     pub name: String,
-}
-
-#[derive(AsChangeset, juniper::GraphQLInputObject)]
-#[table_name = "artists"]
-pub struct ArtistChangeset {
-    pub id: i32,
-    pub name: Option<String>,
 }
 
 #[derive(Identifiable, Queryable)]
@@ -126,17 +112,10 @@ impl Genre {
     }
 }
 
-#[derive(Insertable, juniper::GraphQLInputObject)]
+#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
 #[table_name = "genres"]
-pub struct NewGenre {
+pub struct GenreInput {
     pub name: String,
-}
-
-#[derive(AsChangeset, juniper::GraphQLInputObject)]
-#[table_name = "genres"]
-pub struct GenreChangeset {
-    pub id: i32,
-    pub name: Option<String>,
 }
 
 #[derive(Identifiable, Associations, Queryable, Serialize)]
@@ -189,22 +168,10 @@ impl Track {
     }
 }
 
-#[derive(Insertable, juniper::GraphQLInputObject)]
+#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
 #[table_name = "tracks"]
-pub struct NewTrack {
+pub struct TrackInput {
     pub name: String,
-    pub duration: Option<i32>,
-    pub album_id: Option<i32>,
-    pub artist_id: Option<i32>,
-    pub genre_id: Option<i32>,
-    pub track_number: Option<i32>,
-}
-
-#[derive(AsChangeset, juniper::GraphQLInputObject)]
-#[table_name = "tracks"]
-pub struct TrackChangeset {
-    pub id: i32,
-    pub name: Option<String>,
     pub duration: Option<i32>,
     pub album_id: Option<i32>,
     pub artist_id: Option<i32>,
@@ -238,24 +205,18 @@ impl Playlist {
         Ok(PlaylistTrack::belonging_to(self)
             .inner_join(tracks::table)
             .select(tracks::all_columns)
+            .order_by(playlists_tracks::position.asc())
             .load::<Track>(&conn)?)
     }
 }
 
-#[derive(Insertable, juniper::GraphQLInputObject)]
+#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
 #[table_name = "playlists"]
-pub struct NewPlaylist {
+pub struct PlaylistInput {
     pub name: String,
 }
 
-#[derive(AsChangeset, juniper::GraphQLInputObject)]
-#[table_name = "playlists"]
-pub struct PlaylistChangeset {
-    pub id: i32,
-    pub name: Option<String>,
-}
-
-#[derive(Identifiable, Associations)]
+#[derive(Identifiable, Associations, Queryable)]
 #[belongs_to(Playlist)]
 #[belongs_to(Track)]
 #[table_name = "playlists_tracks"]
@@ -264,11 +225,19 @@ pub struct PlaylistTrack {
     pub created_at: NaiveDateTime,
     pub playlist_id: i32,
     pub track_id: i32,
+    pub position: i32,
 }
 
 #[derive(Insertable, juniper::GraphQLInputObject)]
 #[table_name = "playlists_tracks"]
-pub struct NewPlaylistTrack {
-    pub playlist_id: i32,
+pub struct PlaylistTrackInput {
     pub track_id: i32,
+    pub position: Option<i32>,
+}
+
+#[derive(juniper::GraphQLInputObject)]
+pub struct PlaylistTrackOrderInput {
+    pub range_start: i32,
+    pub range_length: Option<i32>,
+    pub insert_before: i32,
 }

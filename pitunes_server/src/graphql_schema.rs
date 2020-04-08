@@ -1,10 +1,11 @@
 use crate::db::SqlitePool;
 use crate::models::{
-    Album, AlbumChangeset, Artist, ArtistChangeset, Genre, GenreChangeset, NewAlbum, NewArtist,
-    NewGenre, NewPlaylist, NewPlaylistTrack, Playlist, PlaylistChangeset, Track, TrackChangeset,
+    Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Playlist, PlaylistInput,
+    PlaylistTrack, PlaylistTrackInput, PlaylistTrackOrderInput, Track, TrackInput,
 };
 use crate::schema::{albums, artists, genres, playlists, playlists_tracks, tracks};
 use diesel::prelude::*;
+use std::convert::TryFrom;
 
 #[derive(Clone)]
 pub struct Context {
@@ -78,11 +79,11 @@ pub struct Mutation;
 
 #[juniper::object(Context = Context)]
 impl Mutation {
-    fn create_album(context: &Context, new_album: NewAlbum) -> juniper::FieldResult<Album> {
+    fn create_album(context: &Context, album_input: AlbumInput) -> juniper::FieldResult<Album> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
             diesel::insert_into(albums::table)
-                .values(&new_album)
+                .values(&album_input)
                 .execute(&conn)?;
             albums::table.order(albums::id.desc()).first::<Album>(&conn)
         })?)
@@ -90,27 +91,28 @@ impl Mutation {
 
     fn update_album(
         context: &Context,
-        album_changeset: AlbumChangeset,
+        id: i32,
+        album_input: AlbumInput,
     ) -> juniper::FieldResult<Album> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::update(albums::table.find(album_changeset.id))
-                .set(&album_changeset)
+            diesel::update(albums::table.find(id))
+                .set(&album_input)
                 .execute(&conn)?;
-            albums::table.find(album_changeset.id).get_result(&conn)
+            albums::table.find(id).get_result(&conn)
         })?)
     }
 
-    fn delete_album(context: &Context, album_id: i32) -> juniper::FieldResult<bool> {
+    fn delete_album(context: &Context, id: i32) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
-        Ok(diesel::delete(albums::table.find(album_id)).execute(&conn)? == 1)
+        Ok(diesel::delete(albums::table.find(id)).execute(&conn)? == 1)
     }
 
-    fn create_artist(context: &Context, new_artist: NewArtist) -> juniper::FieldResult<Artist> {
+    fn create_artist(context: &Context, artist_input: ArtistInput) -> juniper::FieldResult<Artist> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
             diesel::insert_into(artists::table)
-                .values(&new_artist)
+                .values(&artist_input)
                 .execute(&conn)?;
             artists::table
                 .order(artists::id.desc())
@@ -120,27 +122,28 @@ impl Mutation {
 
     fn update_artist(
         context: &Context,
-        artist_changeset: ArtistChangeset,
+        id: i32,
+        artist_input: ArtistInput,
     ) -> juniper::FieldResult<Artist> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::update(artists::table.find(artist_changeset.id))
-                .set(&artist_changeset)
+            diesel::update(artists::table.find(id))
+                .set(&artist_input)
                 .execute(&conn)?;
-            artists::table.find(artist_changeset.id).get_result(&conn)
+            artists::table.find(id).get_result(&conn)
         })?)
     }
 
-    fn delete_artist(context: &Context, artist_id: i32) -> juniper::FieldResult<bool> {
+    fn delete_artist(context: &Context, id: i32) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
-        Ok(diesel::delete(artists::table.find(artist_id)).execute(&conn)? == 1)
+        Ok(diesel::delete(artists::table.find(id)).execute(&conn)? == 1)
     }
 
-    fn create_genre(context: &Context, new_genre: NewGenre) -> juniper::FieldResult<Genre> {
+    fn create_genre(context: &Context, genre_input: GenreInput) -> juniper::FieldResult<Genre> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
             diesel::insert_into(genres::table)
-                .values(&new_genre)
+                .values(&genre_input)
                 .execute(&conn)?;
             genres::table.order(genres::id.desc()).first::<Genre>(&conn)
         })?)
@@ -148,43 +151,49 @@ impl Mutation {
 
     fn update_genre(
         context: &Context,
-        genre_changeset: GenreChangeset,
+        id: i32,
+        genre_input: GenreInput,
     ) -> juniper::FieldResult<Genre> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::update(genres::table.find(genre_changeset.id))
-                .set(&genre_changeset)
+            diesel::update(genres::table.find(id))
+                .set(&genre_input)
                 .execute(&conn)?;
-            genres::table.find(genre_changeset.id).get_result(&conn)
+            genres::table.find(id).get_result(&conn)
         })?)
     }
 
-    fn delete_genre(context: &Context, genre_id: i32) -> juniper::FieldResult<bool> {
+    fn delete_genre(context: &Context, id: i32) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
-        Ok(diesel::delete(genres::table.find(genre_id)).execute(&conn)? == 1)
+        Ok(diesel::delete(genres::table.find(id)).execute(&conn)? == 1)
     }
 
     fn update_track(
         context: &Context,
-        track_changeset: TrackChangeset,
+        id: i32,
+        track_input: TrackInput,
     ) -> juniper::FieldResult<Track> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::update(tracks::table.find(track_changeset.id))
-                .set(&track_changeset)
+            diesel::update(tracks::table.find(id))
+                .set(&track_input)
                 .execute(&conn)?;
-            tracks::table.find(track_changeset.id).get_result(&conn)
+            tracks::table.find(id).get_result(&conn)
         })?)
     }
 
+    // TODO
+    // fn delete_track(context: &Context, id: i32) -> juniper::FieldResult<bool> {
+    // }
+
     fn create_playlist(
         context: &Context,
-        new_playlist: NewPlaylist,
+        playlist_input: PlaylistInput,
     ) -> juniper::FieldResult<Playlist> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
             diesel::insert_into(playlists::table)
-                .values(&new_playlist)
+                .values(&playlist_input)
                 .execute(&conn)?;
             playlists::table
                 .order(playlists::id.desc())
@@ -194,42 +203,148 @@ impl Mutation {
 
     fn update_playlist(
         context: &Context,
-        playlist_changeset: PlaylistChangeset,
+        id: i32,
+        playlist_input: PlaylistInput,
     ) -> juniper::FieldResult<Playlist> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::update(playlists::table.find(playlist_changeset.id))
-                .set(&playlist_changeset)
+            diesel::update(playlists::table.find(id))
+                .set(&playlist_input)
                 .execute(&conn)?;
-            playlists::table
-                .find(playlist_changeset.id)
-                .get_result(&conn)
+            playlists::table.find(id).get_result(&conn)
         })?)
     }
 
-    fn delete_playlist(context: &Context, playlist_id: i32) -> juniper::FieldResult<bool> {
+    fn delete_playlist(context: &Context, id: i32) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
-        Ok(diesel::delete(playlists::table.find(playlist_id)).execute(&conn)? == 1)
+        Ok(diesel::delete(playlists::table.find(id)).execute(&conn)? == 1)
     }
 
     fn create_playlist_track(
         context: &Context,
-        new_playlist_track: NewPlaylistTrack,
+        id: i32, // playlist_id
+        playlist_track_input: PlaylistTrackInput,
     ) -> juniper::FieldResult<Playlist> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(playlists_tracks::table)
-                .values(&new_playlist_track)
+            let count: i64 = playlists_tracks::table
+                .filter(playlists_tracks::playlist_id.eq(id))
+                .count()
+                .get_result(&conn)?;
+            let count: i32 =
+                i32::try_from(count).map_err(|_| diesel::result::Error::RollbackTransaction)?;
+            let playlist_track_input = PlaylistTrackInput {
+                position: playlist_track_input.position.or_else(|| Some(count)),
+                ..playlist_track_input
+            };
+            let position = playlist_track_input.position.unwrap();
+            if position < 0 || count < position {
+                return Err(diesel::result::Error::RollbackTransaction);
+            }
+            if position != count {
+                diesel::update(
+                    playlists_tracks::table
+                        .filter(playlists_tracks::playlist_id.eq(id))
+                        .filter(playlists_tracks::position.ge(position)),
+                )
+                .set(playlists_tracks::position.eq(playlists_tracks::position + 1))
                 .execute(&conn)?;
-            playlists::table
-                .find(new_playlist_track.playlist_id)
-                .get_result(&conn)
+            }
+            diesel::insert_into(playlists_tracks::table)
+                .values((playlists_tracks::playlist_id.eq(id), playlist_track_input))
+                .execute(&conn)?;
+            playlists::table.find(id).get_result(&conn)
         })?)
     }
 
-    // TODO: update_playlist_track should allow to change playlist track order
+    fn update_playlist_track(
+        context: &Context,
+        id: i32, // playlist_id
+        playlist_track_order_input: PlaylistTrackOrderInput,
+    ) -> juniper::FieldResult<Playlist> {
+        let conn = context.pool.get()?;
+        let playlist_track_order_input = PlaylistTrackOrderInput {
+            range_length: playlist_track_order_input.range_length.or_else(|| Some(1)),
+            ..playlist_track_order_input
+        };
+        Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
+            let range_start = usize::try_from(playlist_track_order_input.range_start)
+                .map_err(|_| diesel::result::Error::RollbackTransaction)?;
+            let range_length = usize::try_from(playlist_track_order_input.range_length.unwrap())
+                .map_err(|_| diesel::result::Error::RollbackTransaction)?;
+            if range_length < 1 {
+                return Err(diesel::result::Error::RollbackTransaction);
+            }
+            let insert_before = usize::try_from(playlist_track_order_input.insert_before)
+                .map_err(|_| diesel::result::Error::RollbackTransaction)?;
+            if range_start < insert_before && insert_before < range_start + range_length {
+                return Err(diesel::result::Error::RollbackTransaction);
+            }
+            let mut playlist_tracks = playlists_tracks::table
+                .filter(playlists_tracks::playlist_id.eq(id))
+                .order(playlists_tracks::position.asc())
+                .load::<PlaylistTrack>(&conn)?;
+            let len = playlist_tracks.len();
+            if range_start > len - 1 || range_start + range_length > len || insert_before > len {
+                return Err(diesel::result::Error::RollbackTransaction);
+            }
+            if insert_before < range_start {
+                let slice = &mut playlist_tracks[insert_before..range_start + range_length];
+                slice.rotate_left(range_start - insert_before);
+                for (i, val) in slice.iter().enumerate() {
+                    let delta = i32::try_from(i)
+                        .map_err(|_| diesel::result::Error::RollbackTransaction)?
+                        - (val.position
+                            - i32::try_from(insert_before)
+                                .map_err(|_| diesel::result::Error::RollbackTransaction)?);
+                    diesel::update(playlists_tracks::table.find(val.id))
+                        .set(playlists_tracks::position.eq(playlists_tracks::position + delta))
+                        .execute(&conn)?;
+                }
+            } else if insert_before > range_start + range_length {
+                let slice = &mut playlist_tracks[range_start..insert_before];
+                slice.rotate_right(insert_before - (range_start + range_length));
+                for (i, val) in slice.iter().enumerate() {
+                    let delta = i32::try_from(i)
+                        .map_err(|_| diesel::result::Error::RollbackTransaction)?
+                        - (val.position
+                            - i32::try_from(range_start)
+                                .map_err(|_| diesel::result::Error::RollbackTransaction)?);
+                    diesel::update(playlists_tracks::table.find(val.id))
+                        .set(playlists_tracks::position.eq(playlists_tracks::position + delta))
+                        .execute(&conn)?;
+                }
+            }
+            playlists::table.find(id).get_result(&conn)
+        })?)
+    }
 
-    // TODO: delete_playlist_track
+    fn delete_playlist_track(
+        context: &Context,
+        playlist_id: i32,
+        track_id: i32,
+        position: Option<i32>,
+    ) -> juniper::FieldResult<bool> {
+        let conn = context.pool.get()?;
+        if let Some(position) = position {
+            Ok(diesel::delete(
+                playlists_tracks::table
+                    .filter(playlists_tracks::playlist_id.eq(playlist_id))
+                    .filter(playlists_tracks::track_id.eq(track_id))
+                    .filter(playlists_tracks::position.eq(position)),
+            )
+            .execute(&conn)?
+                == 1)
+        } else {
+            Ok(diesel::delete(
+                playlists_tracks::table
+                    .filter(playlists_tracks::playlist_id.eq(playlist_id))
+                    .filter(playlists_tracks::track_id.eq(track_id)),
+            )
+            .execute(&conn)?
+                >= 1)
+        }
+    }
 }
 
 pub type Schema = juniper::RootNode<'static, Query, Mutation>;
