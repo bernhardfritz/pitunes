@@ -291,26 +291,26 @@ impl Mutation {
             if insert_before < range_start {
                 let slice = &mut playlist_tracks[insert_before..range_start + range_length];
                 slice.rotate_left(range_start - insert_before);
-                for (i, val) in slice.iter().enumerate() {
+                for (i, playlist_track) in slice.iter().enumerate() {
                     let delta = i32::try_from(i)
                         .map_err(|_| diesel::result::Error::RollbackTransaction)?
-                        - (val.position
+                        - (playlist_track.position
                             - i32::try_from(insert_before)
                                 .map_err(|_| diesel::result::Error::RollbackTransaction)?);
-                    diesel::update(playlists_tracks::table.find(val.id))
+                    diesel::update(playlists_tracks::table.find(playlist_track.id))
                         .set(playlists_tracks::position.eq(playlists_tracks::position + delta))
                         .execute(&conn)?;
                 }
             } else if insert_before > range_start + range_length {
                 let slice = &mut playlist_tracks[range_start..insert_before];
                 slice.rotate_right(insert_before - (range_start + range_length));
-                for (i, val) in slice.iter().enumerate() {
+                for (i, playlist_track) in slice.iter().enumerate() {
                     let delta = i32::try_from(i)
                         .map_err(|_| diesel::result::Error::RollbackTransaction)?
-                        - (val.position
+                        - (playlist_track.position
                             - i32::try_from(range_start)
                                 .map_err(|_| diesel::result::Error::RollbackTransaction)?);
-                    diesel::update(playlists_tracks::table.find(val.id))
+                    diesel::update(playlists_tracks::table.find(playlist_track.id))
                         .set(playlists_tracks::position.eq(playlists_tracks::position + delta))
                         .execute(&conn)?;
                 }
@@ -326,24 +326,40 @@ impl Mutation {
         position: Option<i32>,
     ) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
-        if let Some(position) = position {
-            Ok(diesel::delete(
-                playlists_tracks::table
-                    .filter(playlists_tracks::playlist_id.eq(playlist_id))
-                    .filter(playlists_tracks::track_id.eq(track_id))
-                    .filter(playlists_tracks::position.eq(position)),
-            )
-            .execute(&conn)?
-                == 1)
-        } else {
-            Ok(diesel::delete(
-                playlists_tracks::table
-                    .filter(playlists_tracks::playlist_id.eq(playlist_id))
-                    .filter(playlists_tracks::track_id.eq(track_id)),
-            )
-            .execute(&conn)?
-                >= 1)
-        }
+        Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
+            let deleted = if let Some(position) = position {
+                diesel::delete(
+                    playlists_tracks::table
+                        .filter(playlists_tracks::playlist_id.eq(playlist_id))
+                        .filter(playlists_tracks::track_id.eq(track_id))
+                        .filter(playlists_tracks::position.eq(position)),
+                )
+                .execute(&conn)? == 1
+            } else {
+                diesel::delete(
+                    playlists_tracks::table
+                        .filter(playlists_tracks::playlist_id.eq(playlist_id))
+                        .filter(playlists_tracks::track_id.eq(track_id)),
+                )
+                .execute(&conn)? >= 1
+            };
+            if !deleted {
+                return Err(diesel::result::Error::RollbackTransaction);
+            }
+            let playlist_tracks = playlists_tracks::table
+                .filter(playlists_tracks::playlist_id.eq(playlist_id))
+                .order(playlists_tracks::position.asc())
+                .load::<PlaylistTrack>(&conn)?;
+            for (i, playlist_track) in playlist_tracks.iter().enumerate() {
+                let i = i32::try_from(i).map_err(|_| diesel::result::Error::RollbackTransaction)?;
+                if playlist_track.position != i {
+                    diesel::update(playlists_tracks::table.find(playlist_track.id))
+                        .set(playlists_tracks::position.eq(i))
+                        .execute(&conn)?;
+                }
+            }
+            Ok(deleted)
+        })?)
     }
 }
 
