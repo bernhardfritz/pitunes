@@ -1,0 +1,3 @@
+mutation DeletePlaylistTrackMutation($playlistId: Int!, $trackId: Int!, $position: Int) {
+  deletePlaylistTrack(playlistId: $playlistId, trackId: $trackId, position: $position)
+}

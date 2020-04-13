@@ -13,6 +13,7 @@ use selectable_list_2::SelectableList2;
 
 use dotenv::dotenv;
 use graphql_client::{GraphQLQuery, Response};
+use std::convert::TryFrom;
 use std::env;
 use std::io;
 use std::sync::{Arc, RwLock};
@@ -123,6 +124,14 @@ pub struct TrackQuery;
     response_derives = "Debug"
 )]
 pub struct TracksQuery;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/delete_playlist_track_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct DeletePlaylistTrackMutation;
 
 impl From<album_query::AlbumQueryAlbumTracks> for tracks_query::TracksQueryTracks {
     fn from(track: album_query::AlbumQueryAlbumTracks) -> tracks_query::TracksQueryTracks {
@@ -463,6 +472,33 @@ fn get_tracks_of_playlist(
     }
 }
 
+fn delete_playlist_track(
+    context: &Arc<Context>,
+    playlist: &playlists_query::PlaylistsQueryPlaylists,
+    track: &tracks_query::TracksQueryTracks,
+    position: Option<i64>,
+) -> bool {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body =
+        DeletePlaylistTrackMutation::build_query(delete_playlist_track_mutation::Variables {
+            playlist_id: playlist.id,
+            track_id: track.id,
+            position,
+        });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<delete_playlist_track_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.delete_playlist_track)
+        .unwrap()
+}
+
 fn play_queue(
     context: Arc<Context>,
     queue: Vec<i64>,
@@ -571,21 +607,12 @@ fn main() -> Result<(), failure::Error> {
     let sink_lock = RwLock::new(rodio::Sink::new_idle().0);
     let queue_lock = RwLock::new(vec![]);
 
-    let context = Arc::new(Context {
-        server_url,
-        api_key,
-        client,
-        device,
-        sink_lock,
-        queue_lock,
-    });
-
     let mut join_handle: Option<JoinHandle<()>> = None;
 
     let mut stack = Vec::new();
     stack.push(App {
         state: State::Root,
-        breadcrumb: String::from(PI_SYMBOL),
+        breadcrumb: format!("{} @ {}", PI_SYMBOL, server_url),
         items: vec![
             String::from(ALBUMS),
             String::from(ARTISTS),
@@ -594,6 +621,15 @@ fn main() -> Result<(), failure::Error> {
             String::from(TRACKS),
         ],
         selected: Some(0),
+    });
+
+    let context = Arc::new(Context {
+        server_url,
+        api_key,
+        client,
+        device,
+        sink_lock,
+        queue_lock,
     });
 
     let mut title = generate_title_from_stack(&stack);
@@ -750,6 +786,46 @@ fn main() -> Result<(), failure::Error> {
                 }
                 Key::Ctrl('c') => {
                     break;
+                }
+                Key::Char('d') => {
+                    let last = stack.last();
+                    let app = if let Some(last) = last {
+                        if let State::Tracks { tracks } = &last.state {
+                            if let Some(last_selected) = last.selected {
+                                let track = &tracks[last_selected];
+                                let second_last = &stack[stack.len() - 2];
+                                if let State::Playlists { playlists } = &second_last.state {
+                                    if let Some(second_last_selected) = second_last.selected {
+                                        let playlist = &playlists[second_last_selected];
+                                        let position = Some(i64::try_from(last_selected).unwrap());
+                                        let deleted = delete_playlist_track(
+                                            &context, playlist, track, position,
+                                        );
+                                        if deleted {
+                                            Some(get_tracks_of_playlist(&context, playlist))
+                                        } else {
+                                            None
+                                        }
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    };
+                    if let Some(app) = app {
+                        stack.pop();
+                        stack.push(app);
+                        title = generate_title_from_stack(&stack);
+                    }
                 }
                 _ => {}
             },

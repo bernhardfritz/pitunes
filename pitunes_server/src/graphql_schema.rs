@@ -334,14 +334,16 @@ impl Mutation {
                         .filter(playlists_tracks::track_id.eq(track_id))
                         .filter(playlists_tracks::position.eq(position)),
                 )
-                .execute(&conn)? == 1
+                .execute(&conn)?
+                    == 1
             } else {
                 diesel::delete(
                     playlists_tracks::table
                         .filter(playlists_tracks::playlist_id.eq(playlist_id))
                         .filter(playlists_tracks::track_id.eq(track_id)),
                 )
-                .execute(&conn)? >= 1
+                .execute(&conn)?
+                    >= 1
             };
             if !deleted {
                 return Err(diesel::result::Error::RollbackTransaction);
