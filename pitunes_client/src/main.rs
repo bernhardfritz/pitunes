@@ -128,83 +128,85 @@ pub struct TracksQuery;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/update_playlist_track_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct UpdatePlaylistTrackMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
     query_path = "src/graphql/delete_playlist_track_mutation.graphql",
     response_derives = "Debug"
 )]
 pub struct DeletePlaylistTrackMutation;
 
-impl From<album_query::AlbumQueryAlbumTracks> for tracks_query::TracksQueryTracks {
-    fn from(track: album_query::AlbumQueryAlbumTracks) -> tracks_query::TracksQueryTracks {
-        tracks_query::TracksQueryTracks {
-            id: track.id,
-            name: track.name,
-        }
-    }
-}
+type Album = albums_query::AlbumsQueryAlbums;
+type Artist = artists_query::ArtistsQueryArtists;
+type Genre = genres_query::GenresQueryGenres;
+type Playlist = playlists_query::PlaylistsQueryPlaylists;
+type Track = tracks_query::TracksQueryTracks;
 
-impl From<artist_albums_query::ArtistAlbumsQueryArtistAlbums> for albums_query::AlbumsQueryAlbums {
+impl From<album_query::AlbumQueryAlbumTracks> for Track {
     fn from(
-        album: artist_albums_query::ArtistAlbumsQueryArtistAlbums,
-    ) -> albums_query::AlbumsQueryAlbums {
-        albums_query::AlbumsQueryAlbums {
-            id: album.id,
-            name: album.name,
-        }
+        album_query::AlbumQueryAlbumTracks { id, name }: album_query::AlbumQueryAlbumTracks,
+    ) -> Track {
+        Track { id, name }
     }
 }
 
-impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for tracks_query::TracksQueryTracks {
+impl From<artist_albums_query::ArtistAlbumsQueryArtistAlbums> for Album {
     fn from(
-        track: artist_tracks_query::ArtistTracksQueryArtistTracks,
-    ) -> tracks_query::TracksQueryTracks {
-        tracks_query::TracksQueryTracks {
-            id: track.id,
-            name: track.name,
-        }
+        artist_albums_query::ArtistAlbumsQueryArtistAlbums { id, name }: artist_albums_query::ArtistAlbumsQueryArtistAlbums,
+    ) -> Album {
+        Album { id, name }
     }
 }
 
-impl From<genre_query::GenreQueryGenreTracks> for tracks_query::TracksQueryTracks {
-    fn from(track: genre_query::GenreQueryGenreTracks) -> tracks_query::TracksQueryTracks {
-        tracks_query::TracksQueryTracks {
-            id: track.id,
-            name: track.name,
-        }
+impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for Track {
+    fn from(
+        artist_tracks_query::ArtistTracksQueryArtistTracks { id, name }: artist_tracks_query::ArtistTracksQueryArtistTracks,
+    ) -> Track {
+        Track { id, name }
     }
 }
 
-impl From<playlist_query::PlaylistQueryPlaylistTracks> for tracks_query::TracksQueryTracks {
-    fn from(track: playlist_query::PlaylistQueryPlaylistTracks) -> tracks_query::TracksQueryTracks {
-        tracks_query::TracksQueryTracks {
-            id: track.id,
-            name: track.name,
-        }
+impl From<genre_query::GenreQueryGenreTracks> for Track {
+    fn from(
+        genre_query::GenreQueryGenreTracks { id, name }: genre_query::GenreQueryGenreTracks,
+    ) -> Track {
+        Track { id, name }
+    }
+}
+
+impl From<playlist_query::PlaylistQueryPlaylistTracks> for Track {
+    fn from(
+        playlist_query::PlaylistQueryPlaylistTracks { id, name }: playlist_query::PlaylistQueryPlaylistTracks,
+    ) -> Track {
+        Track { id, name }
+    }
+}
+
+impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks>
+    for Track
+{
+    fn from(
+        update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks { id, name }: update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks,
+    ) -> Track {
+        Track { id, name }
     }
 }
 
 use crate::event::{Event, Events};
 
 enum State {
-    Albums {
-        albums: Vec<albums_query::AlbumsQueryAlbums>,
-    },
-    Artist {
-        artist_id: i64,
-        albums: Vec<albums_query::AlbumsQueryAlbums>,
-    },
-    Artists {
-        artists: Vec<artists_query::ArtistsQueryArtists>,
-    },
-    Genres {
-        genres: Vec<genres_query::GenresQueryGenres>,
-    },
-    Playlists {
-        playlists: Vec<playlists_query::PlaylistsQueryPlaylists>,
-    },
+    Albums { albums: Vec<Album> },
+    Artist { artist_id: i64, albums: Vec<Album> },
+    Artists { artists: Vec<Artist> },
+    Genres { genres: Vec<Genre> },
+    Playlists { playlists: Vec<Playlist> },
     Root,
-    Tracks {
-        tracks: Vec<tracks_query::TracksQueryTracks>,
-    },
+    Tracks { tracks: Vec<Track> },
 }
 
 struct App {
@@ -327,7 +329,7 @@ fn get_tracks(context: &Arc<Context>) -> App {
     }
 }
 
-fn get_tracks_of_album(context: &Arc<Context>, album: &albums_query::AlbumsQueryAlbums) -> App {
+fn get_tracks_of_album(context: &Arc<Context>, album: &Album) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = AlbumQuery::build_query(album_query::Variables { id: album.id });
     let res = context
@@ -343,8 +345,7 @@ fn get_tracks_of_album(context: &Arc<Context>, album: &albums_query::AlbumsQuery
         .map(|data| data.album)
         .map(|album| album.tracks)
         .unwrap();
-    let tracks: Vec<tracks_query::TracksQueryTracks> =
-        tracks.into_iter().map(|track| track.into()).collect();
+    let tracks: Vec<Track> = tracks.into_iter().map(|track| track.into()).collect();
     let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
@@ -372,8 +373,7 @@ fn get_tracks_of_artist(context: &Arc<Context>, artist_id: i64) -> App {
         .map(|data| data.artist)
         .map(|artist| artist.tracks)
         .unwrap();
-    let tracks: Vec<tracks_query::TracksQueryTracks> =
-        tracks.into_iter().map(|track| track.into()).collect();
+    let tracks: Vec<Track> = tracks.into_iter().map(|track| track.into()).collect();
     let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
@@ -384,7 +384,7 @@ fn get_tracks_of_artist(context: &Arc<Context>, artist_id: i64) -> App {
     }
 }
 
-fn get_artist(context: &Arc<Context>, artist: &artists_query::ArtistsQueryArtists) -> App {
+fn get_artist(context: &Arc<Context>, artist: &Artist) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
@@ -398,7 +398,7 @@ fn get_artist(context: &Arc<Context>, artist: &artists_query::ArtistsQueryArtist
     let response_body: Response<artist_albums_query::ResponseData> = res.json().unwrap();
     let artist = response_body.data.map(|data| data.artist).unwrap();
     let artist_id = artist.id;
-    let albums: Vec<albums_query::AlbumsQueryAlbums> = artist
+    let albums: Vec<Album> = artist
         .albums
         .into_iter()
         .map(|album| album.into())
@@ -413,7 +413,7 @@ fn get_artist(context: &Arc<Context>, artist: &artists_query::ArtistsQueryArtist
     }
 }
 
-fn get_tracks_of_genre(context: &Arc<Context>, genre: &genres_query::GenresQueryGenres) -> App {
+fn get_tracks_of_genre(context: &Arc<Context>, genre: &Genre) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = GenreQuery::build_query(genre_query::Variables { id: genre.id });
     let res = context
@@ -429,8 +429,7 @@ fn get_tracks_of_genre(context: &Arc<Context>, genre: &genres_query::GenresQuery
         .map(|data| data.genre)
         .map(|genre| genre.tracks)
         .unwrap();
-    let tracks: Vec<tracks_query::TracksQueryTracks> =
-        tracks.into_iter().map(|track| track.into()).collect();
+    let tracks: Vec<Track> = tracks.into_iter().map(|track| track.into()).collect();
     let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
     let selected = if items.is_empty() { None } else { Some(0) };
     App {
@@ -441,10 +440,7 @@ fn get_tracks_of_genre(context: &Arc<Context>, genre: &genres_query::GenresQuery
     }
 }
 
-fn get_tracks_of_playlist(
-    context: &Arc<Context>,
-    playlist: &playlists_query::PlaylistsQueryPlaylists,
-) -> App {
+fn get_tracks_of_playlist(context: &Arc<Context>, playlist: &Playlist) -> App {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = PlaylistQuery::build_query(playlist_query::Variables { id: playlist.id });
     let res = context
@@ -460,10 +456,58 @@ fn get_tracks_of_playlist(
         .map(|data| data.playlist)
         .map(|playlist| playlist.tracks)
         .unwrap();
-    let tracks: Vec<tracks_query::TracksQueryTracks> =
-        tracks.into_iter().map(|track| track.into()).collect();
+    let tracks: Vec<Track> = tracks.into_iter().map(|track| track.into()).collect();
     let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
     let selected = if items.is_empty() { None } else { Some(0) };
+    App {
+        state: State::Tracks { tracks },
+        breadcrumb: playlist.name.clone(),
+        items,
+        selected,
+    }
+}
+
+// TODO: use function to move selected song up/down
+fn update_playlist_track(
+    context: &Arc<Context>,
+    playlist: &playlists_query::PlaylistsQueryPlaylists,
+    range_start: usize,
+    insert_before: usize,
+) -> App {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body =
+        UpdatePlaylistTrackMutation::build_query(update_playlist_track_mutation::Variables {
+            id: playlist.id,
+            playlist_track_order_input: update_playlist_track_mutation::PlaylistTrackOrderInput {
+                range_start: i64::try_from(range_start).unwrap(),
+                range_length: None,
+                insert_before: i64::try_from(insert_before).unwrap(),
+            },
+        });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<update_playlist_track_mutation::ResponseData> = res.json().unwrap();
+    let tracks = response_body
+        .data
+        .map(|data| data.update_playlist_track)
+        .map(|playlist| playlist.tracks)
+        .unwrap();
+    let tracks: Vec<Track> = tracks.into_iter().map(|track| track.into()).collect();
+    let items: Vec<String> = tracks.iter().map(|track| track.name.clone()).collect();
+    let selected = Some(
+        if range_start == insert_before || range_start + 1 == insert_before {
+            range_start
+        } else if range_start < insert_before {
+            range_start + 1
+        } else {
+            range_start - 1
+        },
+    );
     App {
         state: State::Tracks { tracks },
         breadcrumb: playlist.name.clone(),
@@ -789,38 +833,100 @@ fn main() -> Result<(), failure::Error> {
                 }
                 Key::Char('d') => {
                     let last = stack.last();
-                    let app = if let Some(last) = last {
-                        if let State::Tracks { tracks } = &last.state {
-                            if let Some(last_selected) = last.selected {
-                                let track = &tracks[last_selected];
-                                let second_last = &stack[stack.len() - 2];
-                                if let State::Playlists { playlists } = &second_last.state {
-                                    if let Some(second_last_selected) = second_last.selected {
-                                        let playlist = &playlists[second_last_selected];
-                                        let position = Some(i64::try_from(last_selected).unwrap());
-                                        let deleted = delete_playlist_track(
-                                            &context, playlist, track, position,
-                                        );
-                                        if deleted {
-                                            Some(get_tracks_of_playlist(&context, playlist))
-                                        } else {
-                                            None
+                    let app = (|| {
+                        if let Some(last) = last {
+                            if let State::Tracks { tracks } = &last.state {
+                                if let Some(last_selected) = last.selected {
+                                    let track = &tracks[last_selected];
+                                    let second_last = &stack[stack.len() - 2];
+                                    if let State::Playlists { playlists } = &second_last.state {
+                                        if let Some(second_last_selected) = second_last.selected {
+                                            let playlist = &playlists[second_last_selected];
+                                            let position =
+                                                Some(i64::try_from(last_selected).unwrap());
+                                            let deleted = delete_playlist_track(
+                                                &context, playlist, track, position,
+                                            );
+                                            if deleted {
+                                                return Some(get_tracks_of_playlist(
+                                                    &context, playlist,
+                                                ));
+                                            }
                                         }
-                                    } else {
-                                        None
                                     }
-                                } else {
-                                    None
                                 }
-                            } else {
-                                None
                             }
-                        } else {
-                            None
                         }
-                    } else {
                         None
-                    };
+                    })();
+                    if let Some(app) = app {
+                        stack.pop();
+                        stack.push(app);
+                        title = generate_title_from_stack(&stack);
+                    }
+                }
+                Key::Char('i') => {
+                    let last = stack.last();
+                    let app = (|| {
+                        if let Some(last) = last {
+                            if let State::Tracks { tracks: _ } = &last.state {
+                                if let Some(last_selected) = last.selected {
+                                    if last_selected > 0 {
+                                        let second_last = &stack[stack.len() - 2];
+                                        if let State::Playlists { playlists } = &second_last.state {
+                                            if let Some(second_last_selected) = second_last.selected
+                                            {
+                                                let playlist = &playlists[second_last_selected];
+                                                let range_start = last_selected;
+                                                let insert_before = last_selected - 1;
+                                                return Some(update_playlist_track(
+                                                    &context,
+                                                    &playlist,
+                                                    range_start,
+                                                    insert_before,
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        None
+                    })();
+                    if let Some(app) = app {
+                        stack.pop();
+                        stack.push(app);
+                        title = generate_title_from_stack(&stack);
+                    }
+                }
+                Key::Char('k') => {
+                    let last = stack.last();
+                    let app = (|| {
+                        if let Some(last) = last {
+                            if let State::Tracks { tracks } = &last.state {
+                                if let Some(last_selected) = last.selected {
+                                    if last_selected < tracks.len() - 1 {
+                                        let second_last = &stack[stack.len() - 2];
+                                        if let State::Playlists { playlists } = &second_last.state {
+                                            if let Some(second_last_selected) = second_last.selected
+                                            {
+                                                let playlist = &playlists[second_last_selected];
+                                                let range_start = last_selected;
+                                                let insert_before = last_selected + 2;
+                                                return Some(update_playlist_track(
+                                                    &context,
+                                                    &playlist,
+                                                    range_start,
+                                                    insert_before,
+                                                ));
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        None
+                    })();
                     if let Some(app) = app {
                         stack.pop();
                         stack.push(app);
