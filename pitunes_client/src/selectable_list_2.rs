@@ -1,10 +1,7 @@
-use std::iter;
-
 use tui::buffer::Buffer;
 use tui::layout::Rect;
-use tui::style::Style;
+use tui::style::{Modifier, Style};
 use tui::widgets::{Block, List, Text, Widget};
-use unicode_width::UnicodeWidthStr;
 
 pub struct SelectableList2<'b> {
     block: Option<Block<'b>>,
@@ -14,10 +11,9 @@ pub struct SelectableList2<'b> {
     selected: Option<usize>,
     /// Base style of the widget
     style: Style,
-    /// Symbol in front of the selected item (Shift all items to the right)
-    highlight_symbol: Option<&'b str>,
+    highlight_modifier: Modifier,
     active: Option<usize>,
-    active_style: Style,
+    active_modifier: Modifier,
 }
 
 impl<'b> Default for SelectableList2<'b> {
@@ -27,9 +23,9 @@ impl<'b> Default for SelectableList2<'b> {
             items: Vec::new(),
             selected: None,
             style: Default::default(),
-            highlight_symbol: None,
+            highlight_modifier: Modifier::empty(),
             active: None,
-            active_style: Default::default(),
+            active_modifier: Modifier::empty(),
         }
     }
 }
@@ -53,8 +49,8 @@ impl<'b> SelectableList2<'b> {
         self
     }
 
-    pub fn highlight_symbol(mut self, highlight_symbol: &'b str) -> SelectableList2<'b> {
-        self.highlight_symbol = Some(highlight_symbol);
+    pub fn highlight_modifier(mut self, highlight_modifier: Modifier) -> SelectableList2<'b> {
+        self.highlight_modifier = highlight_modifier;
         self
     }
 
@@ -63,8 +59,8 @@ impl<'b> SelectableList2<'b> {
         self
     }
 
-    pub fn active_style(mut self, active_style: Style) -> SelectableList2<'b> {
-        self.active_style = active_style;
+    pub fn active_modifier(mut self, active_modifier: Modifier) -> SelectableList2<'b> {
+        self.active_modifier = active_modifier;
         self
     }
 
@@ -83,15 +79,6 @@ impl<'b> Widget for SelectableList2<'b> {
 
         let list_height = list_area.height as usize;
 
-        // Use active_style only if something is active
-        let (active, active_style) = match self.active {
-            Some(i) => (Some(i), self.active_style),
-            None => (None, self.style),
-        };
-        let highlight_symbol = self.highlight_symbol.unwrap_or("");
-        let blank_symbol = iter::repeat(" ")
-            .take(highlight_symbol.width())
-            .collect::<String>();
         // Make sure the list show the selected item
         let offset = if let Some(selected) = self.selected {
             if selected >= list_height {
@@ -109,44 +96,24 @@ impl<'b> Widget for SelectableList2<'b> {
             .iter()
             .enumerate()
             .map(|(i, &item)| {
-                if let Some(s) = self.selected {
-                    if let Some(a) = active {
-                        Text::styled(
-                            format!(
-                                "{} {}",
-                                if i == s {
-                                    highlight_symbol
-                                } else {
-                                    &blank_symbol[..]
-                                },
-                                item
-                            ),
-                            if i == a { active_style } else { self.style },
-                        )
-                    } else {
-                        Text::styled(
-                            format!(
-                                "{} {}",
-                                if i == s {
-                                    highlight_symbol
-                                } else {
-                                    &blank_symbol[..]
-                                },
-                                item
-                            ),
-                            self.style,
-                        )
-                    }
-                } else {
-                    if let Some(a) = active {
-                        Text::styled(
-                            format!("{}", item),
-                            if i == a { active_style } else { self.style },
-                        )
-                    } else {
-                        Text::styled(item, self.style)
-                    }
-                }
+                let modifier = self.style.modifier
+                    | (|| {
+                        if let Some(selected) = self.selected {
+                            if i == selected {
+                                return self.highlight_modifier;
+                            }
+                        }
+                        Modifier::empty()
+                    })()
+                    | (|| {
+                        if let Some(active) = self.active {
+                            if i == active {
+                                return self.active_modifier;
+                            }
+                        }
+                        Modifier::empty()
+                    })();
+                Text::styled(item, self.style.modifier(modifier))
             })
             .skip(offset as usize);
         List::new(items)

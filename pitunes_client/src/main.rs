@@ -22,7 +22,7 @@ use termion::event::Key;
 use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Layout};
-use tui::style::{Modifier, Style};
+use tui::style::Modifier;
 use tui::widgets::{Block, Borders, Widget};
 use tui::Terminal;
 
@@ -643,7 +643,6 @@ fn main() -> Result<(), failure::Error> {
     terminal.hide_cursor()?;
     terminal.clear().unwrap();
 
-    let highlight_style = Style::default().modifier(Modifier::BOLD);
     let events = Events::new();
 
     let client = reqwest::blocking::Client::new();
@@ -699,14 +698,15 @@ fn main() -> Result<(), failure::Error> {
                     .render(&mut f, size);
                 let chunks = Layout::default()
                     .constraints([Constraint::Percentage(100)].as_ref())
-                    .margin(2)
+                    .horizontal_margin(3)
+                    .vertical_margin(2)
                     .split(f.size());
                 SelectableList2::default()
                     .items(&last.items)
                     .select(last.selected)
-                    .highlight_symbol(">")
+                    .highlight_modifier(Modifier::REVERSED)
                     .active(active)
-                    .active_style(highlight_style)
+                    .active_modifier(Modifier::BOLD)
                     .render(&mut f, chunks[0]);
             })?;
         }
