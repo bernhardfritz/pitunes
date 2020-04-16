@@ -1,13 +1,9 @@
 #[macro_use]
 extern crate actix_web;
 #[macro_use]
-extern crate clap;
-#[macro_use]
 extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
-#[macro_use]
-extern crate lazy_static;
 
 mod db;
 mod graphiql;
@@ -23,12 +19,15 @@ use actix_web::{error, web, App, Error, HttpServer};
 use actix_web_httpauth::extractors::bearer::BearerAuth;
 use actix_web_httpauth::middleware::HttpAuthentication;
 use base64;
+use clap::{self, value_t};
 use graphql_schema::{create_schema, Context};
+use lazy_static::lazy_static;
 use openssl::rand;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
+use std::sync::Arc;
 
 const PITUNES_TOML: &str = "pitunes.toml";
 
@@ -96,7 +95,7 @@ async fn main() -> std::io::Result<()> {
     // r2d2 pool
     let pool = db::establish_connection();
     let ctx = Context { pool: pool.clone() };
-    let st = std::sync::Arc::new(create_schema());
+    let st = Arc::new(create_schema());
 
     // load ssl keys
     // to create a self-signed temporary cert for testing:
@@ -107,7 +106,7 @@ async fn main() -> std::io::Result<()> {
         .unwrap();
     builder.set_certificate_chain_file("cert.pem").unwrap();
 
-    HttpServer::new(move || {
+    let server = HttpServer::new(move || {
         let auth = HttpAuthentication::bearer(validator);
         App::new()
             .data(AppState { port })
@@ -122,7 +121,17 @@ async fn main() -> std::io::Result<()> {
                     .service(Files::new("/static", "static")),
             )
     })
-    .bind_openssl(format!("127.0.0.1:{}", port), builder)?
-    .run()
-    .await
+    .bind_openssl(format!("0.0.0.0:{}", port), builder)?
+    .run();
+
+    println!(
+        r#"       _ _____                      
+ _ __ (_)_   _|   _ _ __   ___  ___ 
+| '_ \| | | || | | | '_ \ / _ \/ __|
+| |_) | | | || |_| | | | |  __/\__ \
+| .__/|_| |_| \__,_|_| |_|\___||___/
+|_|                                 "#
+    );
+
+    server.await
 }

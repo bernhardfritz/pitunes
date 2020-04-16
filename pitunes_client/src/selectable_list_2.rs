@@ -1,3 +1,4 @@
+use if_chain::if_chain;
 use tui::buffer::Buffer;
 use tui::layout::Rect;
 use tui::style::{Modifier, Style};
@@ -97,22 +98,24 @@ impl<'b> Widget for SelectableList2<'b> {
             .enumerate()
             .map(|(i, &item)| {
                 let modifier = self.style.modifier
-                    | (|| {
-                        if let Some(selected) = self.selected {
-                            if i == selected {
-                                return self.highlight_modifier;
-                            }
+                    | if_chain! {
+                        if let Some(selected) = self.selected;
+                        if i == selected;
+                        then {
+                            self.highlight_modifier
+                        } else {
+                            Modifier::empty()
                         }
-                        Modifier::empty()
-                    })()
-                    | (|| {
-                        if let Some(active) = self.active {
-                            if i == active {
-                                return self.active_modifier;
-                            }
+                    }
+                    | if_chain! {
+                        if let Some(active) = self.active;
+                        if i == active;
+                        then {
+                            self.active_modifier
+                        } else {
+                            Modifier::empty()
                         }
-                        Modifier::empty()
-                    })();
+                    };
                 Text::styled(item, self.style.modifier(modifier))
             })
             .skip(offset as usize);

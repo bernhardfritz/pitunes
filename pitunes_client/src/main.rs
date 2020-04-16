@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate clap;
-
 #[allow(dead_code)]
 mod event;
 
@@ -11,8 +8,10 @@ use http_stream_reader::HttpStreamReader;
 mod selectable_list_2;
 use selectable_list_2::SelectableList2;
 
+use clap::{self, value_t};
 use dotenv::dotenv;
 use graphql_client::{GraphQLQuery, Response};
+use if_chain::if_chain;
 use std::convert::TryFrom;
 use std::env;
 use std::io;
@@ -833,32 +832,24 @@ fn main() -> Result<(), failure::Error> {
                 }
                 Key::Char('d') => {
                     let last = stack.last();
-                    let app = (|| {
-                        if let Some(last) = last {
-                            if let State::Tracks { tracks } = &last.state {
-                                if let Some(last_selected) = last.selected {
-                                    let track = &tracks[last_selected];
-                                    let second_last = &stack[stack.len() - 2];
-                                    if let State::Playlists { playlists } = &second_last.state {
-                                        if let Some(second_last_selected) = second_last.selected {
-                                            let playlist = &playlists[second_last_selected];
-                                            let position =
-                                                Some(i64::try_from(last_selected).unwrap());
-                                            let deleted = delete_playlist_track(
-                                                &context, playlist, track, position,
-                                            );
-                                            if deleted {
-                                                return Some(get_tracks_of_playlist(
-                                                    &context, playlist,
-                                                ));
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                    let app = if_chain! {
+                        if let Some(last) = last;
+                        if let State::Tracks { tracks } = &last.state;
+                        if let Some(last_selected) = last.selected;
+                        let track = &tracks[last_selected];
+                        let second_last = &stack[stack.len() - 2];
+                        if let State::Playlists { playlists } = &second_last.state;
+                        if let Some(second_last_selected) = second_last.selected;
+                        let playlist = &playlists[second_last_selected];
+                        let position = Some(i64::try_from(last_selected).unwrap());
+                        let deleted = delete_playlist_track(&context, playlist, track, position);
+                        if deleted;
+                        then {
+                            Some(get_tracks_of_playlist(&context, playlist))
+                        } else {
+                            None
                         }
-                        None
-                    })();
+                    };
                     if let Some(app) = app {
                         stack.pop();
                         stack.push(app);
@@ -867,32 +858,28 @@ fn main() -> Result<(), failure::Error> {
                 }
                 Key::Char('i') => {
                     let last = stack.last();
-                    let app = (|| {
-                        if let Some(last) = last {
-                            if let State::Tracks { tracks: _ } = &last.state {
-                                if let Some(last_selected) = last.selected {
-                                    if last_selected > 0 {
-                                        let second_last = &stack[stack.len() - 2];
-                                        if let State::Playlists { playlists } = &second_last.state {
-                                            if let Some(second_last_selected) = second_last.selected
-                                            {
-                                                let playlist = &playlists[second_last_selected];
-                                                let range_start = last_selected;
-                                                let insert_before = last_selected - 1;
-                                                return Some(update_playlist_track(
-                                                    &context,
-                                                    &playlist,
-                                                    range_start,
-                                                    insert_before,
-                                                ));
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                    let app = if_chain! {
+                        if let Some(last) = last;
+                        if let State::Tracks { tracks: _ } = &last.state;
+                        if let Some(last_selected) = last.selected;
+                        if last_selected > 0;
+                        let second_last = &stack[stack.len() - 2];
+                        if let State::Playlists { playlists } = &second_last.state;
+                        if let Some(second_last_selected) = second_last.selected;
+                        then {
+                            let playlist = &playlists[second_last_selected];
+                            let range_start = last_selected;
+                            let insert_before = last_selected - 1;
+                            Some(update_playlist_track(
+                                &context,
+                                &playlist,
+                                range_start,
+                                insert_before,
+                            ))
+                        } else {
+                            None
                         }
-                        None
-                    })();
+                    };
                     if let Some(app) = app {
                         stack.pop();
                         stack.push(app);
@@ -901,32 +888,28 @@ fn main() -> Result<(), failure::Error> {
                 }
                 Key::Char('k') => {
                     let last = stack.last();
-                    let app = (|| {
-                        if let Some(last) = last {
-                            if let State::Tracks { tracks } = &last.state {
-                                if let Some(last_selected) = last.selected {
-                                    if last_selected < tracks.len() - 1 {
-                                        let second_last = &stack[stack.len() - 2];
-                                        if let State::Playlists { playlists } = &second_last.state {
-                                            if let Some(second_last_selected) = second_last.selected
-                                            {
-                                                let playlist = &playlists[second_last_selected];
-                                                let range_start = last_selected;
-                                                let insert_before = last_selected + 2;
-                                                return Some(update_playlist_track(
-                                                    &context,
-                                                    &playlist,
-                                                    range_start,
-                                                    insert_before,
-                                                ));
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                    let app = if_chain! {
+                        if let Some(last) = last;
+                        if let State::Tracks { tracks } = &last.state;
+                        if let Some(last_selected) = last.selected;
+                        if last_selected < tracks.len() - 1;
+                        let second_last = &stack[stack.len() - 2];
+                        if let State::Playlists { playlists } = &second_last.state;
+                        if let Some(second_last_selected) = second_last.selected;
+                        then {
+                            let playlist = &playlists[second_last_selected];
+                            let range_start = last_selected;
+                            let insert_before = last_selected + 2;
+                            Some(update_playlist_track(
+                                &context,
+                                &playlist,
+                                range_start,
+                                insert_before,
+                            ))
+                        } else {
+                            None
                         }
-                        None
-                    })();
+                    };
                     if let Some(app) = app {
                         stack.pop();
                         stack.push(app);
