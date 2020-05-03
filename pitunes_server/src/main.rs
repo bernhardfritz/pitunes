@@ -106,7 +106,7 @@ async fn main() -> std::io::Result<()> {
         .unwrap();
     builder.set_certificate_chain_file("cert.pem").unwrap();
 
-    let server = HttpServer::new(move || {
+    let http_server = HttpServer::new(move || {
         let auth = HttpAuthentication::bearer(validator);
         App::new()
             .data(AppState { port })
@@ -121,17 +121,23 @@ async fn main() -> std::io::Result<()> {
                     .service(Files::new("/static", "static")),
             )
     })
-    .bind_openssl(format!("0.0.0.0:{}", port), builder)?
-    .run();
+    // .bind_openssl(format!("0.0.0.0:{}", port), builder)?;
+    .bind_openssl(format!("127.0.0.1:{}", port), builder)?;
 
     println!(
-        r#"       _ _____                      
- _ __ (_)_   _|   _ _ __   ___  ___ 
+        r#"       _ _____
+ _ __ (_)_   _|   _ _ __   ___  ___
 | '_ \| | | || | | | '_ \ / _ \/ __|
 | |_) | | | || |_| | | | |  __/\__ \
-| .__/|_| |_| \__,_|_| |_|\___||___/
-|_|                                 "#
+| .__/|_| |_| \__,_|_| |_|\___||___/ v{}
+|_|
+"#,
+        env!("CARGO_PKG_VERSION")
     );
 
-    server.await
+    for (addrs, scheme) in http_server.addrs_with_scheme() {
+        println!("Listening on {}://{}", scheme, addrs);
+    }
+
+    http_server.run().await
 }
