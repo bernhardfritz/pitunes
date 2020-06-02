@@ -1,3 +1,10 @@
+use std::convert::TryFrom;
+
+use if_chain::if_chain;
+use redux_rs::{combine_reducers, Reducer};
+use termion::event::Key;
+use tui::widgets::ListState;
+
 use crate::constants::{ALBUMS, ALL_TRACKS, ARTISTS, GENRES, PLAYLISTS, TRACKS};
 use crate::requests::{
     delete_playlist_track, get_albums, get_albums_of_artist, get_artists, get_genres,
@@ -5,11 +12,6 @@ use crate::requests::{
     get_tracks_of_playlist, update_playlist_track,
 };
 use crate::{play_queue, Model, State, View};
-use if_chain::if_chain;
-use redux_rs::{combine_reducers, Reducer};
-use std::convert::TryFrom;
-use termion::event::Key;
-use tui::widgets::ListState;
 
 pub const REDUCER: Reducer<State, Key> = combine_reducers!(
     State,

@@ -15,16 +15,16 @@ pub fn graphiql_source(graphql_endpoint_url: &str) -> String {
     let fetcher_source = r#"
     <script>
         function graphQLFetcher(params) {
-            let headers = {
+            const headers = {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
             };
-            let apiKey = document.getElementById('api-key');
+            const apiKey = document.getElementById('api-key');
             if (apiKey) {
                 headers['Authorization'] = `Bearer ${apiKey.value}`;
             }
             return fetch(GRAPHQL_URL, {
-                method: 'post',
+                method: 'POST',
                 headers,
                 credentials: 'include',
                 body: JSON.stringify(params)
@@ -40,17 +40,17 @@ pub fn graphiql_source(graphql_endpoint_url: &str) -> String {
         }
 
         function callback() {
-            let topBar = document.querySelector('.topBar');
-            let form = document.createElement('form');
-            let label = document.createElement('label');
+            const topBar = document.querySelector('.topBar');
+            const form = document.createElement('form');
+            const label = document.createElement('label');
             label.setAttribute('for', 'api-key');
             label.textContent = 'API_KEY=';
-            let input = document.createElement('input');
+            const input = document.createElement('input');
             input.setAttribute('id', 'api-key');
             input.setAttribute('name', 'api-key');
             input.setAttribute('type', 'password');
-            let urlSearchParams = new URLSearchParams(window.location.search);
-            let apiKey = urlSearchParams.get('api-key');
+            const urlSearchParams = new URLSearchParams(window.location.search);
+            const apiKey = urlSearchParams.get('api-key');
             if (apiKey) {
                 input.value = apiKey;
             }
@@ -85,7 +85,7 @@ pub fn graphiql_source(graphql_endpoint_url: &str) -> String {
     <script src="//cdnjs.cloudflare.com/ajax/libs/react/16.10.2/umd/react.production.min.js"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/react-dom/16.10.2/umd/react-dom.production.min.js"></script>
     <script src="//cdn.jsdelivr.net/npm/graphiql@0.17.2/graphiql.min.js"></script>
-    <script>var GRAPHQL_URL = '{graphql_url}';</script>
+    <script>const GRAPHQL_URL = '{graphql_url}';</script>
     {fetcher_source}
 </body>
 </html>

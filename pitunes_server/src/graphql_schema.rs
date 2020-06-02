@@ -1,11 +1,13 @@
+use std::convert::TryFrom;
+
+use diesel::prelude::*;
+
 use crate::db::SqlitePool;
 use crate::models::{
     Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Playlist, PlaylistInput,
     PlaylistTrack, PlaylistTrackInput, PlaylistTrackOrderInput, Track, TrackInput,
 };
 use crate::schema::{albums, artists, genres, playlists, playlists_tracks, tracks};
-use diesel::prelude::*;
-use std::convert::TryFrom;
 
 #[derive(Clone)]
 pub struct Context {

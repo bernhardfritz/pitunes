@@ -1,3 +1,8 @@
+use std::convert::TryFrom;
+use std::sync::Arc;
+
+use graphql_client::{GraphQLQuery, Response};
+
 use crate::constants::GRAPHQL;
 use crate::models::exports::{
     album_query, albums_query, artist_albums_query, artist_tracks_query, artists_query,
@@ -10,9 +15,6 @@ use crate::models::{
     PlaylistsQuery, Track, TracksQuery, UpdatePlaylistTrackMutation,
 };
 use crate::Context;
-use graphql_client::{GraphQLQuery, Response};
-use std::convert::TryFrom;
-use std::sync::Arc;
 
 pub fn get_albums(context: &Arc<Context>) -> Vec<Album> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);

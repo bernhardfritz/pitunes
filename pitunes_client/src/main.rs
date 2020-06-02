@@ -6,18 +6,18 @@ mod models;
 mod reducers;
 mod requests;
 
+use std::env;
+use std::io::{self, Write};
+use std::sync::{Arc, Mutex, RwLock};
+use std::thread::{self, JoinHandle};
+
 use clap::{self, value_t};
-use crate::event::{Event, Events};
 use constants::{ALBUMS, ARTISTS, GENRES, PI_SYMBOL, PLAYLISTS, STATIC, TRACKS};
 use dotenv::dotenv;
 use http_stream_reader::HttpStreamReader;
 use models::{Album, Artist, Genre, Playlist, Track};
 use reducers::REDUCER;
 use redux_rs::Store;
-use std::env;
-use std::io::{self, Write};
-use std::sync::{Arc, Mutex, RwLock};
-use std::thread::{self, JoinHandle};
 use termion::cursor::Goto;
 use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
@@ -26,6 +26,8 @@ use tui::style::{Modifier, Style};
 use tui::widgets::{Block, BorderType, Borders, List, ListState, Paragraph, Text};
 use tui::Terminal;
 use unicode_width::UnicodeWidthStr;
+
+use crate::event::{Event, Events};
 
 pub struct Context {
     server_url: String,

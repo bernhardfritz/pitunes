@@ -5,6 +5,7 @@ extern crate diesel;
 #[macro_use]
 extern crate diesel_migrations;
 
+mod chunker;
 mod db;
 mod graphiql;
 mod graphql_schema;
@@ -12,6 +13,9 @@ mod graphql_service;
 mod models;
 mod schema;
 mod upload_service;
+
+use std::fs;
+use std::sync::Arc;
 
 use actix_files::Files;
 use actix_web::dev::ServiceRequest;
@@ -26,8 +30,6 @@ use openssl::rand;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use std::fs;
-use std::sync::Arc;
 
 const PITUNES_TOML: &str = "pitunes.toml";
 
@@ -45,7 +47,7 @@ lazy_static! {
                 let mut buf = [0; 32];
                 rand::rand_bytes(&mut buf).unwrap();
                 let api_key = base64::encode(&buf);
-                println!("{}", api_key);
+                println!("API_KEY={}", api_key);
                 let mut hasher = Sha256::new();
                 hasher.input(api_key.as_bytes());
                 let hashed_api_key = format!("{:x}", hasher.result());
@@ -67,10 +69,6 @@ async fn validator(req: ServiceRequest, bearer: BearerAuth) -> Result<ServiceReq
     } else {
         Err(error::ErrorUnauthorized(""))
     }
-}
-
-struct AppState {
-    port: u16,
 }
 
 #[actix_rt::main]
@@ -109,15 +107,15 @@ async fn main() -> std::io::Result<()> {
     let http_server = HttpServer::new(move || {
         let auth = HttpAuthentication::bearer(validator);
         App::new()
-            .data(AppState { port })
             .data(st.clone())
             .data(ctx.clone())
             .service(graphql_service::graphiql)
+            .service(upload_service::get_upload)
             .service(
                 web::scope("")
                     .wrap(auth)
                     .service(graphql_service::graphql)
-                    .service(upload_service::upload)
+                    .service(upload_service::post_upload)
                     .service(Files::new("/static", "static")),
             )
     })
