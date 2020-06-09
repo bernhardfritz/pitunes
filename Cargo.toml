@@ -6,4 +6,4 @@ members = [
 ]
 
 [patch.crates-io]
-rodio = { git = "https://github.com/bernhardfritz/rodio" }
+rodio = { git = "https://github.com/RustAudio/rodio" }

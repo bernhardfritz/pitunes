@@ -2,4 +2,4 @@
 
 # piTunes
 
-A server that allows you to stream your personal music collection.
+A client-server architecture that allows you to stream your personal music collection.

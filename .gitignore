@@ -7,3 +7,4 @@ pitunes.db
 *.pem
 pitunes.toml
 !/**/.gitkeep
+/graphdoc
