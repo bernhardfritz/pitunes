@@ -56,7 +56,8 @@ pub enum View {
         items: Vec<String>,
     },
     Edit {
-        input_field: String, // TODO somehow encode form fields
+        input_fields: Vec<(String, String)>,
+        selected: Option<usize>,
     },
 }
 
@@ -280,21 +281,33 @@ fn main() -> Result<(), failure::Error> {
                     .highlight_style(Style::default().modifier(highlight_modifier));
                     f.render_stateful_widget(list, chunks[0], &mut list_state.clone());
                 }
-                View::Edit { input_field } => {
+                View::Edit { input_fields, selected } => {
+                    let constraints = vec![Constraint::Length(3); input_fields.len() + 1];
                     let chunks = Layout::default()
-                        .constraints([Constraint::Length(3), Constraint::Min(1)].as_ref())
+                        .constraints(&constraints[..])
                         .horizontal_margin(3)
                         .vertical_margin(2)
                         .split(f.size());
-                    let text = [Text::raw(input_field)];
-                    let paragraph = Paragraph::new(text.iter()).block(
-                        Block::default()
-                            .borders(Borders::ALL)
-                            .border_type(BorderType::Rounded)
-                            .title("Label")
-                            .title_style(Style::default().modifier(Modifier::BOLD)), // TODO: current block should have a bold title to indicate "focus"
-                    );
-                    f.render_widget(paragraph, chunks[0]);
+                    for (i, input_field) in input_fields.iter().enumerate() {
+                        let text = [Text::raw(&input_field.1[..])];
+                        let block = {
+                            let block = Block::default()
+                                .borders(Borders::ALL)
+                                .border_type(BorderType::Rounded)
+                                .title(&input_field.0[..]);
+                            if let Some(selected) = *selected {
+                                if selected == i {
+                                    block.title_style(Style::default().modifier(Modifier::BOLD))
+                                } else {
+                                    block
+                                }
+                            } else {
+                                block
+                            }
+                        };
+                        let paragraph = Paragraph::new(text.iter()).block(block);
+                        f.render_widget(paragraph, chunks[i]);
+                    }
                 }
             }
         })?;
@@ -304,16 +317,18 @@ fn main() -> Result<(), failure::Error> {
                 list_state: _,
                 items: _,
             } => terminal.hide_cursor()?,
-            View::Edit { input_field } => {
-                terminal.show_cursor()?;
-                // Put the cursor back inside the input box
-                write!(
-                    terminal.backend_mut(),
-                    "{}",
-                    Goto(5 + UnicodeWidthStr::width(&input_field[..]) as u16, 4)
-                )?;
-                // stdout is buffered, flush it to see the effect immediately when hitting backspace
-                io::stdout().flush().ok();
+            View::Edit { input_fields, selected } => {
+                if let Some(selected) = *selected {
+                    terminal.show_cursor()?;
+                    // Put the cursor back inside the input box
+                    write!(
+                        terminal.backend_mut(),
+                        "{}",
+                        Goto(5 + UnicodeWidthStr::width(&input_fields[selected].1[..]) as u16, 4 + 3 * selected as u16)
+                    )?;
+                    // stdout is buffered, flush it to see the effect immediately when hitting backspace
+                    io::stdout().flush().ok();
+                }
             }
         }
 
