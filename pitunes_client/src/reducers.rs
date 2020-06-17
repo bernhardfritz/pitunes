@@ -9,7 +9,8 @@ use crate::constants::{ALBUMS, ALL_TRACKS, ARTISTS, GENRES, PLAYLISTS, TRACKS};
 use crate::requests::{
     delete_playlist_track, get_albums, get_albums_of_artist, get_artists, get_genres,
     get_playlists, get_tracks, get_tracks_of_album, get_tracks_of_artist, get_tracks_of_genre,
-    get_tracks_of_playlist, update_playlist_track,
+    get_tracks_of_playlist, update_album, update_artist, update_genre, update_playlist,
+    update_playlist_track,
 };
 use crate::{play_queue, Model, State, View};
 
@@ -132,8 +133,13 @@ fn list_reducer(state: &State, action: &Key) -> State {
 }
 
 fn edit_reducer(state: &State, action: &Key) -> State {
-    let new_state = if let View::Edit { input_fields, selected } = &state.view {
+    let new_state = if let View::Edit {
+        input_fields,
+        selected,
+    } = &state.view
+    {
         match action {
+            Key::Char('\n') => None,
             Key::Char('\t') => {
                 let selected = if let Some(selected) = *selected {
                     Some(if selected >= input_fields.len() - 1 {
@@ -145,10 +151,13 @@ fn edit_reducer(state: &State, action: &Key) -> State {
                     None
                 };
                 Some(State {
-                    view: View::Edit { input_fields: input_fields.clone(), selected },
+                    view: View::Edit {
+                        input_fields: input_fields.clone(),
+                        selected,
+                    },
                     ..state.clone()
                 })
-            },
+            }
             Key::BackTab => {
                 let selected = if let Some(selected) = *selected {
                     Some(if selected == 0 {
@@ -160,7 +169,10 @@ fn edit_reducer(state: &State, action: &Key) -> State {
                     None
                 };
                 Some(State {
-                    view: View::Edit { input_fields: input_fields.clone(), selected },
+                    view: View::Edit {
+                        input_fields: input_fields.clone(),
+                        selected,
+                    },
                     ..state.clone()
                 })
             }
@@ -170,7 +182,10 @@ fn edit_reducer(state: &State, action: &Key) -> State {
                     input_fields[selected].1.push(*c);
                 }
                 Some(State {
-                    view: View::Edit { input_fields, selected: selected.clone() },
+                    view: View::Edit {
+                        input_fields,
+                        selected: selected.clone(),
+                    },
                     ..state.clone()
                 })
             }
@@ -180,13 +195,16 @@ fn edit_reducer(state: &State, action: &Key) -> State {
                     input_fields[selected].1.pop();
                 }
                 Some(State {
-                    view: View::Edit { input_fields, selected: selected.clone() },
+                    view: View::Edit {
+                        input_fields,
+                        selected: selected.clone(),
+                    },
                     ..state.clone()
                 })
             }
             Key::Esc => {
                 if let Some(last) = state.history.last() {
-                    Some(REDUCER(last, &Key::Char('\n')))
+                    Some(last.clone())
                 } else {
                     None
                 }
@@ -215,11 +233,7 @@ fn root_reducer(state: &State, action: &Key) -> State {
                                 let albums = get_albums(&state.context);
                                 let list_state = {
                                     let mut list_state = ListState::default();
-                                    let index = if albums.is_empty() {
-                                        None
-                                    } else {
-                                        Some(0)
-                                    };
+                                    let index = if albums.is_empty() { None } else { Some(0) };
                                     list_state.select(index);
                                     list_state
                                 };
@@ -234,11 +248,7 @@ fn root_reducer(state: &State, action: &Key) -> State {
                                 let artists = get_artists(&state.context);
                                 let list_state = {
                                     let mut list_state = ListState::default();
-                                    let index = if artists.is_empty() {
-                                        None
-                                    } else {
-                                        Some(0)
-                                    };
+                                    let index = if artists.is_empty() { None } else { Some(0) };
                                     list_state.select(index);
                                     list_state
                                 };
@@ -254,11 +264,7 @@ fn root_reducer(state: &State, action: &Key) -> State {
                                 let genres = get_genres(&state.context);
                                 let list_state = {
                                     let mut list_state = ListState::default();
-                                    let index = if genres.is_empty() {
-                                        None
-                                    } else {
-                                        Some(0)
-                                    };
+                                    let index = if genres.is_empty() { None } else { Some(0) };
                                     list_state.select(index);
                                     list_state
                                 };
@@ -273,11 +279,7 @@ fn root_reducer(state: &State, action: &Key) -> State {
                                 let playlists = get_playlists(&state.context);
                                 let list_state = {
                                     let mut list_state = ListState::default();
-                                    let index = if playlists.is_empty() {
-                                        None
-                                    } else {
-                                        Some(0)
-                                    };
+                                    let index = if playlists.is_empty() { None } else { Some(0) };
                                     list_state.select(index);
                                     list_state
                                 };
@@ -295,11 +297,7 @@ fn root_reducer(state: &State, action: &Key) -> State {
                                 let tracks = get_tracks(&state.context);
                                 let list_state = {
                                     let mut list_state = ListState::default();
-                                    let index = if tracks.is_empty() {
-                                        None
-                                    } else {
-                                        Some(0)
-                                    };
+                                    let index = if tracks.is_empty() { None } else { Some(0) };
                                     list_state.select(index);
                                     list_state
                                 };
@@ -345,11 +343,7 @@ fn albums_reducer(state: &State, action: &Key) -> State {
                         let tracks = get_tracks_of_album(&state.context, &album);
                         let list_state = {
                             let mut list_state = ListState::default();
-                            let index = if tracks.is_empty() {
-                                None
-                            } else {
-                                Some(0)
-                            };
+                            let index = if tracks.is_empty() { None } else { Some(0) };
                             list_state.select(index);
                             list_state
                         };
@@ -364,28 +358,50 @@ fn albums_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
-                Key::Char('e') => Some(State {
-                    view: View::Edit {
-                        input_fields: vec![
-                            (String::from("key1"), String::from("value1")),
-                            (String::from("key2"), String::from("value2")),
-                            (String::from("key3"), String::from("value3")),
-                        ], // TODO: would be cool to reuse views in order to have some sort of chooser dialogue instead of entering ids manually
-                        selected: Some(0),
-                    },
-                    ..state.clone()
-                }),
-                _ => None,
-            },
-            View::Edit { input_fields: _, selected: _ } => {
-                match action {
-                    Key::Char('\n') => {
-                        // TODO do something with input_field
+                Key::Char('e') => {
+                    if let Some(selected) = list_state.selected() {
+                        let album = &albums[selected];
+                        let history = {
+                            let mut history = state.history.clone();
+                            if state.add_to_history {
+                                history.push(state.clone());
+                            }
+                            history
+                        };
+                        Some(State {
+                            view: View::Edit {
+                                input_fields: vec![(String::from("Name"), album.name.clone())], // TODO: would be cool to reuse views in order to have some sort of chooser dialogue instead of entering ids manually
+                                selected: Some(0),
+                            },
+                            history,
+                            ..state.clone()
+                        })
+                    } else {
                         None
                     }
-                    _ => None,
                 }
-            }
+                _ => None,
+            },
+            View::Edit {
+                input_fields,
+                selected: _,
+            } => match action {
+                Key::Char('\n') => {
+                    if_chain! {
+                        if let Some(last) = state.history.last();
+                        if let View::List { list_state, items: _ } = &last.view;
+                        if let Some(selected) = list_state.selected();
+                        if let Some(second_last) = last.history.last();
+                        then {
+                            update_album(&state.context, &albums[selected], &input_fields[0].1[..]);
+                            Some(REDUCER(second_last, &Key::Char('\n')))
+                        } else {
+                            None
+                        }
+                    }
+                }
+                _ => None,
+            },
         }
     } else {
         None
@@ -415,11 +431,7 @@ fn artist_reducer(state: &State, action: &Key) -> State {
                         };
                         let list_state = {
                             let mut list_state = ListState::default();
-                            let index = if tracks.is_empty() {
-                                None
-                            } else {
-                                Some(0)
-                            };
+                            let index = if tracks.is_empty() { None } else { Some(0) };
                             list_state.select(index);
                             list_state
                         };
@@ -451,12 +463,11 @@ fn artist_reducer(state: &State, action: &Key) -> State {
 
 fn artists_reducer(state: &State, action: &Key) -> State {
     let new_state = if let Model::Artists { artists } = &state.model {
-        if let View::List {
-            list_state,
-            items: _,
-        } = &state.view
-        {
-            match action {
+        match &state.view {
+            View::List {
+                list_state,
+                items: _,
+            } => match action {
                 Key::Char('\n') => {
                     if let Some(selected) = list_state.selected() {
                         let artist = artists[selected].clone();
@@ -481,10 +492,50 @@ fn artists_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
+                Key::Char('e') => {
+                    if let Some(selected) = list_state.selected() {
+                        let artist = &artists[selected];
+                        let history = {
+                            let mut history = state.history.clone();
+                            if state.add_to_history {
+                                history.push(state.clone());
+                            }
+                            history
+                        };
+                        Some(State {
+                            view: View::Edit {
+                                input_fields: vec![(String::from("Name"), artist.name.clone())], // TODO: would be cool to reuse views in order to have some sort of chooser dialogue instead of entering ids manually
+                                selected: Some(0),
+                            },
+                            history,
+                            ..state.clone()
+                        })
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
-            }
-        } else {
-            None
+            },
+            View::Edit {
+                input_fields,
+                selected: _,
+            } => match action {
+                Key::Char('\n') => {
+                    if_chain! {
+                        if let Some(last) = state.history.last();
+                        if let View::List { list_state, items: _ } = &last.view;
+                        if let Some(selected) = list_state.selected();
+                        if let Some(second_last) = last.history.last();
+                        then {
+                            update_artist(&state.context, &artists[selected], &input_fields[0].1[..]);
+                            Some(REDUCER(second_last, &Key::Char('\n')))
+                        } else {
+                            None
+                        }
+                    }
+                }
+                _ => None,
+            },
         }
     } else {
         None
@@ -498,23 +549,18 @@ fn artists_reducer(state: &State, action: &Key) -> State {
 
 fn genres_reducer(state: &State, action: &Key) -> State {
     let new_state = if let Model::Genres { genres } = &state.model {
-        if let View::List {
-            list_state,
-            items: _,
-        } = &state.view
-        {
-            match action {
+        match &state.view {
+            View::List {
+                list_state,
+                items: _,
+            } => match action {
                 Key::Char('\n') => {
                     if let Some(selected) = list_state.selected() {
                         let genre = &genres[selected];
                         let tracks = get_tracks_of_genre(&state.context, genre);
                         let list_state = {
                             let mut list_state = ListState::default();
-                            let index = if tracks.is_empty() {
-                                None
-                            } else {
-                                Some(0)
-                            };
+                            let index = if tracks.is_empty() { None } else { Some(0) };
                             list_state.select(index);
                             list_state
                         };
@@ -529,10 +575,50 @@ fn genres_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
+                Key::Char('e') => {
+                    if let Some(selected) = list_state.selected() {
+                        let genre = &genres[selected];
+                        let history = {
+                            let mut history = state.history.clone();
+                            if state.add_to_history {
+                                history.push(state.clone());
+                            }
+                            history
+                        };
+                        Some(State {
+                            view: View::Edit {
+                                input_fields: vec![(String::from("Name"), genre.name.clone())], // TODO: would be cool to reuse views in order to have some sort of chooser dialogue instead of entering ids manually
+                                selected: Some(0),
+                            },
+                            history,
+                            ..state.clone()
+                        })
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
-            }
-        } else {
-            None
+            },
+            View::Edit {
+                input_fields,
+                selected: _,
+            } => match action {
+                Key::Char('\n') => {
+                    if_chain! {
+                        if let Some(last) = state.history.last();
+                        if let View::List { list_state, items: _ } = &last.view;
+                        if let Some(selected) = list_state.selected();
+                        if let Some(second_last) = last.history.last();
+                        then {
+                            update_genre(&state.context, &genres[selected], &input_fields[0].1[..]);
+                            Some(REDUCER(second_last, &Key::Char('\n')))
+                        } else {
+                            None
+                        }
+                    }
+                }
+                _ => None,
+            },
         }
     } else {
         None
@@ -546,23 +632,18 @@ fn genres_reducer(state: &State, action: &Key) -> State {
 
 fn playlists_reducer(state: &State, action: &Key) -> State {
     let new_state = if let Model::Playlists { playlists } = &state.model {
-        if let View::List {
-            list_state,
-            items: _,
-        } = &state.view
-        {
-            match action {
+        match &state.view {
+            View::List {
+                list_state,
+                items: _,
+            } => match action {
                 Key::Char('\n') => {
                     if let Some(selected) = list_state.selected() {
                         let playlist = &playlists[selected];
                         let tracks = get_tracks_of_playlist(&state.context, playlist);
                         let list_state = {
                             let mut list_state = ListState::default();
-                            let index = if tracks.is_empty() {
-                                None
-                            } else {
-                                Some(0)
-                            };
+                            let index = if tracks.is_empty() { None } else { Some(0) };
                             list_state.select(index);
                             list_state
                         };
@@ -577,10 +658,50 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
+                Key::Char('e') => {
+                    if let Some(selected) = list_state.selected() {
+                        let playlist = &playlists[selected];
+                        let history = {
+                            let mut history = state.history.clone();
+                            if state.add_to_history {
+                                history.push(state.clone());
+                            }
+                            history
+                        };
+                        Some(State {
+                            view: View::Edit {
+                                input_fields: vec![(String::from("Name"), playlist.name.clone())], // TODO: would be cool to reuse views in order to have some sort of chooser dialogue instead of entering ids manually
+                                selected: Some(0),
+                            },
+                            history,
+                            ..state.clone()
+                        })
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
-            }
-        } else {
-            None
+            },
+            View::Edit {
+                input_fields,
+                selected: _,
+            } => match action {
+                Key::Char('\n') => {
+                    if_chain! {
+                        if let Some(last) = state.history.last();
+                        if let View::List { list_state, items: _ } = &last.view;
+                        if let Some(selected) = list_state.selected();
+                        if let Some(second_last) = last.history.last();
+                        then {
+                            update_playlist(&state.context, &playlists[selected], &input_fields[0].1[..]);
+                            Some(REDUCER(second_last, &Key::Char('\n')))
+                        } else {
+                            None
+                        }
+                    }
+                }
+                _ => None,
+            },
         }
     } else {
         None

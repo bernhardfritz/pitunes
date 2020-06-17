@@ -7,12 +7,14 @@ use crate::constants::GRAPHQL;
 use crate::models::exports::{
     album_query, albums_query, artist_albums_query, artist_tracks_query, artists_query,
     delete_playlist_track_mutation, genre_query, genres_query, playlist_query, playlists_query,
-    tracks_query, update_playlist_track_mutation,
+    tracks_query, update_album_mutation, update_artist_mutation, update_genre_mutation,
+    update_playlist_mutation, update_playlist_track_mutation,
 };
 use crate::models::{
     Album, AlbumQuery, AlbumsQuery, Artist, ArtistAlbumsQuery, ArtistTracksQuery, ArtistsQuery,
     DeletePlaylistTrackMutation, Genre, GenreQuery, GenresQuery, Playlist, PlaylistQuery,
-    PlaylistsQuery, Track, TracksQuery, UpdatePlaylistTrackMutation,
+    PlaylistsQuery, Track, TracksQuery, UpdateAlbumMutation, UpdateArtistMutation,
+    UpdateGenreMutation, UpdatePlaylistMutation, UpdatePlaylistTrackMutation,
 };
 use crate::Context;
 
@@ -31,6 +33,29 @@ pub fn get_albums(context: &Arc<Context>) -> Vec<Album> {
     albums.into_iter().map(|album| album.into()).collect()
 }
 
+pub fn update_album(context: &Arc<Context>, album: &Album, name: &str) -> Album {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = UpdateAlbumMutation::build_query(update_album_mutation::Variables {
+        id: album.id,
+        album_input: update_album_mutation::AlbumInput {
+            name: String::from(name),
+        },
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<update_album_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.update_album)
+        .map(|album| album.into())
+        .unwrap()
+}
+
 pub fn get_artists(context: &Arc<Context>) -> Vec<Artist> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = ArtistsQuery::build_query(artists_query::Variables {});
@@ -46,6 +71,29 @@ pub fn get_artists(context: &Arc<Context>) -> Vec<Artist> {
     artists.into_iter().map(|artist| artist.into()).collect()
 }
 
+pub fn update_artist(context: &Arc<Context>, artist: &Artist, name: &str) -> Artist {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = UpdateArtistMutation::build_query(update_artist_mutation::Variables {
+        id: artist.id,
+        artist_input: update_artist_mutation::ArtistInput {
+            name: String::from(name),
+        },
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<update_artist_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.update_artist)
+        .map(|artist| artist.into())
+        .unwrap()
+}
+
 pub fn get_genres(context: &Arc<Context>) -> Vec<Genre> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = GenresQuery::build_query(genres_query::Variables {});
@@ -59,6 +107,29 @@ pub fn get_genres(context: &Arc<Context>) -> Vec<Genre> {
     let response_body: Response<genres_query::ResponseData> = res.json().unwrap();
     let genres = response_body.data.map(|data| data.genres).unwrap();
     genres.into_iter().map(|genre| genre.into()).collect()
+}
+
+pub fn update_genre(context: &Arc<Context>, genre: &Genre, name: &str) -> Genre {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = UpdateGenreMutation::build_query(update_genre_mutation::Variables {
+        id: genre.id,
+        genre_input: update_genre_mutation::GenreInput {
+            name: String::from(name),
+        },
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<update_genre_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.update_genre)
+        .map(|genre| genre.into())
+        .unwrap()
 }
 
 pub fn get_playlists(context: &Arc<Context>) -> Vec<Playlist> {
@@ -77,6 +148,29 @@ pub fn get_playlists(context: &Arc<Context>) -> Vec<Playlist> {
         .into_iter()
         .map(|playlist| playlist.into())
         .collect()
+}
+
+pub fn update_playlist(context: &Arc<Context>, playlist: &Playlist, name: &str) -> Playlist {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = UpdatePlaylistMutation::build_query(update_playlist_mutation::Variables {
+        id: playlist.id,
+        playlist_input: update_playlist_mutation::PlaylistInput {
+            name: String::from(name),
+        },
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<update_playlist_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.update_playlist)
+        .map(|playlist| playlist.into())
+        .unwrap()
 }
 
 pub fn get_tracks(context: &Arc<Context>) -> Vec<Track> {

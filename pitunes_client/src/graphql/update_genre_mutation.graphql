@@ -1,0 +1,6 @@
+mutation UpdateGenreMutation($id: Int!, $genreInput: GenreInput!) {
+  updateGenre(id: $id, genreInput: $genreInput) {
+    id
+    name
+  }
+}

@@ -20,12 +20,12 @@ async fn graphql(
     ctx: web::Data<Context>,
     data: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, Error> {
-    let bla = web::block(move || {
+    let json = web::block(move || {
         let res = data.execute(&st, &ctx);
         Ok::<_, serde_json::error::Error>(serde_json::to_string(&res)?)
     })
     .await?;
     Ok(HttpResponse::Ok()
         .content_type("application/json")
-        .body(bla))
+        .body(json))
 }

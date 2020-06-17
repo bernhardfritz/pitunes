@@ -281,7 +281,10 @@ fn main() -> Result<(), failure::Error> {
                     .highlight_style(Style::default().modifier(highlight_modifier));
                     f.render_stateful_widget(list, chunks[0], &mut list_state.clone());
                 }
-                View::Edit { input_fields, selected } => {
+                View::Edit {
+                    input_fields,
+                    selected,
+                } => {
                     let constraints = vec![Constraint::Length(3); input_fields.len() + 1];
                     let chunks = Layout::default()
                         .constraints(&constraints[..])
@@ -317,14 +320,20 @@ fn main() -> Result<(), failure::Error> {
                 list_state: _,
                 items: _,
             } => terminal.hide_cursor()?,
-            View::Edit { input_fields, selected } => {
+            View::Edit {
+                input_fields,
+                selected,
+            } => {
                 if let Some(selected) = *selected {
                     terminal.show_cursor()?;
                     // Put the cursor back inside the input box
                     write!(
                         terminal.backend_mut(),
                         "{}",
-                        Goto(5 + UnicodeWidthStr::width(&input_fields[selected].1[..]) as u16, 4 + 3 * selected as u16)
+                        Goto(
+                            5 + UnicodeWidthStr::width(&input_fields[selected].1[..]) as u16,
+                            4 + 3 * selected as u16
+                        )
                     )?;
                     // stdout is buffered, flush it to see the effect immediately when hitting backspace
                     io::stdout().flush().ok();
