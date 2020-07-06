@@ -21,6 +21,7 @@ futures = "0.3.1"
 id3 = "0.3.0"
 juniper = { version = "0.14.2", features = ["chrono"] }
 lazy_static = "1.4.0"
+mp3-duration = "0.1.10"
 openssl = "0.10.28"
 serde = "1.0.104"
 serde_json = "1.0.44"

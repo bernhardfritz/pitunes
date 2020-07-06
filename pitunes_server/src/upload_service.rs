@@ -8,7 +8,9 @@ use futures::{StreamExt, TryStreamExt};
 
 use crate::chunker::Chunker;
 use crate::graphql_schema::Context;
-use crate::models::{Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Track, TrackInput};
+use crate::models::{
+    Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Track, TrackInputInternal,
+};
 use crate::schema::{albums, artists, genres, tracks};
 
 #[post("/upload")]
@@ -29,6 +31,8 @@ async fn post_upload(
             tf = web::block(move || tf.write_all(&data).map(|_| tf)).await?;
         }
         tf.seek(SeekFrom::Start(0))?;
+        let duration = mp3_duration::from_file(&tf);
+        tf.seek(SeekFrom::Start(0))?;
         let tf2 = tf.try_clone()?;
         if let Ok(track) = conn.transaction::<_, diesel::result::Error, _>(|| {
             let track_input = if let Ok(tag) = id3::Tag::read_from(tf2) {
@@ -39,7 +43,11 @@ async fn post_upload(
                     let file_stem = path.file_stem().unwrap();
                     String::from(file_stem.to_str().unwrap())
                 });
-                let track_duration = tag.duration();
+                let track_duration = if let Ok(duration) = duration {
+                    duration.as_millis() as i32
+                } else {
+                    tag.duration().unwrap() as i32
+                };
                 let track_album_id = if let Some(album_name) = tag.album() {
                     if let Ok(album) = albums::table
                         .filter(albums::name.eq(album_name))
@@ -111,9 +119,9 @@ async fn post_upload(
                     None
                 };
                 let track_track_number = tag.track();
-                TrackInput {
+                TrackInputInternal {
                     name: track_name,
-                    duration: track_duration.map(|td| td as i32),
+                    duration: track_duration,
                     album_id: track_album_id,
                     artist_id: track_artist_id,
                     genre_id: track_genre_id,
@@ -125,9 +133,10 @@ async fn post_upload(
                 let path = Path::new(filename);
                 let file_stem = path.file_stem().unwrap();
                 let track_name = String::from(file_stem.to_str().unwrap());
-                TrackInput {
+                let track_duration = duration.unwrap().as_millis() as i32;
+                TrackInputInternal {
                     name: track_name,
-                    duration: None,
+                    duration: track_duration,
                     album_id: None,
                     artist_id: None,
                     genre_id: None,

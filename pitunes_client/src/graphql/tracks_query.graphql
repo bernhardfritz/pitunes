@@ -2,5 +2,6 @@ query TracksQuery {
   tracks {
     id
     name
+    duration
   }
 }

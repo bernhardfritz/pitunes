@@ -45,7 +45,7 @@ table! {
         id -> Integer,
         created_at -> Timestamp,
         name -> Text,
-        duration -> Nullable<Integer>,
+        duration -> Integer,
         album_id -> Nullable<Integer>,
         artist_id -> Nullable<Integer>,
         genre_id -> Nullable<Integer>,

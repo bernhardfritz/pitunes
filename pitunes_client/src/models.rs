@@ -164,13 +164,14 @@ pub struct Playlist {
 pub struct Track {
     pub id: i64,
     pub name: String,
+    pub duration: i64,
 }
 
 impl From<album_query::AlbumQueryAlbumTracks> for Track {
     fn from(
-        album_query::AlbumQueryAlbumTracks { id, name }: album_query::AlbumQueryAlbumTracks,
+        album_query::AlbumQueryAlbumTracks { id, name, duration }: album_query::AlbumQueryAlbumTracks,
     ) -> Track {
-        Track { id, name }
+        Track { id, name, duration }
     }
 }
 
@@ -208,9 +209,9 @@ impl From<artists_query::ArtistsQueryArtists> for Artist {
 
 impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for Track {
     fn from(
-        artist_tracks_query::ArtistTracksQueryArtistTracks { id, name }: artist_tracks_query::ArtistTracksQueryArtistTracks,
+        artist_tracks_query::ArtistTracksQueryArtistTracks { id, name, duration }: artist_tracks_query::ArtistTracksQueryArtistTracks,
     ) -> Track {
-        Track { id, name }
+        Track { id, name, duration }
     }
 }
 
@@ -224,9 +225,9 @@ impl From<update_artist_mutation::UpdateArtistMutationUpdateArtist> for Artist {
 
 impl From<genre_query::GenreQueryGenreTracks> for Track {
     fn from(
-        genre_query::GenreQueryGenreTracks { id, name }: genre_query::GenreQueryGenreTracks,
+        genre_query::GenreQueryGenreTracks { id, name, duration }: genre_query::GenreQueryGenreTracks,
     ) -> Track {
-        Track { id, name }
+        Track { id, name, duration }
     }
 }
 
@@ -248,9 +249,9 @@ impl From<update_genre_mutation::UpdateGenreMutationUpdateGenre> for Genre {
 
 impl From<playlist_query::PlaylistQueryPlaylistTracks> for Track {
     fn from(
-        playlist_query::PlaylistQueryPlaylistTracks { id, name }: playlist_query::PlaylistQueryPlaylistTracks,
+        playlist_query::PlaylistQueryPlaylistTracks { id, name, duration }: playlist_query::PlaylistQueryPlaylistTracks,
     ) -> Track {
-        Track { id, name }
+        Track { id, name, duration }
     }
 }
 
@@ -272,9 +273,9 @@ impl From<update_playlist_mutation::UpdatePlaylistMutationUpdatePlaylist> for Pl
 
 impl From<tracks_query::TracksQueryTracks> for Track {
     fn from(
-        tracks_query::TracksQueryTracks { id, name }: tracks_query::TracksQueryTracks,
+        tracks_query::TracksQueryTracks { id, name, duration }: tracks_query::TracksQueryTracks,
     ) -> Track {
-        Track { id, name }
+        Track { id, name, duration }
     }
 }
 
@@ -282,9 +283,9 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
     for Track
 {
     fn from(
-        update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks { id, name }: update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks,
+        update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks { id, name, duration }: update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks,
     ) -> Track {
-        Track { id, name }
+        Track { id, name, duration }
     }
 }
 

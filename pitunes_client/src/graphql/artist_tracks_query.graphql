@@ -5,6 +5,7 @@ query ArtistTracksQuery($id: Int!) {
     tracks {
       id
       name
+      duration
     }
   }
 }

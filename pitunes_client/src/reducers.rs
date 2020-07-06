@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::time::Instant;
 
 use if_chain::if_chain;
 use redux_rs::{combine_reducers, Reducer};
@@ -6,6 +7,7 @@ use termion::event::Key;
 use tui::widgets::ListState;
 
 use crate::constants::{ALBUMS, ALL_TRACKS, ARTISTS, GENRES, PLAYLISTS, TRACKS};
+use crate::models::Track;
 use crate::requests::{
     delete_playlist_track, get_albums, get_albums_of_artist, get_artists, get_genres,
     get_playlists, get_tracks, get_tracks_of_album, get_tracks_of_artist, get_tracks_of_genre,
@@ -115,8 +117,16 @@ fn list_reducer(state: &State, action: &Key) -> State {
                 let sink_guard = state.context.sink_lock.read().unwrap();
                 if sink_guard.is_paused() {
                     sink_guard.play();
+                    let mut play_instant_guard = state.context.play_instant_lock.write().unwrap();
+                    *play_instant_guard = Some(Instant::now());
                 } else {
                     sink_guard.pause();
+                    let play_instant_guard = state.context.play_instant_lock.read().unwrap();
+                    if let Some(play_instant) = *play_instant_guard {
+                        let mut lazy_elapsed_guard =
+                            state.context.lazy_elapsed_lock.write().unwrap();
+                        *lazy_elapsed_guard += play_instant.elapsed();
+                    }
                 }
                 Some(state.clone())
             }
@@ -721,7 +731,7 @@ fn tracks_reducer(state: &State, action: &Key) -> State {
         then {
             match action {
                 Key::Char('\n') => {
-                    let mut queue: Vec<i64> = tracks.iter().map(|track| track.id).collect();
+                    let mut queue: Vec<Track> = tracks.clone();
                     queue.rotate_left(track_index);
                     play_queue(state.context.clone(), queue);
                     None

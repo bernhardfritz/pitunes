@@ -5,6 +5,7 @@ mutation UpdatePlaylistTrackMutation($id: Int!, $playlistTrackOrderInput: Playli
     tracks {
       id
       name
+      duration
     }
   }
 }

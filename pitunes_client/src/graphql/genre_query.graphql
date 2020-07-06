@@ -5,6 +5,7 @@ query GenreQuery($id: Int!) {
     tracks {
       id
       name
+      duration
     }
   }
 }

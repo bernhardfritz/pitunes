@@ -127,7 +127,7 @@ pub struct Track {
     pub id: i32,
     pub created_at: NaiveDateTime,
     pub name: String,
-    pub duration: Option<i32>,
+    pub duration: i32,
     pub album_id: Option<i32>,
     pub artist_id: Option<i32>,
     pub genre_id: Option<i32>,
@@ -148,7 +148,7 @@ impl Track {
         &self.name[..]
     }
 
-    pub fn duration(&self) -> Option<i32> {
+    pub fn duration(&self) -> i32 {
         self.duration
     }
 
@@ -169,11 +169,21 @@ impl Track {
     }
 }
 
-#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
+#[derive(Insertable)]
+#[table_name = "tracks"]
+pub struct TrackInputInternal {
+    pub name: String,
+    pub duration: i32,
+    pub album_id: Option<i32>,
+    pub artist_id: Option<i32>,
+    pub genre_id: Option<i32>,
+    pub track_number: Option<i32>,
+}
+
+#[derive(AsChangeset, juniper::GraphQLInputObject)]
 #[table_name = "tracks"]
 pub struct TrackInput {
     pub name: String,
-    pub duration: Option<i32>,
     pub album_id: Option<i32>,
     pub artist_id: Option<i32>,
     pub genre_id: Option<i32>,

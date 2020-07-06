@@ -5,6 +5,7 @@ query PlaylistQuery($id: Int!) {
     tracks {
       id
       name
+      duration
     }
   }
 }

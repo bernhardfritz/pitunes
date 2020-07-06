@@ -3,6 +3,7 @@ mod constants;
 mod event;
 mod http_stream_reader;
 mod models;
+mod my_gauge;
 mod reducers;
 mod requests;
 
@@ -10,6 +11,7 @@ use std::env;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::{self, JoinHandle};
+use std::time::{Duration, Instant};
 
 use clap::{self, value_t};
 use constants::{ALBUMS, ARTISTS, GENRES, PI_SYMBOL, PLAYLISTS, STATIC, TRACKS};
@@ -28,6 +30,7 @@ use tui::Terminal;
 use unicode_width::UnicodeWidthStr;
 
 use crate::event::{Event, Events};
+use crate::my_gauge::MyGauge;
 
 pub struct Context {
     server_url: String,
@@ -35,7 +38,9 @@ pub struct Context {
     client: reqwest::blocking::Client,
     device: rodio::Device,
     sink_lock: RwLock<rodio::Sink>,
-    queue_lock: RwLock<Vec<i64>>,
+    queue_lock: RwLock<Vec<Track>>,
+    play_instant_lock: RwLock<Option<Instant>>,
+    lazy_elapsed_lock: RwLock<Duration>,
 }
 
 #[derive(Clone)]
@@ -71,8 +76,14 @@ pub struct State {
     add_to_history: bool,
 }
 
+struct BottomState {
+    title: String,
+    percent: u16,
+    label: String,
+}
+
 // Look away, I'm hideous!
-pub fn play_queue(context: Arc<Context>, queue: Vec<i64>) {
+pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
     thread_local!(static JOIN_HANDLE_MUTEX: Mutex<Option<JoinHandle<()>>> = Mutex::new(None));
     {
         let mut queue_guard = context.queue_lock.write().unwrap();
@@ -106,7 +117,7 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<i64>) {
                 let queue_guard = context.queue_lock.read().unwrap();
                 url = queue_guard
                     .first()
-                    .map(|first| format!("{}/{}/{}.mp3", context.server_url, STATIC, first));
+                    .map(|track| format!("{}/{}/{}.mp3", context.server_url, STATIC, track.id));
             }
             if let Some(url) = url {
                 let source =
@@ -115,6 +126,14 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<i64>) {
                 {
                     let sink_guard = context.sink_lock.read().unwrap();
                     sink_guard.append(source);
+                    {
+                        let mut play_instant_guard = context.play_instant_lock.write().unwrap();
+                        *play_instant_guard = Some(Instant::now());
+                    }
+                    {
+                        let mut lazy_elapsed_lock = context.lazy_elapsed_lock.write().unwrap();
+                        *lazy_elapsed_lock = Duration::new(0, 0);
+                    }
                     sink_guard.sleep_until_end();
                 }
                 {
@@ -163,6 +182,8 @@ fn main() -> Result<(), failure::Error> {
     let device = rodio::default_output_device().unwrap();
     let sink_lock = RwLock::new(rodio::Sink::new_idle().0);
     let queue_lock = RwLock::new(vec![]);
+    let play_instant_lock = RwLock::new(None);
+    let lazy_elapsed_lock = RwLock::new(Duration::new(0, 0));
 
     let root_title = format!("{} @ {}", PI_SYMBOL, server_url);
 
@@ -175,6 +196,8 @@ fn main() -> Result<(), failure::Error> {
                 device,
                 sink_lock,
                 queue_lock,
+                play_instant_lock,
+                lazy_elapsed_lock,
             });
             let break_condition = false;
             let model = Model::Root;
@@ -217,7 +240,7 @@ fn main() -> Result<(), failure::Error> {
         let active = if let Model::Tracks { tracks } = &state.model {
             let queue_guard = state.context.queue_lock.read().unwrap();
             if let Some(first) = queue_guard.first() {
-                tracks.iter().position(|track| track.id == *first)
+                tracks.iter().position(|track| track.id == first.id)
             } else {
                 None
             }
@@ -231,7 +254,7 @@ fn main() -> Result<(), failure::Error> {
             for state in &state.history {
                 if let View::List { list_state, items } = &state.view {
                     if let Some(selected) = list_state.selected() {
-                        title.push_str(" / ");
+                        title.push_str(" ─ ");
                         title.push_str(&items[selected][..]);
                     }
                 }
@@ -242,18 +265,59 @@ fn main() -> Result<(), failure::Error> {
 
         terminal.draw(|mut f| {
             let size = f.size();
-            let block = Block::default()
+            let play_instant_guard = state.context.play_instant_lock.read().unwrap();
+            let bottom_state = if let Some(play_instant) = *play_instant_guard {
+                let queue_guard = state.context.queue_lock.read().unwrap();
+                if let Some(first) = queue_guard.first() {
+                    let lazy_elapsed_guard = state.context.lazy_elapsed_lock.read().unwrap();
+                    let sink_guard = state.context.sink_lock.read().unwrap();
+                    let elapsed = if sink_guard.is_paused() {
+                        *lazy_elapsed_guard
+                    } else {
+                        *lazy_elapsed_guard + play_instant.elapsed()
+                    };
+                    let elapsed_minutes = elapsed.as_secs() / 60;
+                    let elapsed_seconds = elapsed.as_secs() % 60;
+                    let duration = Duration::from_millis(first.duration as u64);
+                    let duration_minutes = duration.as_secs() / 60;
+                    let duration_seconds = duration.as_secs() % 60;
+                    let title = format!(" {} ", first.name);
+                    let percent = (elapsed.as_millis() * 100 / duration.as_millis()) as u16;
+                    let label = format!(
+                        "{}:{:0>2} / {}:{:0>2}",
+                        elapsed_minutes, elapsed_seconds, duration_minutes, duration_seconds
+                    );
+                    Some(BottomState {
+                        title,
+                        percent,
+                        label,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+            let constraints = if bottom_state.is_some() {
+                vec![Constraint::Min(0), Constraint::Length(3)]
+            } else {
+                vec![Constraint::Min(0)]
+            };
+            let chunks = Layout::default()
+                .constraints(constraints.as_ref())
+                .split(size);
+            let top_block = Block::default()
                 .borders(Borders::ALL)
                 .border_type(BorderType::Rounded)
                 .title(&title[..]);
-            f.render_widget(block, size);
+            f.render_widget(top_block, chunks[0]);
+            let top_chunks = Layout::default()
+                .constraints([Constraint::Min(0)].as_ref())
+                .horizontal_margin(3)
+                .vertical_margin(2)
+                .split(chunks[0]);
             match &state.view {
                 View::List { list_state, items } => {
-                    let chunks = Layout::default()
-                        .constraints([Constraint::Percentage(100)].as_ref())
-                        .horizontal_margin(3)
-                        .vertical_margin(2)
-                        .split(f.size());
                     let highlight_modifier = if let Some(selected) = list_state.selected() {
                         if let Some(active) = active {
                             if selected == active {
@@ -279,18 +343,16 @@ fn main() -> Result<(), failure::Error> {
                         }
                     }))
                     .highlight_style(Style::default().modifier(highlight_modifier));
-                    f.render_stateful_widget(list, chunks[0], &mut list_state.clone());
+                    f.render_stateful_widget(list, top_chunks[0], &mut list_state.clone());
                 }
                 View::Edit {
                     input_fields,
                     selected,
                 } => {
                     let constraints = vec![Constraint::Length(3); input_fields.len() + 1];
-                    let chunks = Layout::default()
+                    let top_inner_chunks = Layout::default()
                         .constraints(&constraints[..])
-                        .horizontal_margin(3)
-                        .vertical_margin(2)
-                        .split(f.size());
+                        .split(top_chunks[0]);
                     for (i, input_field) in input_fields.iter().enumerate() {
                         let text = [Text::raw(&input_field.1[..])];
                         let block = {
@@ -309,9 +371,25 @@ fn main() -> Result<(), failure::Error> {
                             }
                         };
                         let paragraph = Paragraph::new(text.iter()).block(block);
-                        f.render_widget(paragraph, chunks[i]);
+                        f.render_widget(paragraph, top_inner_chunks[i]);
                     }
                 }
+            }
+            if let Some(bottom_state) = bottom_state {
+                let bottom_block = Block::default()
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .title(&bottom_state.title[..]);
+                f.render_widget(bottom_block, chunks[1]);
+                let bottom_chunks = Layout::default()
+                    .constraints([Constraint::Min(0)].as_ref())
+                    .horizontal_margin(2)
+                    .vertical_margin(1)
+                    .split(chunks[1]);
+                let my_gauge = MyGauge::default()
+                    .percent(bottom_state.percent)
+                    .label(&bottom_state.label[..]);
+                f.render_widget(my_gauge, bottom_chunks[0]);
             }
         })?;
 
