@@ -425,12 +425,11 @@ fn albums_reducer(state: &State, action: &Key) -> State {
 
 fn artist_reducer(state: &State, action: &Key) -> State {
     let new_state = if let Model::Artist { artist, albums } = &state.model {
-        if let View::List {
-            list_state,
-            items: _,
-        } = &state.view
-        {
-            match action {
+        match &state.view {
+            View::List {
+                list_state,
+                items: _,
+            } => match action {
                 Key::Char('\n') => {
                     if let Some(selected) = list_state.selected() {
                         let tracks = if selected == 0 {
@@ -456,10 +455,54 @@ fn artist_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
+                Key::Char('e') => {
+                    if let Some(selected) = list_state.selected() {
+                        if selected > 0 {
+                            let album = &albums[selected - 1];
+                            let history = {
+                                let mut history = state.history.clone();
+                                if state.add_to_history {
+                                    history.push(state.clone());
+                                }
+                                history
+                            };
+                            Some(State {
+                                view: View::Edit {
+                                    input_fields: vec![(String::from("Name"), album.name.clone())], // TODO: would be cool to reuse views in order to have some sort of chooser dialogue instead of entering ids manually
+                                    selected: Some(0),
+                                },
+                                history,
+                                ..state.clone()
+                            })
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
                 _ => None,
-            }
-        } else {
-            None
+            },
+            View::Edit {
+                input_fields,
+                selected: _,
+            } => match action {
+                Key::Char('\n') => {
+                    if_chain! {
+                        if let Some(last) = state.history.last();
+                        if let View::List { list_state, items: _ } = &last.view;
+                        if let Some(selected) = list_state.selected();
+                        if let Some(second_last) = last.history.last();
+                        then {
+                            update_album(&state.context, &albums[selected - 1], &input_fields[0].1[..]);
+                            Some(REDUCER(second_last, &Key::Char('\n')))
+                        } else {
+                            None
+                        }
+                    }
+                }
+                _ => None,
+            },
         }
     } else {
         None
