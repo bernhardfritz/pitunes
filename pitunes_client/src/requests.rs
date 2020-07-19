@@ -6,15 +6,16 @@ use graphql_client::{GraphQLQuery, Response};
 use crate::constants::GRAPHQL;
 use crate::models::exports::{
     album_query, albums_query, artist_albums_query, artist_tracks_query, artists_query,
-    delete_playlist_track_mutation, genre_query, genres_query, playlist_query, playlists_query,
-    tracks_query, update_album_mutation, update_artist_mutation, update_genre_mutation,
-    update_playlist_mutation, update_playlist_track_mutation,
+    create_playlist_mutation, delete_playlist_mutation, delete_playlist_track_mutation,
+    genre_query, genres_query, playlist_query, playlists_query, tracks_query,
+    update_album_mutation, update_artist_mutation, update_genre_mutation, update_playlist_mutation,
+    update_playlist_track_mutation,
 };
 use crate::models::{
     Album, AlbumQuery, AlbumsQuery, Artist, ArtistAlbumsQuery, ArtistTracksQuery, ArtistsQuery,
-    DeletePlaylistTrackMutation, Genre, GenreQuery, GenresQuery, Playlist, PlaylistQuery,
-    PlaylistsQuery, Track, TracksQuery, UpdateAlbumMutation, UpdateArtistMutation,
-    UpdateGenreMutation, UpdatePlaylistMutation, UpdatePlaylistTrackMutation,
+    CreatePlaylistMutation, DeletePlaylistMutation, DeletePlaylistTrackMutation, Genre, GenreQuery,
+    GenresQuery, Playlist, PlaylistQuery, PlaylistsQuery, Track, TracksQuery, UpdateAlbumMutation,
+    UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation, UpdatePlaylistTrackMutation,
 };
 use crate::Context;
 
@@ -130,6 +131,44 @@ pub fn update_genre(context: &Arc<Context>, genre: &Genre, name: &str) -> Genre 
         .map(|data| data.update_genre)
         .map(|genre| genre.into())
         .unwrap()
+}
+
+pub fn create_playlist(context: &Arc<Context>, name: &str) -> Playlist {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = CreatePlaylistMutation::build_query(create_playlist_mutation::Variables {
+        playlist_input: create_playlist_mutation::PlaylistInput {
+            name: String::from(name),
+        },
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<create_playlist_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.create_playlist)
+        .map(|playlist| playlist.into())
+        .unwrap()
+}
+
+pub fn delete_playlist(context: &Arc<Context>, playlist: &Playlist) -> bool {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = DeletePlaylistMutation::build_query(delete_playlist_mutation::Variables {
+        id: playlist.id,
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<delete_playlist_mutation::ResponseData> = res.json().unwrap();
+    response_body.data.map(|data| data.delete_playlist).unwrap()
 }
 
 pub fn get_playlists(context: &Arc<Context>) -> Vec<Playlist> {

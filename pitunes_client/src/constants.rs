@@ -1,6 +1,7 @@
 pub const ALBUMS: &str = "Albums";
 pub const ALL_TRACKS: &str = "All tracks";
 pub const ARTISTS: &str = "Artists";
+pub const CREATE_NEW_PLAYLIST: &str = "Create new playlist...";
 pub const GENRES: &str = "Genres";
 pub const GRAPHQL: &str = "graphql";
 pub const PI_SYMBOL: &str = "π";

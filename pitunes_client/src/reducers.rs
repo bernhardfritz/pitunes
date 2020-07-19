@@ -6,13 +6,15 @@ use redux_rs::{combine_reducers, Reducer};
 use termion::event::Key;
 use tui::widgets::ListState;
 
-use crate::constants::{ALBUMS, ALL_TRACKS, ARTISTS, GENRES, PLAYLISTS, TRACKS};
+use crate::constants::{
+    ALBUMS, ALL_TRACKS, ARTISTS, CREATE_NEW_PLAYLIST, GENRES, PLAYLISTS, TRACKS,
+};
 use crate::models::Track;
 use crate::requests::{
-    delete_playlist_track, get_albums, get_albums_of_artist, get_artists, get_genres,
-    get_playlists, get_tracks, get_tracks_of_album, get_tracks_of_artist, get_tracks_of_genre,
-    get_tracks_of_playlist, update_album, update_artist, update_genre, update_playlist,
-    update_playlist_track,
+    create_playlist, delete_playlist, delete_playlist_track, get_albums, get_albums_of_artist,
+    get_artists, get_genres, get_playlists, get_tracks, get_tracks_of_album, get_tracks_of_artist,
+    get_tracks_of_genre, get_tracks_of_playlist, update_album, update_artist, update_genre,
+    update_playlist, update_playlist_track,
 };
 use crate::{play_queue, Model, State, View};
 
@@ -289,14 +291,17 @@ fn root_reducer(state: &State, action: &Key) -> State {
                                 let playlists = get_playlists(&state.context);
                                 let list_state = {
                                     let mut list_state = ListState::default();
-                                    let index = if playlists.is_empty() { None } else { Some(0) };
-                                    list_state.select(index);
+                                    list_state.select(Some(0));
                                     list_state
                                 };
-                                let items = playlists
-                                    .iter()
-                                    .map(|playlist| playlist.name.clone())
-                                    .collect();
+                                let items = {
+                                    let mut items: Vec<String> = playlists
+                                        .iter()
+                                        .map(|playlist| playlist.name.clone())
+                                        .collect();
+                                    items.insert(0, String::from(CREATE_NEW_PLAYLIST));
+                                    items
+                                };
                                 Some(State {
                                     model: Model::Playlists { playlists },
                                     view: View::List { list_state, items },
@@ -692,45 +697,78 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
             } => match action {
                 Key::Char('\n') => {
                     if let Some(selected) = list_state.selected() {
-                        let playlist = &playlists[selected];
-                        let tracks = get_tracks_of_playlist(&state.context, playlist);
-                        let list_state = {
-                            let mut list_state = ListState::default();
-                            let index = if tracks.is_empty() { None } else { Some(0) };
-                            list_state.select(index);
-                            list_state
-                        };
-                        let items = tracks.iter().map(|track| track.name.clone()).collect();
-                        Some(State {
-                            model: Model::Tracks { tracks },
-                            view: View::List { list_state, items },
-                            add_to_history: false,
-                            ..state.clone()
-                        })
+                        if selected == 0 {
+                            Some(State {
+                                view: View::Edit {
+                                    input_fields: vec![(String::from("Name"), String::new())],
+                                    selected: Some(0),
+                                },
+                                add_to_history: false,
+                                ..state.clone()
+                            })
+                        } else {
+                            let playlist = &playlists[selected - 1];
+                            let tracks = get_tracks_of_playlist(&state.context, playlist);
+                            let list_state = {
+                                let mut list_state = ListState::default();
+                                let index = if tracks.is_empty() { None } else { Some(0) };
+                                list_state.select(index);
+                                list_state
+                            };
+                            let items = tracks.iter().map(|track| track.name.clone()).collect();
+                            Some(State {
+                                model: Model::Tracks { tracks },
+                                view: View::List { list_state, items },
+                                add_to_history: false,
+                                ..state.clone()
+                            })
+                        }
                     } else {
                         None
                     }
                 }
                 Key::Char('e') => {
                     if let Some(selected) = list_state.selected() {
-                        let playlist = &playlists[selected];
-                        let history = {
-                            let mut history = state.history.clone();
-                            if state.add_to_history {
-                                history.push(state.clone());
-                            }
-                            history
-                        };
-                        Some(State {
-                            view: View::Edit {
-                                input_fields: vec![(String::from("Name"), playlist.name.clone())], // TODO: would be cool to reuse views in order to have some sort of chooser dialogue instead of entering ids manually
-                                selected: Some(0),
-                            },
-                            history,
-                            ..state.clone()
-                        })
+                        if selected > 0 {
+                            let playlist = &playlists[selected - 1];
+                            let history = {
+                                let mut history = state.history.clone();
+                                if state.add_to_history {
+                                    history.push(state.clone());
+                                }
+                                history
+                            };
+                            Some(State {
+                                view: View::Edit {
+                                    input_fields: vec![(
+                                        String::from("Name"),
+                                        playlist.name.clone(),
+                                    )], // TODO: would be cool to reuse views in order to have some sort of chooser dialogue instead of entering ids manually
+                                    selected: Some(0),
+                                },
+                                history,
+                                ..state.clone()
+                            })
+                        } else {
+                            None
+                        }
                     } else {
                         None
+                    }
+                }
+                Key::Char('d') => {
+                    if_chain! {
+                        if let Some(selected) = list_state.selected();
+                        if selected > 0;
+                        let playlist = &playlists[selected - 1];
+                        let deleted = delete_playlist(&state.context, playlist);
+                        if deleted;
+                        if let Some(last) = state.history.last();
+                        then {
+                            Some(REDUCER(last, &Key::Char('\n')))
+                        } else {
+                            None
+                        }
                     }
                 }
                 _ => None,
@@ -746,7 +784,11 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                         if let Some(selected) = list_state.selected();
                         if let Some(second_last) = last.history.last();
                         then {
-                            update_playlist(&state.context, &playlists[selected], &input_fields[0].1[..]);
+                            if selected == 0 {
+                                create_playlist(&state.context, &input_fields[0].1[..]);
+                            } else {
+                                update_playlist(&state.context, &playlists[selected - 1], &input_fields[0].1[..]);
+                            }
                             Some(REDUCER(second_last, &Key::Char('\n')))
                         } else {
                             None

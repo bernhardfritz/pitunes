@@ -3,10 +3,12 @@ mod constants;
 mod event;
 mod http_stream_reader;
 mod models;
+#[allow(dead_code)]
 mod my_gauge;
 mod reducers;
 mod requests;
 
+use std::cmp;
 use std::env;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex, RwLock};
@@ -282,7 +284,8 @@ fn main() -> Result<(), failure::Error> {
                     let duration_minutes = duration.as_secs() / 60;
                     let duration_seconds = duration.as_secs() % 60;
                     let title = format!(" {} ", first.name);
-                    let percent = (elapsed.as_millis() * 100 / duration.as_millis()) as u16;
+                    let percent =
+                        cmp::min(100, elapsed.as_millis() * 100 / duration.as_millis()) as u16;
                     let label = format!(
                         "{}:{:0>2} / {}:{:0>2}",
                         elapsed_minutes, elapsed_seconds, duration_minutes, duration_seconds

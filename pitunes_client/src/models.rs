@@ -43,6 +43,22 @@ pub struct ArtistsQuery;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/create_playlist_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct CreatePlaylistMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/delete_playlist_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct DeletePlaylistMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
     query_path = "src/graphql/delete_playlist_track_mutation.graphql",
     response_derives = "Debug"
 )]
@@ -247,6 +263,14 @@ impl From<update_genre_mutation::UpdateGenreMutationUpdateGenre> for Genre {
     }
 }
 
+impl From<create_playlist_mutation::CreatePlaylistMutationCreatePlaylist> for Playlist {
+    fn from(
+        create_playlist_mutation::CreatePlaylistMutationCreatePlaylist { id, name }: create_playlist_mutation::CreatePlaylistMutationCreatePlaylist,
+    ) -> Playlist {
+        Playlist { id, name }
+    }
+}
+
 impl From<playlist_query::PlaylistQueryPlaylistTracks> for Track {
     fn from(
         playlist_query::PlaylistQueryPlaylistTracks { id, name, duration }: playlist_query::PlaylistQueryPlaylistTracks,
@@ -295,6 +319,8 @@ pub mod exports {
     pub use super::artist_albums_query;
     pub use super::artist_tracks_query;
     pub use super::artists_query;
+    pub use super::create_playlist_mutation;
+    pub use super::delete_playlist_mutation;
     pub use super::delete_playlist_track_mutation;
     pub use super::genre_query;
     pub use super::genres_query;
