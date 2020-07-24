@@ -152,6 +152,14 @@ pub struct UpdatePlaylistMutation;
 )]
 pub struct UpdatePlaylistTrackMutation;
 
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/update_track_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct UpdateTrackMutation;
+
 #[derive(Clone)]
 pub struct Album {
     pub id: i64,
@@ -313,6 +321,14 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
     }
 }
 
+impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
+    fn from(
+        update_track_mutation::UpdateTrackMutationUpdateTrack { id, name, duration }: update_track_mutation::UpdateTrackMutationUpdateTrack,
+    ) -> Track {
+        Track { id, name, duration }
+    }
+}
+
 pub mod exports {
     pub use super::album_query;
     pub use super::albums_query;
@@ -333,4 +349,5 @@ pub mod exports {
     pub use super::update_genre_mutation;
     pub use super::update_playlist_mutation;
     pub use super::update_playlist_track_mutation;
+    pub use super::update_track_mutation;
 }

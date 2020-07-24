@@ -9,13 +9,14 @@ use crate::models::exports::{
     create_playlist_mutation, delete_playlist_mutation, delete_playlist_track_mutation,
     genre_query, genres_query, playlist_query, playlists_query, tracks_query,
     update_album_mutation, update_artist_mutation, update_genre_mutation, update_playlist_mutation,
-    update_playlist_track_mutation,
+    update_playlist_track_mutation, update_track_mutation,
 };
 use crate::models::{
     Album, AlbumQuery, AlbumsQuery, Artist, ArtistAlbumsQuery, ArtistTracksQuery, ArtistsQuery,
     CreatePlaylistMutation, DeletePlaylistMutation, DeletePlaylistTrackMutation, Genre, GenreQuery,
     GenresQuery, Playlist, PlaylistQuery, PlaylistsQuery, Track, TracksQuery, UpdateAlbumMutation,
     UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation, UpdatePlaylistTrackMutation,
+    UpdateTrackMutation,
 };
 use crate::Context;
 
@@ -225,6 +226,33 @@ pub fn get_tracks(context: &Arc<Context>) -> Vec<Track> {
     let response_body: Response<tracks_query::ResponseData> = res.json().unwrap();
     let tracks = response_body.data.map(|data| data.tracks).unwrap();
     tracks.into_iter().map(|track| track.into()).collect()
+}
+
+pub fn update_track(context: &Arc<Context>, track: &Track, name: &str) -> Track {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = UpdateTrackMutation::build_query(update_track_mutation::Variables {
+        id: track.id,
+        track_input: update_track_mutation::TrackInput {
+            name: String::from(name),
+            album_id: None,
+            artist_id: None,
+            genre_id: None,
+            track_number: None,
+        },
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<update_track_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.update_track)
+        .map(|track| track.into())
+        .unwrap()
 }
 
 pub fn get_tracks_of_album(context: &Arc<Context>, album: &Album) -> Vec<Track> {

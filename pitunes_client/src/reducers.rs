@@ -14,7 +14,7 @@ use crate::requests::{
     create_playlist, delete_playlist, delete_playlist_track, get_albums, get_albums_of_artist,
     get_artists, get_genres, get_playlists, get_tracks, get_tracks_of_album, get_tracks_of_artist,
     get_tracks_of_genre, get_tracks_of_playlist, update_album, update_artist, update_genre,
-    update_playlist, update_playlist_track,
+    update_playlist, update_playlist_track, update_track,
 };
 use crate::{play_queue, Model, State, View};
 
@@ -94,15 +94,15 @@ fn list_reducer(state: &State, action: &Key) -> State {
             }
             Key::Char('\n') => {
                 if list_state.selected().is_some() {
-                    if state.add_to_history {
+                    if let Model::Tracks { tracks: _ } = state.model {
+                        None
+                    } else {
                         let mut history = state.history.clone();
                         history.push(state.clone());
                         Some(State {
                             history,
                             ..state.clone()
                         })
-                    } else {
-                        None
                     }
                 } else {
                     None
@@ -320,7 +320,6 @@ fn root_reducer(state: &State, action: &Key) -> State {
                                 Some(State {
                                     model: Model::Tracks { tracks },
                                     view: View::List { list_state, items },
-                                    add_to_history: false,
                                     ..state.clone()
                                 })
                             }
@@ -366,7 +365,6 @@ fn albums_reducer(state: &State, action: &Key) -> State {
                         Some(State {
                             model: Model::Tracks { tracks },
                             view: View::List { list_state, items },
-                            add_to_history: false,
                             ..state.clone()
                         })
                     } else {
@@ -378,9 +376,7 @@ fn albums_reducer(state: &State, action: &Key) -> State {
                         let album = &albums[selected];
                         let history = {
                             let mut history = state.history.clone();
-                            if state.add_to_history {
-                                history.push(state.clone());
-                            }
+                            history.push(state.clone());
                             history
                         };
                         Some(State {
@@ -453,7 +449,6 @@ fn artist_reducer(state: &State, action: &Key) -> State {
                         Some(State {
                             model: Model::Tracks { tracks },
                             view: View::List { list_state, items },
-                            add_to_history: false,
                             ..state.clone()
                         })
                     } else {
@@ -466,9 +461,7 @@ fn artist_reducer(state: &State, action: &Key) -> State {
                             let album = &albums[selected - 1];
                             let history = {
                                 let mut history = state.history.clone();
-                                if state.add_to_history {
-                                    history.push(state.clone());
-                                }
+                                history.push(state.clone());
                                 history
                             };
                             Some(State {
@@ -555,9 +548,7 @@ fn artists_reducer(state: &State, action: &Key) -> State {
                         let artist = &artists[selected];
                         let history = {
                             let mut history = state.history.clone();
-                            if state.add_to_history {
-                                history.push(state.clone());
-                            }
+                            history.push(state.clone());
                             history
                         };
                         Some(State {
@@ -626,7 +617,6 @@ fn genres_reducer(state: &State, action: &Key) -> State {
                         Some(State {
                             model: Model::Tracks { tracks },
                             view: View::List { list_state, items },
-                            add_to_history: false,
                             ..state.clone()
                         })
                     } else {
@@ -638,9 +628,7 @@ fn genres_reducer(state: &State, action: &Key) -> State {
                         let genre = &genres[selected];
                         let history = {
                             let mut history = state.history.clone();
-                            if state.add_to_history {
-                                history.push(state.clone());
-                            }
+                            history.push(state.clone());
                             history
                         };
                         Some(State {
@@ -703,7 +691,6 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                                     input_fields: vec![(String::from("Name"), String::new())],
                                     selected: Some(0),
                                 },
-                                add_to_history: false,
                                 ..state.clone()
                             })
                         } else {
@@ -719,7 +706,6 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                             Some(State {
                                 model: Model::Tracks { tracks },
                                 view: View::List { list_state, items },
-                                add_to_history: false,
                                 ..state.clone()
                             })
                         }
@@ -733,9 +719,7 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                             let playlist = &playlists[selected - 1];
                             let history = {
                                 let mut history = state.history.clone();
-                                if state.add_to_history {
-                                    history.push(state.clone());
-                                }
+                                history.push(state.clone());
                                 history
                             };
                             Some(State {
@@ -809,125 +793,165 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
 }
 
 fn tracks_reducer(state: &State, action: &Key) -> State {
-    let new_state = if_chain! {
-        if let Model::Tracks { tracks } = &state.model;
-        if let View::List { list_state: tracks_list_state, items: _ } = &state.view;
-        if let Some(track_index) = tracks_list_state.selected();
-        then {
-            match action {
-                Key::Char('\n') => {
-                    let mut queue: Vec<Track> = tracks.clone();
-                    queue.rotate_left(track_index);
-                    play_queue(state.context.clone(), queue);
+    let new_state = if let Model::Tracks { tracks } = &state.model {
+        match &state.view {
+            View::List {
+                list_state: tracks_list_state,
+                items: _,
+            } => {
+                if let Some(track_index) = tracks_list_state.selected() {
+                    match action {
+                        Key::Char('\n') => {
+                            let mut queue: Vec<Track> = tracks.clone();
+                            queue.rotate_left(track_index);
+                            play_queue(state.context.clone(), queue);
+                            None
+                        }
+                        Key::Char('e') => {
+                            let track = &tracks[track_index];
+                            let history = {
+                                let mut history = state.history.clone();
+                                history.push(state.clone());
+                                history
+                            };
+                            Some(State {
+                                view: View::Edit {
+                                    input_fields: vec![(String::from("Name"), track.name.clone())], // TODO: would be cool to reuse views in order to have some sort of chooser dialogue instead of entering ids manually
+                                    selected: Some(0),
+                                },
+                                history,
+                                ..state.clone()
+                            })
+                        }
+                        _ => {
+                            if_chain! {
+                                if let Some(last) = state.history.last();
+                                if let View::List { list_state: prev_list_state, items: _ } = &last.view;
+                                then {
+                                    match &last.model {
+                                        Model::Playlists { playlists } => {
+                                            if let Some(playlist_index) = prev_list_state.selected() {
+                                                let playlist = &playlists[playlist_index];
+                                                match action {
+                                                    Key::Char('d') => {
+                                                        let track = &tracks[track_index];
+                                                        let position = Some(i64::try_from(track_index).unwrap());
+                                                        let deleted = delete_playlist_track(&state.context, playlist, track, position);
+                                                        if deleted {
+                                                            Some(REDUCER(last, &Key::Char('\n')))
+                                                        } else {
+                                                            None
+                                                        }
+                                                    }
+                                                    Key::Char('j') => {
+                                                        if track_index > 0 {
+                                                            let range_start = track_index;
+                                                            let insert_before = track_index - 1;
+                                                            let tracks = update_playlist_track(
+                                                                &state.context,
+                                                                &playlist,
+                                                                range_start,
+                                                                insert_before,
+                                                            );
+                                                            let list_state = {
+                                                                let mut list_state = ListState::default();
+                                                                let selected = Some(
+                                                                    if range_start == insert_before || range_start + 1 == insert_before {
+                                                                        range_start
+                                                                    } else if range_start < insert_before {
+                                                                        range_start + 1
+                                                                    } else {
+                                                                        range_start - 1
+                                                                    },
+                                                                );
+                                                                list_state.select(selected);
+                                                                list_state
+                                                            };
+                                                            let items = tracks.iter().map(|track| track.name.clone()).collect();
+                                                            Some(State {
+                                                                model: Model::Tracks { tracks },
+                                                                view: View::List { list_state, items },
+                                                                ..state.clone()
+                                                            })
+                                                        } else {
+                                                            None
+                                                        }
+                                                    }
+                                                    Key::Char('k') => {
+                                                        if track_index < tracks.len() - 1 {
+                                                            let range_start = track_index;
+                                                            let insert_before = track_index + 2;
+                                                            let tracks = update_playlist_track(
+                                                                &state.context,
+                                                                &playlist,
+                                                                range_start,
+                                                                insert_before,
+                                                            );
+                                                            let list_state = {
+                                                                let mut list_state = ListState::default();
+                                                                let selected = Some(
+                                                                    if range_start == insert_before || range_start + 1 == insert_before {
+                                                                        range_start
+                                                                    } else if range_start < insert_before {
+                                                                        range_start + 1
+                                                                    } else {
+                                                                        range_start - 1
+                                                                    },
+                                                                );
+                                                                list_state.select(selected);
+                                                                list_state
+                                                            };
+                                                            let items = tracks.iter().map(|track| track.name.clone()).collect();
+                                                            Some(State {
+                                                                model: Model::Tracks { tracks },
+                                                                view: View::List { list_state, items },
+                                                                ..state.clone()
+                                                            })
+                                                        } else {
+                                                            None
+                                                        }
+                                                    }
+                                                    _ => None
+                                                }
+                                            } else {
+                                                None
+                                            }
+                                        }
+                                        _ => None
+                                    }
+                                } else {
+                                    None
+                                }
+                            }
+                        }
+                    }
+                } else {
                     None
                 }
-                _ => {
+            }
+            View::Edit {
+                input_fields,
+                selected: _,
+            } => match action {
+                Key::Char('\n') => {
                     if_chain! {
                         if let Some(last) = state.history.last();
-                        if let View::List { list_state: prev_list_state, items: _ } = &last.view;
+                        if let View::List { list_state, items: _ } = &last.view;
+                        if let Some(selected) = list_state.selected();
+                        if let Some(second_last) = last.history.last();
                         then {
-                            match &last.model {
-                                Model::Playlists { playlists } => {
-                                    if let Some(playlist_index) = prev_list_state.selected() {
-                                        let playlist = &playlists[playlist_index];
-                                        match action {
-                                            Key::Char('d') => {
-                                                let track = &tracks[track_index];
-                                                let position = Some(i64::try_from(track_index).unwrap());
-                                                let deleted = delete_playlist_track(&state.context, playlist, track, position);
-                                                if deleted {
-                                                    Some(REDUCER(last, &Key::Char('\n')))
-                                                } else {
-                                                    None
-                                                }
-                                            }
-                                            Key::Char('j') => {
-                                                if track_index > 0 {
-                                                    let range_start = track_index;
-                                                    let insert_before = track_index - 1;
-                                                    let tracks = update_playlist_track(
-                                                        &state.context,
-                                                        &playlist,
-                                                        range_start,
-                                                        insert_before,
-                                                    );
-                                                    let list_state = {
-                                                        let mut list_state = ListState::default();
-                                                        let selected = Some(
-                                                            if range_start == insert_before || range_start + 1 == insert_before {
-                                                                range_start
-                                                            } else if range_start < insert_before {
-                                                                range_start + 1
-                                                            } else {
-                                                                range_start - 1
-                                                            },
-                                                        );
-                                                        list_state.select(selected);
-                                                        list_state
-                                                    };
-                                                    let items = tracks.iter().map(|track| track.name.clone()).collect();
-                                                    Some(State {
-                                                        model: Model::Tracks { tracks },
-                                                        view: View::List { list_state, items },
-                                                        add_to_history: false,
-                                                        ..state.clone()
-                                                    })
-                                                } else {
-                                                    None
-                                                }
-                                            }
-                                            Key::Char('k') => {
-                                                if track_index < tracks.len() - 1 {
-                                                    let range_start = track_index;
-                                                    let insert_before = track_index + 2;
-                                                    let tracks = update_playlist_track(
-                                                        &state.context,
-                                                        &playlist,
-                                                        range_start,
-                                                        insert_before,
-                                                    );
-                                                    let list_state = {
-                                                        let mut list_state = ListState::default();
-                                                        let selected = Some(
-                                                            if range_start == insert_before || range_start + 1 == insert_before {
-                                                                range_start
-                                                            } else if range_start < insert_before {
-                                                                range_start + 1
-                                                            } else {
-                                                                range_start - 1
-                                                            },
-                                                        );
-                                                        list_state.select(selected);
-                                                        list_state
-                                                    };
-                                                    let items = tracks.iter().map(|track| track.name.clone()).collect();
-                                                    Some(State {
-                                                        model: Model::Tracks { tracks },
-                                                        view: View::List { list_state, items },
-                                                        add_to_history: false,
-                                                        ..state.clone()
-                                                    })
-                                                } else {
-                                                    None
-                                                }
-                                            }
-                                            _ => None
-                                        }
-                                    } else {
-                                        None
-                                    }
-                                }
-                                _ => None
-                            }
+                            update_track(&state.context, &tracks[selected], &input_fields[0].1[..]);
+                            Some(REDUCER(second_last, &Key::Char('\n')))
                         } else {
                             None
                         }
                     }
                 }
-            }
-        } else {
-            None
+                _ => None,
+            },
         }
+    } else {
+        None
     };
     if let Some(new_state) = new_state {
         new_state

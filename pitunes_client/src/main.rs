@@ -75,7 +75,6 @@ pub struct State {
     model: Model,
     view: View,
     history: Vec<State>,
-    add_to_history: bool,
 }
 
 struct BottomState {
@@ -219,14 +218,12 @@ fn main() -> Result<(), failure::Error> {
                 View::List { list_state, items }
             };
             let history = Vec::new();
-            let add_to_history = true;
             State {
                 context,
                 break_condition,
                 model,
                 view,
                 history,
-                add_to_history,
             }
         };
         Store::new(REDUCER, initial_state)
