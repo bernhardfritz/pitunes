@@ -27,7 +27,8 @@ use termion::raw::IntoRawMode;
 use tui::backend::TermionBackend;
 use tui::layout::{Constraint, Layout};
 use tui::style::{Modifier, Style};
-use tui::widgets::{Block, BorderType, Borders, List, ListState, Paragraph, Text};
+use tui::text::{Span, Spans};
+use tui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph};
 use tui::Terminal;
 use unicode_width::UnicodeWidthStr;
 
@@ -262,7 +263,7 @@ fn main() -> Result<(), failure::Error> {
             title
         };
 
-        terminal.draw(|mut f| {
+        terminal.draw(|f| {
             let size = f.size();
             let play_instant_guard = state.context.play_instant_lock.read().unwrap();
             let bottom_state = if let Some(play_instant) = *play_instant_guard {
@@ -331,18 +332,24 @@ fn main() -> Result<(), failure::Error> {
                     } else {
                         Modifier::REVERSED
                     };
-                    let list = List::new(items.iter().enumerate().map(|(i, item)| {
-                        if let Some(active) = active {
-                            if active == i {
-                                Text::styled(item, Style::default().modifier(Modifier::BOLD))
-                            } else {
-                                Text::raw(item)
-                            }
-                        } else {
-                            Text::raw(item)
-                        }
-                    }))
-                    .highlight_style(Style::default().modifier(highlight_modifier));
+                    let list_items: Vec<ListItem> = items
+                        .iter()
+                        .enumerate()
+                        .map(|(i, item)| {
+                            let style = {
+                                let mut style = Style::default();
+                                if let Some(active) = active {
+                                    if active == i {
+                                        style = style.add_modifier(Modifier::BOLD);
+                                    }
+                                }
+                                style
+                            };
+                            ListItem::new(vec![Spans::from(vec![Span::styled(item, style)])])
+                        })
+                        .collect();
+                    let list = List::new(list_items)
+                        .highlight_style(Style::default().add_modifier(highlight_modifier));
                     f.render_stateful_widget(list, top_chunks[0], &mut list_state.clone());
                 }
                 View::Edit {
@@ -354,23 +361,24 @@ fn main() -> Result<(), failure::Error> {
                         .constraints(&constraints[..])
                         .split(top_chunks[0]);
                     for (i, input_field) in input_fields.iter().enumerate() {
-                        let text = [Text::raw(&input_field.1[..])];
+                        let text = vec![Spans::from(vec![Span::raw(&input_field.1[..])])];
                         let block = {
-                            let block = Block::default()
+                            let style = {
+                                let mut style = Style::default();
+                                if let Some(selected) = *selected {
+                                    if selected == i {
+                                        style = style.add_modifier(Modifier::BOLD);
+                                    }
+                                }
+                                style
+                            };
+                            let title = Span::styled(&input_field.0[..], style);
+                            Block::default()
                                 .borders(Borders::ALL)
                                 .border_type(BorderType::Rounded)
-                                .title(&input_field.0[..]);
-                            if let Some(selected) = *selected {
-                                if selected == i {
-                                    block.title_style(Style::default().modifier(Modifier::BOLD))
-                                } else {
-                                    block
-                                }
-                            } else {
-                                block
-                            }
+                                .title(title)
                         };
-                        let paragraph = Paragraph::new(text.iter()).block(block);
+                        let paragraph = Paragraph::new(text).block(block);
                         f.render_widget(paragraph, top_inner_chunks[i]);
                     }
                 }
