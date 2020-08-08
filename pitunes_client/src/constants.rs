@@ -6,5 +6,6 @@ pub const GENRES: &str = "Genres";
 pub const GRAPHQL: &str = "graphql";
 pub const PI_SYMBOL: &str = "π";
 pub const PLAYLISTS: &str = "Playlists";
+pub const SEARCH: &str = " Search ";
 pub const STATIC: &str = "static";
 pub const TRACKS: &str = "Tracks";

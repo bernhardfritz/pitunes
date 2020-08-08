@@ -16,7 +16,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use clap::{self, value_t};
-use constants::{ALBUMS, ARTISTS, GENRES, PI_SYMBOL, PLAYLISTS, STATIC, TRACKS};
+use constants::{ALBUMS, ARTISTS, GENRES, PI_SYMBOL, PLAYLISTS, SEARCH, STATIC, TRACKS};
 use dotenv::dotenv;
 use http_stream_reader::HttpStreamReader;
 use models::{Album, Artist, Genre, Playlist, Track};
@@ -62,6 +62,8 @@ pub enum View {
     List {
         list_state: ListState,
         items: Vec<String>,
+        pattern: Option<String>,
+        indices: Vec<usize>,
     },
     Edit {
         input_fields: Vec<(String, String)>,
@@ -78,10 +80,15 @@ pub struct State {
     history: Vec<State>,
 }
 
-struct BottomState {
-    title: String,
-    percent: u16,
-    label: String,
+enum BottomState {
+    Player {
+        title: String,
+        percent: u16,
+        label: String,
+    },
+    Search {
+        pattern: String,
+    },
 }
 
 // Look away, I'm hideous!
@@ -216,7 +223,14 @@ fn main() -> Result<(), failure::Error> {
                     String::from(PLAYLISTS),
                     String::from(TRACKS),
                 ];
-                View::List { list_state, items }
+                let pattern = None;
+                let indices = (0..items.len()).collect();
+                View::List {
+                    list_state,
+                    items,
+                    pattern,
+                    indices,
+                }
             };
             let history = Vec::new();
             State {
@@ -252,10 +266,16 @@ fn main() -> Result<(), failure::Error> {
             let mut title = String::from(" ");
             title.push_str(&root_title[..]);
             for state in &state.history {
-                if let View::List { list_state, items } = &state.view {
+                if let View::List {
+                    list_state,
+                    items,
+                    pattern: _,
+                    indices,
+                } = &state.view
+                {
                     if let Some(selected) = list_state.selected() {
                         title.push_str(" ─ ");
-                        title.push_str(&items[selected][..]);
+                        title.push_str(&items[indices[selected]][..]);
                     }
                 }
             }
@@ -266,38 +286,55 @@ fn main() -> Result<(), failure::Error> {
         terminal.draw(|f| {
             let size = f.size();
             let play_instant_guard = state.context.play_instant_lock.read().unwrap();
-            let bottom_state = if let Some(play_instant) = *play_instant_guard {
-                let queue_guard = state.context.queue_lock.read().unwrap();
-                if let Some(first) = queue_guard.first() {
-                    let lazy_elapsed_guard = state.context.lazy_elapsed_lock.read().unwrap();
-                    let sink_guard = state.context.sink_lock.read().unwrap();
-                    let elapsed = if sink_guard.is_paused() {
-                        *lazy_elapsed_guard
+            let bottom_state = match &state.view {
+                View::List {
+                    list_state: _,
+                    items: _,
+                    pattern,
+                    indices: _,
+                } if pattern.is_some() => Some(BottomState::Search {
+                    pattern: pattern.clone().unwrap(),
+                }),
+                _ => {
+                    if let Some(play_instant) = *play_instant_guard {
+                        let queue_guard = state.context.queue_lock.read().unwrap();
+                        if let Some(first) = queue_guard.first() {
+                            let lazy_elapsed_guard =
+                                state.context.lazy_elapsed_lock.read().unwrap();
+                            let sink_guard = state.context.sink_lock.read().unwrap();
+                            let elapsed = if sink_guard.is_paused() {
+                                *lazy_elapsed_guard
+                            } else {
+                                *lazy_elapsed_guard + play_instant.elapsed()
+                            };
+                            let elapsed_minutes = elapsed.as_secs() / 60;
+                            let elapsed_seconds = elapsed.as_secs() % 60;
+                            let duration = Duration::from_millis(first.duration as u64);
+                            let duration_minutes = duration.as_secs() / 60;
+                            let duration_seconds = duration.as_secs() % 60;
+                            let title = format!(" {} ", first.name);
+                            let percent =
+                                cmp::min(100, elapsed.as_millis() * 100 / duration.as_millis())
+                                    as u16;
+                            let label = format!(
+                                "{}:{:0>2} / {}:{:0>2}",
+                                elapsed_minutes,
+                                elapsed_seconds,
+                                duration_minutes,
+                                duration_seconds
+                            );
+                            Some(BottomState::Player {
+                                title,
+                                percent,
+                                label,
+                            })
+                        } else {
+                            None
+                        }
                     } else {
-                        *lazy_elapsed_guard + play_instant.elapsed()
-                    };
-                    let elapsed_minutes = elapsed.as_secs() / 60;
-                    let elapsed_seconds = elapsed.as_secs() % 60;
-                    let duration = Duration::from_millis(first.duration as u64);
-                    let duration_minutes = duration.as_secs() / 60;
-                    let duration_seconds = duration.as_secs() % 60;
-                    let title = format!(" {} ", first.name);
-                    let percent =
-                        cmp::min(100, elapsed.as_millis() * 100 / duration.as_millis()) as u16;
-                    let label = format!(
-                        "{}:{:0>2} / {}:{:0>2}",
-                        elapsed_minutes, elapsed_seconds, duration_minutes, duration_seconds
-                    );
-                    Some(BottomState {
-                        title,
-                        percent,
-                        label,
-                    })
-                } else {
-                    None
+                        None
+                    }
                 }
-            } else {
-                None
             };
             let constraints = if bottom_state.is_some() {
                 vec![Constraint::Min(0), Constraint::Length(3)]
@@ -318,10 +355,15 @@ fn main() -> Result<(), failure::Error> {
                 .vertical_margin(2)
                 .split(chunks[0]);
             match &state.view {
-                View::List { list_state, items } => {
+                View::List {
+                    list_state,
+                    items,
+                    pattern: _,
+                    indices,
+                } => {
                     let highlight_modifier = if let Some(selected) = list_state.selected() {
                         if let Some(active) = active {
-                            if selected == active {
+                            if indices[selected] == active {
                                 Modifier::REVERSED | Modifier::BOLD
                             } else {
                                 Modifier::REVERSED
@@ -332,20 +374,22 @@ fn main() -> Result<(), failure::Error> {
                     } else {
                         Modifier::REVERSED
                     };
-                    let list_items: Vec<ListItem> = items
+                    let list_items: Vec<ListItem> = indices
                         .iter()
-                        .enumerate()
-                        .map(|(i, item)| {
+                        .map(|i| {
                             let style = {
                                 let mut style = Style::default();
                                 if let Some(active) = active {
-                                    if active == i {
+                                    if active == *i {
                                         style = style.add_modifier(Modifier::BOLD);
                                     }
                                 }
                                 style
                             };
-                            ListItem::new(vec![Spans::from(vec![Span::styled(item, style)])])
+                            ListItem::new(vec![Spans::from(vec![Span::styled(
+                                items[*i].clone(),
+                                style,
+                            )])])
                         })
                         .collect();
                     let list = List::new(list_items)
@@ -384,20 +428,35 @@ fn main() -> Result<(), failure::Error> {
                 }
             }
             if let Some(bottom_state) = bottom_state {
-                let bottom_block = Block::default()
-                    .borders(Borders::ALL)
-                    .border_type(BorderType::Rounded)
-                    .title(&bottom_state.title[..]);
-                f.render_widget(bottom_block, chunks[1]);
-                let bottom_chunks = Layout::default()
-                    .constraints([Constraint::Min(0)].as_ref())
-                    .horizontal_margin(2)
-                    .vertical_margin(1)
-                    .split(chunks[1]);
-                let my_gauge = MyGauge::default()
-                    .percent(bottom_state.percent)
-                    .label(&bottom_state.label[..]);
-                f.render_widget(my_gauge, bottom_chunks[0]);
+                match bottom_state {
+                    BottomState::Player {
+                        title,
+                        percent,
+                        label,
+                    } => {
+                        let bottom_block = Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .title(&title[..]);
+                        f.render_widget(bottom_block, chunks[1]);
+                        let bottom_chunks = Layout::default()
+                            .constraints([Constraint::Min(0)].as_ref())
+                            .horizontal_margin(2)
+                            .vertical_margin(1)
+                            .split(chunks[1]);
+                        let my_gauge = MyGauge::default().percent(percent).label(&label[..]);
+                        f.render_widget(my_gauge, bottom_chunks[0]);
+                    }
+                    BottomState::Search { pattern } => {
+                        let text = vec![Spans::from(vec![Span::raw(&pattern[..])])];
+                        let bottom_block = Block::default()
+                            .borders(Borders::ALL)
+                            .border_type(BorderType::Rounded)
+                            .title(SEARCH);
+                        let paragraph = Paragraph::new(text).block(bottom_block);
+                        f.render_widget(paragraph, chunks[1]);
+                    }
+                }
             }
         })?;
 
@@ -405,7 +464,24 @@ fn main() -> Result<(), failure::Error> {
             View::List {
                 list_state: _,
                 items: _,
-            } => terminal.hide_cursor()?,
+                pattern,
+                indices: _,
+            } => {
+                if let Some(pattern) = pattern {
+                    terminal.show_cursor()?;
+                    // Put the cursor back inside the input box
+                    let height = terminal.size().unwrap().height;
+                    write!(
+                        terminal.backend_mut(),
+                        "{}",
+                        Goto(2 + UnicodeWidthStr::width(&pattern[..]) as u16, height - 1)
+                    )?;
+                    // stdout is buffered, flush it to see the effect immediately when hitting backspace
+                    io::stdout().flush().ok();
+                } else {
+                    terminal.hide_cursor()?
+                }
+            }
             View::Edit {
                 input_fields,
                 selected,
