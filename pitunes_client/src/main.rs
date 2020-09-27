@@ -66,8 +66,21 @@ pub enum View {
         indices: Vec<usize>,
     },
     Edit {
-        input_fields: Vec<(String, String)>,
+        input_fields: Vec<InputField>,
         selected: Option<usize>,
+    },
+}
+
+#[derive(Clone)]
+pub enum InputField {
+    Text {
+        key: String,
+        value: String,
+    },
+    Chooser {
+        key: String,
+        value: String,
+        id: Option<i64>,
     },
 }
 
@@ -78,6 +91,7 @@ pub struct State {
     model: Model,
     view: View,
     history: Vec<State>,
+    stop_propagation: bool,
 }
 
 enum BottomState {
@@ -233,12 +247,14 @@ fn main() -> Result<(), failure::Error> {
                 }
             };
             let history = Vec::new();
+            let stop_propagation = false;
             State {
                 context,
                 break_condition,
                 model,
                 view,
                 history,
+                stop_propagation,
             }
         };
         Store::new(REDUCER, initial_state)
@@ -405,7 +421,23 @@ fn main() -> Result<(), failure::Error> {
                         .constraints(&constraints[..])
                         .split(top_chunks[0]);
                     for (i, input_field) in input_fields.iter().enumerate() {
-                        let text = vec![Spans::from(vec![Span::raw(&input_field.1[..])])];
+                        let (key, text) = match input_field {
+                            InputField::Text { key, value } => {
+                                (key, vec![Spans::from(vec![Span::raw(&value[..])])])
+                            }
+                            InputField::Chooser { key, value, id: _ } => {
+                                let style = {
+                                    let mut style = Style::default();
+                                    if let Some(selected) = *selected {
+                                        if selected == i {
+                                            style = style.add_modifier(Modifier::REVERSED);
+                                        }
+                                    }
+                                    style
+                                };
+                                (key, vec![Spans::from(vec![Span::styled(value, style)])])
+                            }
+                        };
                         let block = {
                             let style = {
                                 let mut style = Style::default();
@@ -416,7 +448,13 @@ fn main() -> Result<(), failure::Error> {
                                 }
                                 style
                             };
-                            let title = Span::styled(&input_field.0[..], style);
+                            let title = {
+                                let mut title = String::from(" ");
+                                title.push_str(&key[..]);
+                                title.push_str(" ");
+                                title
+                            };
+                            let title = Span::styled(title, style);
                             Block::default()
                                 .borders(Borders::ALL)
                                 .border_type(BorderType::Rounded)
@@ -487,18 +525,20 @@ fn main() -> Result<(), failure::Error> {
                 selected,
             } => {
                 if let Some(selected) = *selected {
-                    terminal.show_cursor()?;
-                    // Put the cursor back inside the input box
-                    write!(
-                        terminal.backend_mut(),
-                        "{}",
-                        Goto(
-                            5 + UnicodeWidthStr::width(&input_fields[selected].1[..]) as u16,
-                            4 + 3 * selected as u16
-                        )
-                    )?;
-                    // stdout is buffered, flush it to see the effect immediately when hitting backspace
-                    io::stdout().flush().ok();
+                    if let InputField::Text { key: _, value } = &input_fields[selected] {
+                        terminal.show_cursor()?;
+                        // Put the cursor back inside the input box
+                        write!(
+                            terminal.backend_mut(),
+                            "{}",
+                            Goto(
+                                5 + UnicodeWidthStr::width(&value[..]) as u16,
+                                4 + 3 * selected as u16
+                            )
+                        )?;
+                        // stdout is buffered, flush it to see the effect immediately when hitting backspace
+                        io::stdout().flush().ok();
+                    }
                 }
             }
         }

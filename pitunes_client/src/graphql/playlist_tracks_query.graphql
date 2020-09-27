@@ -1,4 +1,4 @@
-query PlaylistQuery($id: Int!) {
+query PlaylistTracksQuery($id: Int!) {
   playlist(id: $id) {
     id
     name
@@ -6,6 +6,9 @@ query PlaylistQuery($id: Int!) {
       id
       name
       duration
+      albumId
+      artistId
+      genreId
     }
   }
 }

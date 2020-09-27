@@ -3,5 +3,8 @@ query TrackQuery($id: Int!) {
     id
     name
     duration
+    albumId
+    artistId
+    genreId
   }
 }

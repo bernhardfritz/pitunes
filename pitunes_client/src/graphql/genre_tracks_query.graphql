@@ -1,5 +1,5 @@
-query ArtistTracksQuery($id: Int!) {
-  artist(id: $id) {
+query GenreTracksQuery($id: Int!) {
+  genre(id: $id) {
     id
     name
     tracks {

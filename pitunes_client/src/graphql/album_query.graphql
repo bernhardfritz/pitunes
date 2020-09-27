@@ -2,10 +2,5 @@ query AlbumQuery($id: Int!) {
   album(id: $id) {
     id
     name
-    tracks {
-      id
-      name
-      duration
-    }
   }
 }

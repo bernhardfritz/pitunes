@@ -11,10 +11,26 @@ pub struct AlbumQuery;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/album_tracks_query.graphql",
+    response_derives = "Debug"
+)]
+pub struct AlbumTracksQuery;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
     query_path = "src/graphql/albums_query.graphql",
     response_derives = "Debug"
 )]
 pub struct AlbumsQuery;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/artist_query.graphql",
+    response_derives = "Debug"
+)]
+pub struct ArtistQuery;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -75,6 +91,14 @@ pub struct GenreQuery;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/genre_tracks_query.graphql",
+    response_derives = "Debug"
+)]
+pub struct GenreTracksQuery;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
     query_path = "src/graphql/genres_query.graphql",
     response_derives = "Debug"
 )]
@@ -83,10 +107,10 @@ pub struct GenresQuery;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
-    query_path = "src/graphql/playlist_query.graphql",
+    query_path = "src/graphql/playlist_tracks_query.graphql",
     response_derives = "Debug"
 )]
-pub struct PlaylistQuery;
+pub struct PlaylistTracksQuery;
 
 #[derive(GraphQLQuery)]
 #[graphql(
@@ -189,13 +213,36 @@ pub struct Track {
     pub id: i64,
     pub name: String,
     pub duration: i64,
+    pub album_id: Option<i64>,
+    pub artist_id: Option<i64>,
+    pub genre_id: Option<i64>,
 }
 
-impl From<album_query::AlbumQueryAlbumTracks> for Track {
+impl From<album_query::AlbumQueryAlbum> for Album {
+    fn from(album_query::AlbumQueryAlbum { id, name }: album_query::AlbumQueryAlbum) -> Album {
+        Album { id, name }
+    }
+}
+
+impl From<album_tracks_query::AlbumTracksQueryAlbumTracks> for Track {
     fn from(
-        album_query::AlbumQueryAlbumTracks { id, name, duration }: album_query::AlbumQueryAlbumTracks,
+        album_tracks_query::AlbumTracksQueryAlbumTracks {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }: album_tracks_query::AlbumTracksQueryAlbumTracks,
     ) -> Track {
-        Track { id, name, duration }
+        Track {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }
     }
 }
 
@@ -223,9 +270,9 @@ impl From<artist_albums_query::ArtistAlbumsQueryArtistAlbums> for Album {
     }
 }
 
-impl From<artists_query::ArtistsQueryArtists> for Artist {
+impl From<artist_query::ArtistQueryArtist> for Artist {
     fn from(
-        artists_query::ArtistsQueryArtists { id, name }: artists_query::ArtistsQueryArtists,
+        artist_query::ArtistQueryArtist { id, name }: artist_query::ArtistQueryArtist,
     ) -> Artist {
         Artist { id, name }
     }
@@ -233,9 +280,31 @@ impl From<artists_query::ArtistsQueryArtists> for Artist {
 
 impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for Track {
     fn from(
-        artist_tracks_query::ArtistTracksQueryArtistTracks { id, name, duration }: artist_tracks_query::ArtistTracksQueryArtistTracks,
+        artist_tracks_query::ArtistTracksQueryArtistTracks {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }: artist_tracks_query::ArtistTracksQueryArtistTracks,
     ) -> Track {
-        Track { id, name, duration }
+        Track {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }
+    }
+}
+
+impl From<artists_query::ArtistsQueryArtists> for Artist {
+    fn from(
+        artists_query::ArtistsQueryArtists { id, name }: artists_query::ArtistsQueryArtists,
+    ) -> Artist {
+        Artist { id, name }
     }
 }
 
@@ -247,11 +316,31 @@ impl From<update_artist_mutation::UpdateArtistMutationUpdateArtist> for Artist {
     }
 }
 
-impl From<genre_query::GenreQueryGenreTracks> for Track {
+impl From<genre_query::GenreQueryGenre> for Genre {
+    fn from(genre_query::GenreQueryGenre { id, name }: genre_query::GenreQueryGenre) -> Genre {
+        Genre { id, name }
+    }
+}
+
+impl From<genre_tracks_query::GenreTracksQueryGenreTracks> for Track {
     fn from(
-        genre_query::GenreQueryGenreTracks { id, name, duration }: genre_query::GenreQueryGenreTracks,
+        genre_tracks_query::GenreTracksQueryGenreTracks {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }: genre_tracks_query::GenreTracksQueryGenreTracks,
     ) -> Track {
-        Track { id, name, duration }
+        Track {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }
     }
 }
 
@@ -279,11 +368,25 @@ impl From<create_playlist_mutation::CreatePlaylistMutationCreatePlaylist> for Pl
     }
 }
 
-impl From<playlist_query::PlaylistQueryPlaylistTracks> for Track {
+impl From<playlist_tracks_query::PlaylistTracksQueryPlaylistTracks> for Track {
     fn from(
-        playlist_query::PlaylistQueryPlaylistTracks { id, name, duration }: playlist_query::PlaylistQueryPlaylistTracks,
+        playlist_tracks_query::PlaylistTracksQueryPlaylistTracks {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }: playlist_tracks_query::PlaylistTracksQueryPlaylistTracks,
     ) -> Track {
-        Track { id, name, duration }
+        Track {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }
     }
 }
 
@@ -305,9 +408,23 @@ impl From<update_playlist_mutation::UpdatePlaylistMutationUpdatePlaylist> for Pl
 
 impl From<tracks_query::TracksQueryTracks> for Track {
     fn from(
-        tracks_query::TracksQueryTracks { id, name, duration }: tracks_query::TracksQueryTracks,
+        tracks_query::TracksQueryTracks {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }: tracks_query::TracksQueryTracks,
     ) -> Track {
-        Track { id, name, duration }
+        Track {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }
     }
 }
 
@@ -315,32 +432,56 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
     for Track
 {
     fn from(
-        update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks { id, name, duration }: update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks,
+        update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks { id, name, duration, album_id, artist_id, genre_id }: update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks,
     ) -> Track {
-        Track { id, name, duration }
+        Track {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }
     }
 }
 
 impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
     fn from(
-        update_track_mutation::UpdateTrackMutationUpdateTrack { id, name, duration }: update_track_mutation::UpdateTrackMutationUpdateTrack,
+        update_track_mutation::UpdateTrackMutationUpdateTrack {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }: update_track_mutation::UpdateTrackMutationUpdateTrack,
     ) -> Track {
-        Track { id, name, duration }
+        Track {
+            id,
+            name,
+            duration,
+            album_id,
+            artist_id,
+            genre_id,
+        }
     }
 }
 
 pub mod exports {
     pub use super::album_query;
+    pub use super::album_tracks_query;
     pub use super::albums_query;
     pub use super::artist_albums_query;
+    pub use super::artist_query;
     pub use super::artist_tracks_query;
     pub use super::artists_query;
     pub use super::create_playlist_mutation;
     pub use super::delete_playlist_mutation;
     pub use super::delete_playlist_track_mutation;
     pub use super::genre_query;
+    pub use super::genre_tracks_query;
     pub use super::genres_query;
-    pub use super::playlist_query;
+    pub use super::playlist_tracks_query;
     pub use super::playlists_query;
     pub use super::track_query;
     pub use super::tracks_query;

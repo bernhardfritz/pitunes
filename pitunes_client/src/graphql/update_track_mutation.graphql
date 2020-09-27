@@ -3,5 +3,8 @@ mutation UpdateTrackMutation($id: Int!, $trackInput: TrackInput!) {
     id
     name
     duration
+    albumId
+    artistId
+    genreId
   }
 }
