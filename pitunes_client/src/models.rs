@@ -59,6 +59,30 @@ pub struct ArtistsQuery;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/create_album_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct CreateAlbumMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/create_artist_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct CreateArtistMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/create_genre_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct CreateGenreMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
     query_path = "src/graphql/create_playlist_mutation.graphql",
     response_derives = "Debug"
 )]
@@ -360,6 +384,30 @@ impl From<update_genre_mutation::UpdateGenreMutationUpdateGenre> for Genre {
     }
 }
 
+impl From<create_album_mutation::CreateAlbumMutationCreateAlbum> for Album {
+    fn from(
+        create_album_mutation::CreateAlbumMutationCreateAlbum { id, name }: create_album_mutation::CreateAlbumMutationCreateAlbum,
+    ) -> Album {
+        Album { id, name }
+    }
+}
+
+impl From<create_artist_mutation::CreateArtistMutationCreateArtist> for Artist {
+    fn from(
+        create_artist_mutation::CreateArtistMutationCreateArtist { id, name }: create_artist_mutation::CreateArtistMutationCreateArtist,
+    ) -> Artist {
+        Artist { id, name }
+    }
+}
+
+impl From<create_genre_mutation::CreateGenreMutationCreateGenre> for Genre {
+    fn from(
+        create_genre_mutation::CreateGenreMutationCreateGenre { id, name }: create_genre_mutation::CreateGenreMutationCreateGenre,
+    ) -> Genre {
+        Genre { id, name }
+    }
+}
+
 impl From<create_playlist_mutation::CreatePlaylistMutationCreatePlaylist> for Playlist {
     fn from(
         create_playlist_mutation::CreatePlaylistMutationCreatePlaylist { id, name }: create_playlist_mutation::CreatePlaylistMutationCreatePlaylist,
@@ -475,6 +523,9 @@ pub mod exports {
     pub use super::artist_query;
     pub use super::artist_tracks_query;
     pub use super::artists_query;
+    pub use super::create_album_mutation;
+    pub use super::create_artist_mutation;
+    pub use super::create_genre_mutation;
     pub use super::create_playlist_mutation;
     pub use super::delete_playlist_mutation;
     pub use super::delete_playlist_track_mutation;

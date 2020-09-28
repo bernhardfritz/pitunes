@@ -1,6 +1,9 @@
 pub const ALBUMS: &str = "Albums";
 pub const ALL_TRACKS: &str = "All tracks";
 pub const ARTISTS: &str = "Artists";
+pub const CREATE_NEW_ALBUM: &str = "Create new album...";
+pub const CREATE_NEW_ARTIST: &str = "Create new artist...";
+pub const CREATE_NEW_GENRE: &str = "Create new genre...";
 pub const CREATE_NEW_PLAYLIST: &str = "Create new playlist...";
 pub const ELLIPSIS: &str = "...";
 pub const GENRES: &str = "Genres";

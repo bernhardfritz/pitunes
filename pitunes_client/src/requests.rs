@@ -6,7 +6,8 @@ use graphql_client::{GraphQLQuery, Response};
 use crate::constants::GRAPHQL;
 use crate::models::exports::{
     album_query, album_tracks_query, albums_query, artist_albums_query, artist_query,
-    artist_tracks_query, artists_query, create_playlist_mutation, delete_playlist_mutation,
+    artist_tracks_query, artists_query, create_album_mutation, create_artist_mutation,
+    create_genre_mutation, create_playlist_mutation, delete_playlist_mutation,
     delete_playlist_track_mutation, genre_query, genre_tracks_query, genres_query,
     playlist_tracks_query, playlists_query, tracks_query, update_album_mutation,
     update_artist_mutation, update_genre_mutation, update_playlist_mutation,
@@ -14,7 +15,8 @@ use crate::models::exports::{
 };
 use crate::models::{
     Album, AlbumQuery, AlbumTracksQuery, AlbumsQuery, Artist, ArtistAlbumsQuery, ArtistQuery,
-    ArtistTracksQuery, ArtistsQuery, CreatePlaylistMutation, DeletePlaylistMutation,
+    ArtistTracksQuery, ArtistsQuery, CreateAlbumMutation, CreateArtistMutation,
+    CreateGenreMutation, CreatePlaylistMutation, DeletePlaylistMutation,
     DeletePlaylistTrackMutation, Genre, GenreQuery, GenreTracksQuery, GenresQuery, Playlist,
     PlaylistTracksQuery, PlaylistsQuery, Track, TracksQuery, UpdateAlbumMutation,
     UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation, UpdatePlaylistTrackMutation,
@@ -186,6 +188,72 @@ pub fn update_genre(context: &Arc<Context>, genre: &Genre, name: &str) -> Genre 
     response_body
         .data
         .map(|data| data.update_genre)
+        .map(|genre| genre.into())
+        .unwrap()
+}
+
+pub fn create_album(context: &Arc<Context>, name: &str) -> Album {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = CreateAlbumMutation::build_query(create_album_mutation::Variables {
+        album_input: create_album_mutation::AlbumInput {
+            name: String::from(name),
+        },
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<create_album_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.create_album)
+        .map(|album| album.into())
+        .unwrap()
+}
+
+pub fn create_artist(context: &Arc<Context>, name: &str) -> Artist {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = CreateArtistMutation::build_query(create_artist_mutation::Variables {
+        artist_input: create_artist_mutation::ArtistInput {
+            name: String::from(name),
+        },
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<create_artist_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.create_artist)
+        .map(|artist| artist.into())
+        .unwrap()
+}
+
+pub fn create_genre(context: &Arc<Context>, name: &str) -> Genre {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = CreateGenreMutation::build_query(create_genre_mutation::Variables {
+        genre_input: create_genre_mutation::GenreInput {
+            name: String::from(name),
+        },
+    });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<create_genre_mutation::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.create_genre)
         .map(|genre| genre.into())
         .unwrap()
 }
