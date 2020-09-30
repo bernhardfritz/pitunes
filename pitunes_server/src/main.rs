@@ -119,8 +119,7 @@ async fn main() -> std::io::Result<()> {
                     .service(Files::new("/static", "static")),
             )
     })
-    // .bind_openssl(format!("0.0.0.0:{}", port), builder)?;
-    .bind_openssl(format!("127.0.0.1:{}", port), builder)?;
+    .bind_openssl(format!("0.0.0.0:{}", port), builder)?;
 
     println!(
         r#"       _ _____
