@@ -3,26 +3,28 @@ use std::sync::Arc;
 
 use graphql_client::{GraphQLQuery, Response};
 
-use crate::constants::GRAPHQL;
-use crate::models::exports::{
-    album_query, album_tracks_query, albums_query, artist_albums_query, artist_query,
-    artist_tracks_query, artists_query, create_album_mutation, create_artist_mutation,
-    create_genre_mutation, create_playlist_mutation, delete_playlist_mutation,
-    delete_playlist_track_mutation, genre_query, genre_tracks_query, genres_query,
-    playlist_tracks_query, playlists_query, tracks_query, update_album_mutation,
-    update_artist_mutation, update_genre_mutation, update_playlist_mutation,
-    update_playlist_track_mutation, update_track_mutation,
+use crate::{
+    constants::GRAPHQL,
+    models::{
+        exports::{
+            album_query, album_tracks_query, albums_query, artist_albums_query, artist_query,
+            artist_tracks_query, artists_query, create_album_mutation, create_artist_mutation,
+            create_genre_mutation, create_playlist_mutation, delete_playlist_mutation,
+            delete_playlist_track_mutation, genre_query, genre_tracks_query, genres_query,
+            playlist_tracks_query, playlists_query, tracks_query, update_album_mutation,
+            update_artist_mutation, update_genre_mutation, update_playlist_mutation,
+            update_playlist_track_mutation, update_track_mutation,
+        },
+        Album, AlbumQuery, AlbumTracksQuery, AlbumsQuery, Artist, ArtistAlbumsQuery, ArtistQuery,
+        ArtistTracksQuery, ArtistsQuery, CreateAlbumMutation, CreateArtistMutation,
+        CreateGenreMutation, CreatePlaylistMutation, DeletePlaylistMutation,
+        DeletePlaylistTrackMutation, Genre, GenreQuery, GenreTracksQuery, GenresQuery, Playlist,
+        PlaylistTracksQuery, PlaylistsQuery, Track, TracksQuery, UpdateAlbumMutation,
+        UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
+        UpdatePlaylistTrackMutation, UpdateTrackMutation,
+    },
+    Context,
 };
-use crate::models::{
-    Album, AlbumQuery, AlbumTracksQuery, AlbumsQuery, Artist, ArtistAlbumsQuery, ArtistQuery,
-    ArtistTracksQuery, ArtistsQuery, CreateAlbumMutation, CreateArtistMutation,
-    CreateGenreMutation, CreatePlaylistMutation, DeletePlaylistMutation,
-    DeletePlaylistTrackMutation, Genre, GenreQuery, GenreTracksQuery, GenresQuery, Playlist,
-    PlaylistTracksQuery, PlaylistsQuery, Track, TracksQuery, UpdateAlbumMutation,
-    UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation, UpdatePlaylistTrackMutation,
-    UpdateTrackMutation,
-};
-use crate::Context;
 
 pub fn get_album(context: &Arc<Context>, id: i64) -> Album {
     let url = format!("{}/{}", context.server_url, GRAPHQL);

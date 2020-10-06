@@ -1,5 +1,7 @@
-use std::io::{Error, ErrorKind, Read, Seek, SeekFrom};
-use std::str::FromStr;
+use std::{
+    io::{Error, ErrorKind, Read, Seek, SeekFrom},
+    str::FromStr,
+};
 
 pub struct HttpStreamReader {
     url: String,

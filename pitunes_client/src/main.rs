@@ -1,45 +1,52 @@
 mod constants;
 #[allow(dead_code)]
 mod event;
-mod http_stream_reader;
+// mod http_stream_reader;
 mod models;
 #[allow(dead_code)]
 mod my_gauge;
 mod reducers;
 mod requests;
 
-use std::cmp;
-use std::env;
-use std::io::{self, Write};
-use std::sync::{Arc, Mutex, RwLock};
-use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
+use std::{
+    cmp, env,
+    io::{self, Cursor, Write},
+    sync::{Arc, Mutex, RwLock},
+    thread::{self, JoinHandle},
+    time::{Duration, Instant},
+};
 
 use clap::{self, value_t};
 use constants::{ALBUMS, ARTISTS, GENRES, PI_SYMBOL, PLAYLISTS, SEARCH, STATIC, TRACKS};
+use crossterm::{
+    cursor::MoveTo,
+    terminal::{disable_raw_mode, enable_raw_mode},
+};
 use dotenv::dotenv;
-use http_stream_reader::HttpStreamReader;
+// use http_stream_reader::HttpStreamReader;
 use models::{Album, Artist, Genre, Playlist, Track};
 use reducers::REDUCER;
 use redux_rs::Store;
-use termion::cursor::Goto;
-use termion::raw::IntoRawMode;
-use tui::backend::TermionBackend;
-use tui::layout::{Constraint, Layout};
-use tui::style::{Modifier, Style};
-use tui::text::{Span, Spans};
-use tui::widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph};
-use tui::Terminal;
+use tui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Layout},
+    style::{Modifier, Style},
+    text::{Span, Spans},
+    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
+    Terminal,
+};
 use unicode_width::UnicodeWidthStr;
 
-use crate::event::{Event, Events};
-use crate::my_gauge::MyGauge;
+use crate::{
+    event::{Event, Events},
+    my_gauge::MyGauge,
+};
 
 pub struct Context {
     server_url: String,
     api_key: String,
     client: reqwest::blocking::Client,
-    device: rodio::Device,
+    handle: rodio::OutputStreamHandle,
     sink_lock: RwLock<rodio::Sink>,
     queue_lock: RwLock<Vec<Track>>,
     play_instant_lock: RwLock<Option<Instant>>,
@@ -132,7 +139,7 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
         }
         {
             let mut sink_guard = context.sink_lock.write().unwrap();
-            *sink_guard = rodio::Sink::new(&context.device);
+            *sink_guard = rodio::Sink::try_new(&context.handle).unwrap();
         }
         Some(thread::spawn(move || loop {
             let url;
@@ -143,9 +150,23 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
                     .map(|track| format!("{}/{}/{}.mp3", context.server_url, STATIC, track.id));
             }
             if let Some(url) = url {
-                let source =
-                    rodio::Decoder::new(HttpStreamReader::new(url, context.api_key.to_string()))
+                // TODO: HttpStreamReader should not be passed directly to the Decoder as this results in audible delays while chunks are downloaded
+                /*let source =
+                rodio::Decoder::new(HttpStreamReader::new(url, context.api_key.to_string()))
+                    .unwrap();*/
+                // download full track until issue with partial downloads is resolved
+                let cursor = {
+                    let mut res = context
+                        .client
+                        .get(&url)
+                        .bearer_auth(&context.api_key[..])
+                        .send()
                         .unwrap();
+                    let mut buf = vec![];
+                    std::io::copy(&mut res, &mut buf).unwrap();
+                    Cursor::new(buf)
+                };
+                let source = rodio::Decoder::new(cursor).unwrap();
                 {
                     let sink_guard = context.sink_lock.read().unwrap();
                     sink_guard.append(source);
@@ -193,8 +214,9 @@ fn main() -> Result<(), failure::Error> {
     let api_key = env::var("API_KEY").expect("Environment variable API_KEY is not present");
 
     // Terminal initialization
-    let stdout = io::stdout().into_raw_mode()?;
-    let backend = TermionBackend::new(stdout); // TODO: consider crossterm https://docs.rs/tui/0.8.0/tui/index.html#adding-tui-as-a-dependency
+    enable_raw_mode()?;
+    let stdout = io::stdout();
+    let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
     terminal.hide_cursor()?;
@@ -202,7 +224,7 @@ fn main() -> Result<(), failure::Error> {
     let events = Events::new();
 
     let client = reqwest::blocking::Client::new();
-    let device = rodio::default_output_device().unwrap();
+    let (_stream, handle) = rodio::OutputStream::try_default().unwrap();
     let sink_lock = RwLock::new(rodio::Sink::new_idle().0);
     let queue_lock = RwLock::new(vec![]);
     let play_instant_lock = RwLock::new(None);
@@ -216,7 +238,7 @@ fn main() -> Result<(), failure::Error> {
                 server_url,
                 api_key,
                 client,
-                device,
+                handle,
                 sink_lock,
                 queue_lock,
                 play_instant_lock,
@@ -512,7 +534,7 @@ fn main() -> Result<(), failure::Error> {
                     write!(
                         terminal.backend_mut(),
                         "{}",
-                        Goto(2 + UnicodeWidthStr::width(&pattern[..]) as u16, height - 1)
+                        MoveTo(1 + UnicodeWidthStr::width(&pattern[..]) as u16, height - 2)
                     )?;
                     // stdout is buffered, flush it to see the effect immediately when hitting backspace
                     io::stdout().flush().ok();
@@ -531,9 +553,9 @@ fn main() -> Result<(), failure::Error> {
                         write!(
                             terminal.backend_mut(),
                             "{}",
-                            Goto(
-                                5 + UnicodeWidthStr::width(&value[..]) as u16,
-                                4 + 3 * selected as u16
+                            MoveTo(
+                                4 + UnicodeWidthStr::width(&value[..]) as u16,
+                                3 + 3 * selected as u16
                             )
                         )?;
                         // stdout is buffered, flush it to see the effect immediately when hitting backspace
@@ -549,6 +571,8 @@ fn main() -> Result<(), failure::Error> {
     }
 
     terminal.clear()?;
+
+    disable_raw_mode()?;
 
     Ok(())
 }

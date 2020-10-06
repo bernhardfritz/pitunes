@@ -516,30 +516,13 @@ impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
 }
 
 pub mod exports {
-    pub use super::album_query;
-    pub use super::album_tracks_query;
-    pub use super::albums_query;
-    pub use super::artist_albums_query;
-    pub use super::artist_query;
-    pub use super::artist_tracks_query;
-    pub use super::artists_query;
-    pub use super::create_album_mutation;
-    pub use super::create_artist_mutation;
-    pub use super::create_genre_mutation;
-    pub use super::create_playlist_mutation;
-    pub use super::delete_playlist_mutation;
-    pub use super::delete_playlist_track_mutation;
-    pub use super::genre_query;
-    pub use super::genre_tracks_query;
-    pub use super::genres_query;
-    pub use super::playlist_tracks_query;
-    pub use super::playlists_query;
-    pub use super::track_query;
-    pub use super::tracks_query;
-    pub use super::update_album_mutation;
-    pub use super::update_artist_mutation;
-    pub use super::update_genre_mutation;
-    pub use super::update_playlist_mutation;
-    pub use super::update_playlist_track_mutation;
-    pub use super::update_track_mutation;
+    pub use super::{
+        album_query, album_tracks_query, albums_query, artist_albums_query, artist_query,
+        artist_tracks_query, artists_query, create_album_mutation, create_artist_mutation,
+        create_genre_mutation, create_playlist_mutation, delete_playlist_mutation,
+        delete_playlist_track_mutation, genre_query, genre_tracks_query, genres_query,
+        playlist_tracks_query, playlists_query, track_query, tracks_query, update_album_mutation,
+        update_artist_mutation, update_genre_mutation, update_playlist_mutation,
+        update_playlist_track_mutation, update_track_mutation,
+    };
 }

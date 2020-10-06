@@ -4,6 +4,3 @@ members = [
     "pitunes_client",
     "pitunes_server",
 ]
-
-[patch.crates-io]
-rodio = { git = "https://github.com/RustAudio/rodio" }

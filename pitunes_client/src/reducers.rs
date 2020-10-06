@@ -1,30 +1,31 @@
-use std::convert::TryFrom;
-use std::time::Instant;
+use std::{convert::TryFrom, time::Instant};
 
-use fuzzy_matcher::skim::SkimMatcherV2;
-use fuzzy_matcher::FuzzyMatcher;
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use if_chain::if_chain;
 use redux_rs::{combine_reducers, Reducer};
-use termion::event::Key;
 use tui::widgets::ListState;
 
-use crate::constants::{
-    ALBUMS, ALL_TRACKS, ARTISTS, CREATE_NEW_ALBUM, CREATE_NEW_ARTIST, CREATE_NEW_GENRE,
-    CREATE_NEW_PLAYLIST, ELLIPSIS, GENRES, PLAYLISTS, TRACKS,
+use crate::{
+    constants::{
+        ALBUMS, ALL_TRACKS, ARTISTS, CREATE_NEW_ALBUM, CREATE_NEW_ARTIST, CREATE_NEW_GENRE,
+        CREATE_NEW_PLAYLIST, ELLIPSIS, GENRES, PLAYLISTS, TRACKS,
+    },
+    models::Track,
+    play_queue,
+    requests::{
+        create_album, create_artist, create_genre, create_playlist, delete_playlist,
+        delete_playlist_track, get_album, get_albums, get_albums_of_artist, get_artist,
+        get_artists, get_genre, get_genres, get_playlists, get_tracks, get_tracks_of_album,
+        get_tracks_of_artist, get_tracks_of_genre, get_tracks_of_playlist, update_album,
+        update_artist, update_genre, update_playlist, update_playlist_track, update_track,
+    },
+    InputField, Model, State, View,
 };
-use crate::models::Track;
-use crate::requests::{
-    create_album, create_artist, create_genre, create_playlist, delete_playlist,
-    delete_playlist_track, get_album, get_albums, get_albums_of_artist, get_artist, get_artists,
-    get_genre, get_genres, get_playlists, get_tracks, get_tracks_of_album, get_tracks_of_artist,
-    get_tracks_of_genre, get_tracks_of_playlist, update_album, update_artist, update_genre,
-    update_playlist, update_playlist_track, update_track,
-};
-use crate::{play_queue, InputField, Model, State, View};
 
-pub const REDUCER: Reducer<State, Key> = combine_reducers!(
+pub const REDUCER: Reducer<State, KeyEvent> = combine_reducers!(
     State,
-    &Key,
+    &KeyEvent,
     global_reducer,
     list_reducer,
     edit_reducer,
@@ -38,9 +39,12 @@ pub const REDUCER: Reducer<State, Key> = combine_reducers!(
     stop_propagation_reducer
 );
 
-fn global_reducer(state: &State, action: &Key) -> State {
+fn global_reducer(state: &State, action: &KeyEvent) -> State {
     match action {
-        Key::Ctrl('c') => State {
+        KeyEvent {
+            modifiers: KeyModifiers::CONTROL,
+            code: KeyCode::Char('c'),
+        } => State {
             break_condition: true,
             ..state.clone()
         },
@@ -48,7 +52,7 @@ fn global_reducer(state: &State, action: &Key) -> State {
     }
 }
 
-fn list_reducer(state: &State, action: &Key) -> State {
+fn list_reducer(state: &State, action: &KeyEvent) -> State {
     let new_state = if let View::List {
         list_state,
         items,
@@ -56,8 +60,8 @@ fn list_reducer(state: &State, action: &Key) -> State {
         indices,
     } = &state.view
     {
-        match action {
-            Key::Up => {
+        match action.code {
+            KeyCode::Up => {
                 let index = if let Some(selected) = list_state.selected() {
                     Some(if selected > 0 {
                         selected - 1
@@ -82,7 +86,7 @@ fn list_reducer(state: &State, action: &Key) -> State {
                     ..state.clone()
                 })
             }
-            Key::Down => {
+            KeyCode::Down => {
                 let index = if let Some(selected) = list_state.selected() {
                     Some(if selected < indices.len() - 1 {
                         selected + 1
@@ -107,7 +111,7 @@ fn list_reducer(state: &State, action: &Key) -> State {
                     ..state.clone()
                 })
             }
-            Key::Esc => {
+            KeyCode::Esc => {
                 let list_state = if let Some(selected) = list_state.selected() {
                     let mut list_state = ListState::default();
                     list_state.select(Some(indices[selected]));
@@ -131,7 +135,7 @@ fn list_reducer(state: &State, action: &Key) -> State {
                     ..state.clone()
                 })
             }
-            Key::Char('\n') => {
+            KeyCode::Enter => {
                 if let Some(selected) = list_state.selected() {
                     if let Model::Tracks { tracks: _ } = state.model {
                         None
@@ -159,7 +163,7 @@ fn list_reducer(state: &State, action: &Key) -> State {
                     None
                 }
             }
-            Key::Backspace => {
+            KeyCode::Backspace => {
                 if let Some(pattern) = pattern {
                     let (pattern, indices): (Option<String>, Vec<usize>) = {
                         let mut pattern = pattern.clone();
@@ -243,11 +247,11 @@ fn list_reducer(state: &State, action: &Key) -> State {
                     }
                 }
             }
-            Key::Char(c) => {
+            KeyCode::Char(c) => {
                 if let Some(pattern) = pattern {
                     let pattern = {
                         let mut pattern = pattern.clone();
-                        pattern.push(*c);
+                        pattern.push(c);
                         pattern
                     };
                     let matcher = SkimMatcherV2::default();
@@ -331,14 +335,14 @@ fn list_reducer(state: &State, action: &Key) -> State {
     }
 }
 
-fn edit_reducer(state: &State, action: &Key) -> State {
+fn edit_reducer(state: &State, action: &KeyEvent) -> State {
     let new_state = if let View::Edit {
         input_fields,
         selected,
     } = &state.view
     {
-        match action {
-            Key::Char('\t') => {
+        match action.code {
+            KeyCode::Tab => {
                 let selected = if let Some(selected) = *selected {
                     Some(if selected < input_fields.len() - 1 {
                         selected + 1
@@ -356,7 +360,7 @@ fn edit_reducer(state: &State, action: &Key) -> State {
                     ..state.clone()
                 })
             }
-            Key::BackTab => {
+            KeyCode::BackTab => {
                 let selected = if let Some(selected) = *selected {
                     Some(if selected > 0 {
                         selected - 1
@@ -374,11 +378,11 @@ fn edit_reducer(state: &State, action: &Key) -> State {
                     ..state.clone()
                 })
             }
-            Key::Char(c) => {
+            KeyCode::Char(c) => {
                 let mut input_fields = input_fields.clone();
                 if let Some(selected) = *selected {
                     if let InputField::Text { key: _, value } = &mut input_fields[selected] {
-                        value.push(*c);
+                        value.push(c);
                     }
                 }
                 Some(State {
@@ -389,7 +393,7 @@ fn edit_reducer(state: &State, action: &Key) -> State {
                     ..state.clone()
                 })
             }
-            Key::Backspace => {
+            KeyCode::Backspace => {
                 let mut input_fields = input_fields.clone();
                 if let Some(selected) = *selected {
                     if let InputField::Text { key: _, value } = &mut input_fields[selected] {
@@ -404,7 +408,7 @@ fn edit_reducer(state: &State, action: &Key) -> State {
                     ..state.clone()
                 })
             }
-            Key::Esc => {
+            KeyCode::Esc => {
                 if let Some(last) = state.history.last() {
                     Some(last.clone())
                 } else {
@@ -556,7 +560,7 @@ fn root_reducer_tracks(state: &State) -> State {
     }
 }
 
-fn root_reducer(state: &State, action: &Key) -> State {
+fn root_reducer(state: &State, action: &KeyEvent) -> State {
     let new_state = if let Model::Root = state.model {
         if let View::List {
             list_state,
@@ -565,8 +569,8 @@ fn root_reducer(state: &State, action: &Key) -> State {
             indices,
         } = &state.view
         {
-            match action {
-                Key::Char('\n') => {
+            match action.code {
+                KeyCode::Enter => {
                     if let Some(selected) = list_state.selected() {
                         let item = &items[indices[selected]];
                         match &item[..] {
@@ -596,7 +600,7 @@ fn root_reducer(state: &State, action: &Key) -> State {
     }
 }
 
-fn albums_reducer(state: &State, action: &Key) -> State {
+fn albums_reducer(state: &State, action: &KeyEvent) -> State {
     if state.stop_propagation {
         return state.clone();
     }
@@ -607,8 +611,8 @@ fn albums_reducer(state: &State, action: &Key) -> State {
                 items: _,
                 pattern: _,
                 indices,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if let Some(selected) = list_state.selected() {
                         if indices[selected] > 0 {
                             let album = &albums[indices[selected] - 1];
@@ -667,7 +671,7 @@ fn albums_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
-                Key::F(2) => {
+                KeyCode::F(2) => {
                     if let Some(selected) = list_state.selected() {
                         if indices[selected] > 0 {
                             let album = &albums[indices[selected] - 1];
@@ -699,8 +703,8 @@ fn albums_reducer(state: &State, action: &Key) -> State {
             View::Edit {
                 input_fields,
                 selected: _,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if_chain! {
                         if let Some(last) = state.history.last();
                         if let View::List { list_state, items: _, pattern: _, indices } = &last.view;
@@ -713,7 +717,7 @@ fn albums_reducer(state: &State, action: &Key) -> State {
                             } else {
                                 create_album(&state.context, &value[..]);
                             }
-                            Some(REDUCER(second_last, &Key::Char('\n')))
+                            Some(REDUCER(second_last, &KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)))
                         } else {
                             None
                         }
@@ -732,7 +736,7 @@ fn albums_reducer(state: &State, action: &Key) -> State {
     }
 }
 
-fn artist_reducer(state: &State, action: &Key) -> State {
+fn artist_reducer(state: &State, action: &KeyEvent) -> State {
     let new_state = if let Model::Artist { artist, albums } = &state.model {
         match &state.view {
             View::List {
@@ -740,8 +744,8 @@ fn artist_reducer(state: &State, action: &Key) -> State {
                 items: _,
                 pattern: _,
                 indices,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if let Some(selected) = list_state.selected() {
                         let tracks = if indices[selected] > 0 {
                             let album = &albums[indices[selected] - 1];
@@ -773,7 +777,7 @@ fn artist_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
-                Key::F(2) => {
+                KeyCode::F(2) => {
                     if let Some(selected) = list_state.selected() {
                         if indices[selected] > 0 {
                             let album = &albums[indices[selected] - 1];
@@ -805,8 +809,8 @@ fn artist_reducer(state: &State, action: &Key) -> State {
             View::Edit {
                 input_fields,
                 selected: _,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if_chain! {
                         if let Some(last) = state.history.last();
                         if let View::List { list_state, items: _, pattern: _, indices } = &last.view;
@@ -815,7 +819,7 @@ fn artist_reducer(state: &State, action: &Key) -> State {
                         if let InputField::Text { key: _, value } = &input_fields[0];
                         then {
                             update_album(&state.context, &albums[indices[selected] - 1], &value[..]);
-                            Some(REDUCER(second_last, &Key::Char('\n')))
+                            Some(REDUCER(second_last, &KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)))
                         } else {
                             None
                         }
@@ -834,7 +838,7 @@ fn artist_reducer(state: &State, action: &Key) -> State {
     }
 }
 
-fn artists_reducer(state: &State, action: &Key) -> State {
+fn artists_reducer(state: &State, action: &KeyEvent) -> State {
     if state.stop_propagation {
         return state.clone();
     }
@@ -845,8 +849,8 @@ fn artists_reducer(state: &State, action: &Key) -> State {
                 items: _,
                 pattern: _,
                 indices,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if let Some(selected) = list_state.selected() {
                         if indices[selected] > 0 {
                             let artist = artists[indices[selected] - 1].clone();
@@ -908,7 +912,7 @@ fn artists_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
-                Key::F(2) => {
+                KeyCode::F(2) => {
                     if let Some(selected) = list_state.selected() {
                         if indices[selected] > 0 {
                             let artist = &artists[indices[selected] - 1];
@@ -940,8 +944,8 @@ fn artists_reducer(state: &State, action: &Key) -> State {
             View::Edit {
                 input_fields,
                 selected: _,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if_chain! {
                         if let Some(last) = state.history.last();
                         if let View::List { list_state, items: _, pattern: _, indices } = &last.view;
@@ -954,7 +958,7 @@ fn artists_reducer(state: &State, action: &Key) -> State {
                             } else {
                                 create_artist(&state.context, &value[..]);
                             }
-                            Some(REDUCER(second_last, &Key::Char('\n')))
+                            Some(REDUCER(second_last, &KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)))
                         } else {
                             None
                         }
@@ -973,7 +977,7 @@ fn artists_reducer(state: &State, action: &Key) -> State {
     }
 }
 
-fn genres_reducer(state: &State, action: &Key) -> State {
+fn genres_reducer(state: &State, action: &KeyEvent) -> State {
     if state.stop_propagation {
         return state.clone();
     }
@@ -984,8 +988,8 @@ fn genres_reducer(state: &State, action: &Key) -> State {
                 items: _,
                 pattern: _,
                 indices,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if let Some(selected) = list_state.selected() {
                         if indices[selected] > 0 {
                             let genre = &genres[indices[selected] - 1];
@@ -1044,7 +1048,7 @@ fn genres_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
-                Key::F(2) => {
+                KeyCode::F(2) => {
                     if let Some(selected) = list_state.selected() {
                         if indices[selected] > 0 {
                             let genre = &genres[indices[selected] - 1];
@@ -1076,8 +1080,8 @@ fn genres_reducer(state: &State, action: &Key) -> State {
             View::Edit {
                 input_fields,
                 selected: _,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if_chain! {
                         if let Some(last) = state.history.last();
                         if let View::List { list_state, items: _, pattern: _, indices } = &last.view;
@@ -1090,7 +1094,7 @@ fn genres_reducer(state: &State, action: &Key) -> State {
                             } else {
                                 update_genre(&state.context, &genres[indices[selected] - 1], &value[..]);
                             }
-                            Some(REDUCER(second_last, &Key::Char('\n')))
+                            Some(REDUCER(second_last, &KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)))
                         } else {
                             None
                         }
@@ -1109,7 +1113,7 @@ fn genres_reducer(state: &State, action: &Key) -> State {
     }
 }
 
-fn playlists_reducer(state: &State, action: &Key) -> State {
+fn playlists_reducer(state: &State, action: &KeyEvent) -> State {
     let new_state = if let Model::Playlists { playlists } = &state.model {
         match &state.view {
             View::List {
@@ -1117,8 +1121,8 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                 items: _,
                 pattern,
                 indices,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if let Some(selected) = list_state.selected() {
                         if indices[selected] > 0 {
                             let playlist = &playlists[indices[selected] - 1];
@@ -1159,7 +1163,7 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
-                Key::F(2) => {
+                KeyCode::F(2) => {
                     if let Some(selected) = list_state.selected() {
                         if indices[selected] > 0 {
                             let playlist = &playlists[indices[selected] - 1];
@@ -1186,7 +1190,7 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                         None
                     }
                 }
-                Key::Char('d') => {
+                KeyCode::Char('d') => {
                     if_chain! {
                         if pattern.is_none(); // disregard key events while in search mode
                         if let Some(selected) = list_state.selected();
@@ -1196,7 +1200,7 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                         if deleted;
                         if let Some(last) = state.history.last();
                         then {
-                            Some(REDUCER(last, &Key::Char('\n')))
+                            Some(REDUCER(last, &KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)))
                         } else {
                             None
                         }
@@ -1207,8 +1211,8 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
             View::Edit {
                 input_fields,
                 selected: _,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if_chain! {
                         if let Some(last) = state.history.last();
                         if let View::List { list_state, items: _, pattern: _, indices } = &last.view;
@@ -1221,7 +1225,7 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
                             } else {
                                 create_playlist(&state.context, &value[..]);
                             }
-                            Some(REDUCER(second_last, &Key::Char('\n')))
+                            Some(REDUCER(second_last, &KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)))
                         } else {
                             None
                         }
@@ -1240,7 +1244,7 @@ fn playlists_reducer(state: &State, action: &Key) -> State {
     }
 }
 
-fn tracks_reducer(state: &State, action: &Key) -> State {
+fn tracks_reducer(state: &State, action: &KeyEvent) -> State {
     let new_state = if let Model::Tracks { tracks } = &state.model {
         match &state.view {
             View::List {
@@ -1250,8 +1254,8 @@ fn tracks_reducer(state: &State, action: &Key) -> State {
                 indices,
             } => {
                 if let Some(track_index) = list_state.selected() {
-                    match action {
-                        Key::Char('\n') => {
+                    match action.code {
+                        KeyCode::Enter => {
                             let mut queue: Vec<Track> = tracks.clone();
                             queue.rotate_left(indices[track_index]);
                             play_queue(state.context.clone(), queue);
@@ -1273,7 +1277,7 @@ fn tracks_reducer(state: &State, action: &Key) -> State {
                                 ..state.clone()
                             })
                         }
-                        Key::F(2) => {
+                        KeyCode::F(2) => {
                             let track = &tracks[indices[track_index]];
                             let history = {
                                 let mut history = state.history.clone();
@@ -1337,18 +1341,18 @@ fn tracks_reducer(state: &State, action: &Key) -> State {
                                         Model::Playlists { playlists } => {
                                             if let Some(playlist_index) = prev_list_state.selected() {
                                                 let playlist = &playlists[prev_indices[playlist_index]];
-                                                match action {
-                                                    Key::Char('d') => {
+                                                match action.code {
+                                                    KeyCode::Char('d') => {
                                                         let track = &tracks[track_index]; // track_index can be used directly as we are not in search mode
                                                         let position = Some(i64::try_from(track_index).unwrap());
                                                         let deleted = delete_playlist_track(&state.context, playlist, track, position);
                                                         if deleted {
-                                                            Some(REDUCER(last, &Key::Char('\n')))
+                                                            Some(REDUCER(last, &KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)))
                                                         } else {
                                                             None
                                                         }
                                                     }
-                                                    Key::Char('j') => {
+                                                    KeyCode::Char('j') => {
                                                         if track_index > 0 { // track_index can be used directly as we are not in search mode
                                                             let range_start = track_index;
                                                             let insert_before = track_index - 1;
@@ -1384,7 +1388,7 @@ fn tracks_reducer(state: &State, action: &Key) -> State {
                                                             None
                                                         }
                                                     }
-                                                    Key::Char('k') => {
+                                                    KeyCode::Char('k') => {
                                                         if track_index < tracks.len() - 1 { // track_index can be used directly as we are not in search mode
                                                             let range_start = track_index;
                                                             let insert_before = track_index + 2;
@@ -1441,8 +1445,8 @@ fn tracks_reducer(state: &State, action: &Key) -> State {
             View::Edit {
                 input_fields,
                 selected,
-            } => match action {
-                Key::Char('\n') => {
+            } => match action.code {
+                KeyCode::Enter => {
                     if_chain! {
                         if let Some(last) = state.history.last();
                         if let View::List { list_state, items: _, pattern: _, indices } = &last.view;
@@ -1465,7 +1469,7 @@ fn tracks_reducer(state: &State, action: &Key) -> State {
                                 Some(3) => Some(State { history, stop_propagation, ..root_reducer_genres(state) }),
                                 _ => {
                                     update_track(&state.context, &tracks[indices[list_state_selected]], &name[..], album_id, artist_id, genre_id);
-                                    Some(REDUCER(second_last, &Key::Char('\n')))
+                                    Some(REDUCER(second_last, &KeyEvent::new(KeyCode::Enter, KeyModifiers::NONE)))
                                 }
                             }
                         } else {
@@ -1486,7 +1490,7 @@ fn tracks_reducer(state: &State, action: &Key) -> State {
     }
 }
 
-fn stop_propagation_reducer(state: &State, _action: &Key) -> State {
+fn stop_propagation_reducer(state: &State, _action: &KeyEvent) -> State {
     return State {
         stop_propagation: false,
         ..state.clone()
