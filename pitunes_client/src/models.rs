@@ -208,10 +208,25 @@ pub struct UpdatePlaylistTrackMutation;
 )]
 pub struct UpdateTrackMutation;
 
+pub trait IdName {
+    fn id(&self) -> i64;
+    fn name(&self) -> &str;
+}
+
 #[derive(Clone)]
 pub struct Album {
     pub id: i64,
     pub name: String,
+}
+
+impl IdName for Album {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn name(&self) -> &str {
+        &self.name[..]
+    }
 }
 
 #[derive(Clone)]
@@ -220,16 +235,46 @@ pub struct Artist {
     pub name: String,
 }
 
+impl IdName for Artist {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn name(&self) -> &str {
+        &self.name[..]
+    }
+}
+
 #[derive(Clone)]
 pub struct Genre {
     pub id: i64,
     pub name: String,
 }
 
+impl IdName for Genre {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn name(&self) -> &str {
+        &self.name[..]
+    }
+}
+
 #[derive(Clone)]
 pub struct Playlist {
     pub id: i64,
     pub name: String,
+}
+
+impl IdName for Playlist {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn name(&self) -> &str {
+        &self.name[..]
+    }
 }
 
 #[derive(Clone)]
@@ -240,6 +285,16 @@ pub struct Track {
     pub album_id: Option<i64>,
     pub artist_id: Option<i64>,
     pub genre_id: Option<i64>,
+}
+
+impl IdName for Track {
+    fn id(&self) -> i64 {
+        self.id
+    }
+
+    fn name(&self) -> &str {
+        &self.name[..]
+    }
 }
 
 impl From<album_query::AlbumQueryAlbum> for Album {

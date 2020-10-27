@@ -1,45 +1,44 @@
 mod constants;
 #[allow(dead_code)]
-mod event;
+mod util;
 // mod http_stream_reader;
 mod models;
-#[allow(dead_code)]
-mod my_gauge;
-mod reducers;
 mod requests;
+mod state_machine;
 
 use std::{
     cmp, env,
-    io::{self, Cursor, Write},
+    io::{self, Cursor, Stdout, Write},
     sync::{Arc, Mutex, RwLock},
     thread::{self, JoinHandle},
     time::{Duration, Instant},
 };
 
 use clap::{self, value_t};
-use constants::{ALBUMS, ARTISTS, GENRES, PI_SYMBOL, PLAYLISTS, SEARCH, STATIC, TRACKS};
+use constants::{ALBUMS, ARTISTS, GENRES, PLAYLISTS, STATIC, TRACKS};
 use crossterm::{
-    cursor::MoveTo,
-    terminal::{disable_raw_mode, enable_raw_mode},
+    event::{KeyCode, KeyEvent, KeyModifiers},
+    execute,
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use dotenv::dotenv;
+use failure::Error;
 // use http_stream_reader::HttpStreamReader;
-use models::{Album, Artist, Genre, Playlist, Track};
-use reducers::REDUCER;
-use redux_rs::Store;
+use models::{Album, Artist, Genre, IdName, Playlist, Track};
 use tui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Layout},
-    style::{Modifier, Style},
-    text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, List, ListItem, ListState, Paragraph},
-    Terminal,
+    layout::{Constraint, Layout, Rect},
+    widgets::{Block, BorderType, Borders},
+    Frame, Terminal,
 };
-use unicode_width::UnicodeWidthStr;
+use util::stateful_list::StatefulList;
 
 use crate::{
-    event::{Event, Events},
-    my_gauge::MyGauge,
+    state_machine::StateMachine,
+    util::{
+        event::{Event, Events},
+        my_gauge::MyGauge,
+    },
 };
 
 pub struct Context {
@@ -51,65 +50,6 @@ pub struct Context {
     queue_lock: RwLock<Vec<Track>>,
     play_instant_lock: RwLock<Option<Instant>>,
     lazy_elapsed_lock: RwLock<Duration>,
-}
-
-#[derive(Clone)]
-pub enum Model {
-    Albums { albums: Vec<Album> },
-    Artist { artist: Artist, albums: Vec<Album> },
-    Artists { artists: Vec<Artist> },
-    Genres { genres: Vec<Genre> },
-    Playlists { playlists: Vec<Playlist> },
-    Root,
-    Tracks { tracks: Vec<Track> },
-}
-
-#[derive(Clone)]
-pub enum View {
-    List {
-        list_state: ListState,
-        items: Vec<String>,
-        pattern: Option<String>,
-        indices: Vec<usize>,
-    },
-    Edit {
-        input_fields: Vec<InputField>,
-        selected: Option<usize>,
-    },
-}
-
-#[derive(Clone)]
-pub enum InputField {
-    Text {
-        key: String,
-        value: String,
-    },
-    Chooser {
-        key: String,
-        value: String,
-        id: Option<i64>,
-    },
-}
-
-#[derive(Clone)]
-pub struct State {
-    context: Arc<Context>,
-    break_condition: bool,
-    model: Model,
-    view: View,
-    history: Vec<State>,
-    stop_propagation: bool,
-}
-
-enum BottomState {
-    Player {
-        title: String,
-        percent: u16,
-        label: String,
-    },
-    Search {
-        pattern: String,
-    },
 }
 
 // Look away, I'm hideous!
@@ -197,7 +137,203 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
     });
 }
 
-fn main() -> Result<(), failure::Error> {
+pub struct AlbumsState {
+    stateful_list: StatefulList<Album>,
+}
+
+impl HasStatefulList for AlbumsState {
+    type Item = Album;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
+pub struct ArtistsState {
+    stateful_list: StatefulList<Artist>,
+}
+
+impl HasStatefulList for ArtistsState {
+    type Item = Artist;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
+pub struct GenresState {
+    stateful_list: StatefulList<Genre>,
+}
+
+impl HasStatefulList for GenresState {
+    type Item = Genre;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
+pub struct PlaylistsState {
+    stateful_list: StatefulList<Playlist>,
+}
+
+impl HasStatefulList for PlaylistsState {
+    type Item = Playlist;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
+pub struct PromptState {
+    message: String,
+}
+
+pub struct RootState {
+    stateful_list: StatefulList<RootItem>,
+}
+
+pub struct RootItem {
+    name: String,
+}
+
+impl IdName for RootItem {
+    fn id(&self) -> i64 {
+        0
+    }
+
+    fn name(&self) -> &str {
+        &self.name[..]
+    }
+}
+
+impl From<&str> for RootItem {
+    fn from(name: &str) -> Self {
+        RootItem {
+            name: String::from(name),
+        }
+    }
+}
+
+impl HasStatefulList for RootState {
+    type Item = RootItem;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
+pub struct TracksState {
+    stateful_list: StatefulList<Track>,
+}
+
+impl HasStatefulList for TracksState {
+    type Item = Track;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
+pub trait HasStatefulList {
+    type Item: IdName;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item>;
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item>;
+}
+pub enum State {
+    Albums(AlbumsState),
+    Artists(ArtistsState),
+    Genres(GenresState),
+    Playlists(PlaylistsState),
+    Prompt(PromptState),
+    Root(RootState),
+    Tracks(TracksState),
+}
+
+fn create_layout_with_bottom(
+    context: &Context,
+    f: &mut Frame<CrosstermBackend<Stdout>>,
+) -> Option<Vec<Rect>> {
+    let play_instant_guard = context.play_instant_lock.read().unwrap();
+    let play_instant = (*play_instant_guard)?;
+    let queue_guard = context.queue_lock.read().unwrap();
+    let first = queue_guard.first()?;
+    let lazy_elapsed_guard = context.lazy_elapsed_lock.read().unwrap();
+    let sink_guard = context.sink_lock.read().unwrap();
+    let elapsed = if sink_guard.is_paused() {
+        *lazy_elapsed_guard
+    } else {
+        *lazy_elapsed_guard + play_instant.elapsed()
+    };
+    let elapsed_minutes = elapsed.as_secs() / 60;
+    let elapsed_seconds = elapsed.as_secs() % 60;
+    let duration = Duration::from_millis(first.duration as u64);
+    let duration_minutes = duration.as_secs() / 60;
+    let duration_seconds = duration.as_secs() % 60;
+    let title = format!(" {} ", first.name);
+    let percent = cmp::min(100, elapsed.as_millis() * 100 / duration.as_millis()) as u16;
+    let label = format!(
+        "{}:{:0>2} / {}:{:0>2}",
+        elapsed_minutes, elapsed_seconds, duration_minutes, duration_seconds
+    );
+    let size = f.size();
+    let constraints = vec![Constraint::Min(0), Constraint::Length(3)];
+    let chunks = Layout::default()
+        .constraints(constraints.as_ref())
+        .split(size);
+    let bottom_block = Block::default()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .title(&title[..]);
+    f.render_widget(bottom_block, chunks[1]);
+    let bottom_chunks = Layout::default()
+        .constraints([Constraint::Min(0)].as_ref())
+        .horizontal_margin(2)
+        .vertical_margin(1)
+        .split(chunks[1]);
+    let my_gauge = MyGauge::default().percent(percent).label(&label[..]);
+    f.render_widget(my_gauge, bottom_chunks[0]);
+    Some(chunks)
+}
+
+fn create_layout(context: &Context, f: &mut Frame<CrosstermBackend<Stdout>>) -> Vec<Rect> {
+    if let Some(chunks) = create_layout_with_bottom(context, f) {
+        chunks
+    } else {
+        let size = f.size();
+        let constraints = vec![Constraint::Min(0)];
+        Layout::default()
+            .constraints(constraints.as_ref())
+            .split(size)
+    }
+}
+
+fn main() -> Result<(), Error> {
     let matches = clap::App::new("piTunes client")
         .version("0.1.0")
         .about("A client that allows you to browse and play songs from your personal music collection hosted by a piTunes server")
@@ -214,14 +350,12 @@ fn main() -> Result<(), failure::Error> {
     let api_key = env::var("API_KEY").expect("Environment variable API_KEY is not present");
 
     // Terminal initialization
-    enable_raw_mode()?;
-    let stdout = io::stdout();
-    let backend = CrosstermBackend::new(stdout);
+    let backend = CrosstermBackend::new(io::stdout());
     let mut terminal = Terminal::new(backend)?;
-    terminal.clear()?;
-    terminal.hide_cursor()?;
+    execute!(terminal.backend_mut(), EnterAlternateScreen)?;
+    enable_raw_mode()?;
 
-    let events = Events::new();
+    let mut events = Events::new();
 
     let client = reqwest::blocking::Client::new();
     let (_stream, handle) = rodio::OutputStream::try_default().unwrap();
@@ -230,348 +364,55 @@ fn main() -> Result<(), failure::Error> {
     let play_instant_lock = RwLock::new(None);
     let lazy_elapsed_lock = RwLock::new(Duration::new(0, 0));
 
-    let root_title = format!("{} @ {}", PI_SYMBOL, server_url);
+    let context = Arc::new(Context {
+        server_url,
+        api_key,
+        client,
+        handle,
+        sink_lock,
+        queue_lock,
+        play_instant_lock,
+        lazy_elapsed_lock,
+    });
 
-    let mut store = {
-        let initial_state = {
-            let context = Arc::new(Context {
-                server_url,
-                api_key,
-                client,
-                handle,
-                sink_lock,
-                queue_lock,
-                play_instant_lock,
-                lazy_elapsed_lock,
-            });
-            let break_condition = false;
-            let model = Model::Root;
-            let view = {
-                let list_state = {
-                    let mut list_state = ListState::default();
-                    list_state.select(Some(0));
-                    list_state
-                };
-                let items = vec![
-                    String::from(ALBUMS),
-                    String::from(ARTISTS),
-                    String::from(GENRES),
-                    String::from(PLAYLISTS),
-                    String::from(TRACKS),
-                ];
-                let pattern = None;
-                let indices = (0..items.len()).collect();
-                View::List {
-                    list_state,
-                    items,
-                    pattern,
-                    indices,
-                }
-            };
-            let history = Vec::new();
-            let stop_propagation = false;
-            State {
-                context,
-                break_condition,
-                model,
-                view,
-                history,
-                stop_propagation,
-            }
-        };
-        Store::new(REDUCER, initial_state)
+    let mut state_machine = StateMachine {
+        context: context.clone(),
+        state: State::Root(RootState {
+            stateful_list: StatefulList::with_items(vec![
+                RootItem::from(ALBUMS),
+                RootItem::from(ARTISTS),
+                RootItem::from(GENRES),
+                RootItem::from(PLAYLISTS),
+                RootItem::from(TRACKS),
+            ]),
+        }),
+        undo: Vec::new(),
+        redo: Vec::new(),
     };
 
     loop {
-        let state = store.state();
-
-        if state.break_condition {
-            break;
-        }
-
-        let active = if let Model::Tracks { tracks } = &state.model {
-            let queue_guard = state.context.queue_lock.read().unwrap();
-            if let Some(first) = queue_guard.first() {
-                tracks.iter().position(|track| track.id == first.id)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        let title = {
-            let mut title = String::from(" ");
-            title.push_str(&root_title[..]);
-            for state in &state.history {
-                if let View::List {
-                    list_state,
-                    items,
-                    pattern: _,
-                    indices,
-                } = &state.view
-                {
-                    if let Some(selected) = list_state.selected() {
-                        title.push_str(" ─ ");
-                        title.push_str(&items[indices[selected]][..]);
-                    }
-                }
-            }
-            title.push_str(" ");
-            title
-        };
-
         terminal.draw(|f| {
-            let size = f.size();
-            let play_instant_guard = state.context.play_instant_lock.read().unwrap();
-            let bottom_state = match &state.view {
-                View::List {
-                    list_state: _,
-                    items: _,
-                    pattern,
-                    indices: _,
-                } if pattern.is_some() => Some(BottomState::Search {
-                    pattern: pattern.clone().unwrap(),
-                }),
-                _ => {
-                    if let Some(play_instant) = *play_instant_guard {
-                        let queue_guard = state.context.queue_lock.read().unwrap();
-                        if let Some(first) = queue_guard.first() {
-                            let lazy_elapsed_guard =
-                                state.context.lazy_elapsed_lock.read().unwrap();
-                            let sink_guard = state.context.sink_lock.read().unwrap();
-                            let elapsed = if sink_guard.is_paused() {
-                                *lazy_elapsed_guard
-                            } else {
-                                *lazy_elapsed_guard + play_instant.elapsed()
-                            };
-                            let elapsed_minutes = elapsed.as_secs() / 60;
-                            let elapsed_seconds = elapsed.as_secs() % 60;
-                            let duration = Duration::from_millis(first.duration as u64);
-                            let duration_minutes = duration.as_secs() / 60;
-                            let duration_seconds = duration.as_secs() % 60;
-                            let title = format!(" {} ", first.name);
-                            let percent =
-                                cmp::min(100, elapsed.as_millis() * 100 / duration.as_millis())
-                                    as u16;
-                            let label = format!(
-                                "{}:{:0>2} / {}:{:0>2}",
-                                elapsed_minutes,
-                                elapsed_seconds,
-                                duration_minutes,
-                                duration_seconds
-                            );
-                            Some(BottomState::Player {
-                                title,
-                                percent,
-                                label,
-                            })
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                }
-            };
-            let constraints = if bottom_state.is_some() {
-                vec![Constraint::Min(0), Constraint::Length(3)]
-            } else {
-                vec![Constraint::Min(0)]
-            };
-            let chunks = Layout::default()
-                .constraints(constraints.as_ref())
-                .split(size);
-            let top_block = Block::default()
-                .borders(Borders::ALL)
-                .border_type(BorderType::Rounded)
-                .title(&title[..]);
-            f.render_widget(top_block, chunks[0]);
-            let top_chunks = Layout::default()
-                .constraints([Constraint::Min(0)].as_ref())
-                .horizontal_margin(3)
-                .vertical_margin(2)
-                .split(chunks[0]);
-            match &state.view {
-                View::List {
-                    list_state,
-                    items,
-                    pattern: _,
-                    indices,
-                } => {
-                    let highlight_modifier = if let Some(selected) = list_state.selected() {
-                        if let Some(active) = active {
-                            if indices[selected] == active {
-                                Modifier::REVERSED | Modifier::BOLD
-                            } else {
-                                Modifier::REVERSED
-                            }
-                        } else {
-                            Modifier::REVERSED
-                        }
-                    } else {
-                        Modifier::REVERSED
-                    };
-                    let list_items: Vec<ListItem> = indices
-                        .iter()
-                        .map(|i| {
-                            let style = {
-                                let mut style = Style::default();
-                                if let Some(active) = active {
-                                    if active == *i {
-                                        style = style.add_modifier(Modifier::BOLD);
-                                    }
-                                }
-                                style
-                            };
-                            ListItem::new(vec![Spans::from(vec![Span::styled(
-                                items[*i].clone(),
-                                style,
-                            )])])
-                        })
-                        .collect();
-                    let list = List::new(list_items)
-                        .highlight_style(Style::default().add_modifier(highlight_modifier));
-                    f.render_stateful_widget(list, top_chunks[0], &mut list_state.clone());
-                }
-                View::Edit {
-                    input_fields,
-                    selected,
-                } => {
-                    let constraints = vec![Constraint::Length(3); input_fields.len() + 1];
-                    let top_inner_chunks = Layout::default()
-                        .constraints(&constraints[..])
-                        .split(top_chunks[0]);
-                    for (i, input_field) in input_fields.iter().enumerate() {
-                        let (key, text) = match input_field {
-                            InputField::Text { key, value } => {
-                                (key, vec![Spans::from(vec![Span::raw(&value[..])])])
-                            }
-                            InputField::Chooser { key, value, id: _ } => {
-                                let style = {
-                                    let mut style = Style::default();
-                                    if let Some(selected) = *selected {
-                                        if selected == i {
-                                            style = style.add_modifier(Modifier::REVERSED);
-                                        }
-                                    }
-                                    style
-                                };
-                                (key, vec![Spans::from(vec![Span::styled(value, style)])])
-                            }
-                        };
-                        let block = {
-                            let style = {
-                                let mut style = Style::default();
-                                if let Some(selected) = *selected {
-                                    if selected == i {
-                                        style = style.add_modifier(Modifier::BOLD);
-                                    }
-                                }
-                                style
-                            };
-                            let title = {
-                                let mut title = String::from(" ");
-                                title.push_str(&key[..]);
-                                title.push_str(" ");
-                                title
-                            };
-                            let title = Span::styled(title, style);
-                            Block::default()
-                                .borders(Borders::ALL)
-                                .border_type(BorderType::Rounded)
-                                .title(title)
-                        };
-                        let paragraph = Paragraph::new(text).block(block);
-                        f.render_widget(paragraph, top_inner_chunks[i]);
-                    }
-                }
-            }
-            if let Some(bottom_state) = bottom_state {
-                match bottom_state {
-                    BottomState::Player {
-                        title,
-                        percent,
-                        label,
-                    } => {
-                        let bottom_block = Block::default()
-                            .borders(Borders::ALL)
-                            .border_type(BorderType::Rounded)
-                            .title(&title[..]);
-                        f.render_widget(bottom_block, chunks[1]);
-                        let bottom_chunks = Layout::default()
-                            .constraints([Constraint::Min(0)].as_ref())
-                            .horizontal_margin(2)
-                            .vertical_margin(1)
-                            .split(chunks[1]);
-                        let my_gauge = MyGauge::default().percent(percent).label(&label[..]);
-                        f.render_widget(my_gauge, bottom_chunks[0]);
-                    }
-                    BottomState::Search { pattern } => {
-                        let text = vec![Spans::from(vec![Span::raw(&pattern[..])])];
-                        let bottom_block = Block::default()
-                            .borders(Borders::ALL)
-                            .border_type(BorderType::Rounded)
-                            .title(SEARCH);
-                        let paragraph = Paragraph::new(text).block(bottom_block);
-                        f.render_widget(paragraph, chunks[1]);
-                    }
-                }
-            }
+            let chunks = create_layout(&context, f);
+            state_machine.render(f, chunks[0]);
         })?;
 
-        match &state.view {
-            View::List {
-                list_state: _,
-                items: _,
-                pattern,
-                indices: _,
-            } => {
-                if let Some(pattern) = pattern {
-                    terminal.show_cursor()?;
-                    // Put the cursor back inside the input box
-                    let height = terminal.size().unwrap().height;
-                    write!(
-                        terminal.backend_mut(),
-                        "{}",
-                        MoveTo(1 + UnicodeWidthStr::width(&pattern[..]) as u16, height - 2)
-                    )?;
-                    // stdout is buffered, flush it to see the effect immediately when hitting backspace
-                    io::stdout().flush().ok();
-                } else {
-                    terminal.hide_cursor()?
-                }
-            }
-            View::Edit {
-                input_fields,
-                selected,
-            } => {
-                if let Some(selected) = *selected {
-                    if let InputField::Text { key: _, value } = &input_fields[selected] {
-                        terminal.show_cursor()?;
-                        // Put the cursor back inside the input box
-                        write!(
-                            terminal.backend_mut(),
-                            "{}",
-                            MoveTo(
-                                4 + UnicodeWidthStr::width(&value[..]) as u16,
-                                3 + 3 * selected as u16
-                            )
-                        )?;
-                        // stdout is buffered, flush it to see the effect immediately when hitting backspace
-                        io::stdout().flush().ok();
-                    }
-                }
-            }
-        }
+        events.ignore_events(true);
+        state_machine.inputless_transition();
+        events.ignore_events(false);
 
-        if let Event::Input(input) = events.next()? {
-            store.dispatch(input);
+        if let Event::Input(key) = events.next()? {
+            match key {
+                KeyEvent {
+                    code: KeyCode::Char('c'),
+                    modifiers: KeyModifiers::CONTROL,
+                } => break,
+                _ => (),
+            }
+            state_machine.transition(&key);
         }
     }
 
-    terminal.clear()?;
-
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)?;
     disable_raw_mode()?;
 
     Ok(())
