@@ -152,16 +152,31 @@ impl Track {
         self.duration
     }
 
-    pub fn album_id(&self) -> Option<i32> {
-        self.album_id
+    pub fn album(&self, context: &Context) -> juniper::FieldResult<Option<Album>> {
+        let conn = context.pool.get()?;
+        if let Some(album_id) = self.album_id {
+            Ok(Some(albums::table.find(album_id).get_result(&conn)?))
+        } else {
+            Ok(None)
+        }
     }
 
-    pub fn artist_id(&self) -> Option<i32> {
-        self.artist_id
+    pub fn artist(&self, context: &Context) -> juniper::FieldResult<Option<Artist>> {
+        let conn = context.pool.get()?;
+        if let Some(artist_id) = self.artist_id {
+            Ok(Some(artists::table.find(artist_id).get_result(&conn)?))
+        } else {
+            Ok(None)
+        }
     }
 
-    pub fn genre_id(&self) -> Option<i32> {
-        self.genre_id
+    pub fn genre(&self, context: &Context) -> juniper::FieldResult<Option<Genre>> {
+        let conn = context.pool.get()?;
+        if let Some(genre_id) = self.genre_id {
+            Ok(Some(genres::table.find(genre_id).get_result(&conn)?))
+        } else {
+            Ok(None)
+        }
     }
 
     pub fn track_number(&self) -> Option<i32> {

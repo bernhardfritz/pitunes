@@ -5,6 +5,7 @@ mod util;
 mod models;
 mod requests;
 mod state_machine;
+mod states;
 
 use std::{
     cmp, env,
@@ -24,21 +25,20 @@ use crossterm::{
 use dotenv::dotenv;
 use failure::Error;
 // use http_stream_reader::HttpStreamReader;
-use models::{Album, Artist, Genre, IdName, Playlist, Track};
+use models::{FullTrack, IdName, RootItem, Track};
+use requests::get_track;
+use state_machine::StateMachine;
+use states::{RootState, State};
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Layout, Rect},
     widgets::{Block, BorderType, Borders},
     Frame, Terminal,
 };
-use util::stateful_list::StatefulList;
-
-use crate::{
-    state_machine::StateMachine,
-    util::{
-        event::{Event, Events},
-        my_gauge::MyGauge,
-    },
+use util::{
+    event::{Event, Events},
+    my_gauge::MyGauge,
+    stateful_list::StatefulList,
 };
 
 pub struct Context {
@@ -48,6 +48,7 @@ pub struct Context {
     handle: rodio::OutputStreamHandle,
     sink_lock: RwLock<rodio::Sink>,
     queue_lock: RwLock<Vec<Track>>,
+    full_track_lock: RwLock<Option<FullTrack>>,
     play_instant_lock: RwLock<Option<Instant>>,
     lazy_elapsed_lock: RwLock<Duration>,
 }
@@ -58,6 +59,10 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
     {
         let mut queue_guard = context.queue_lock.write().unwrap();
         queue_guard.clear();
+    }
+    {
+        let mut full_track_guard = context.full_track_lock.write().unwrap();
+        *full_track_guard = None;
     }
     {
         let sink_guard = context.sink_lock.read().unwrap();
@@ -82,13 +87,22 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
             *sink_guard = rodio::Sink::try_new(&context.handle).unwrap();
         }
         Some(thread::spawn(move || loop {
-            let url;
-            {
+            let url = {
                 let queue_guard = context.queue_lock.read().unwrap();
-                url = queue_guard
-                    .first()
-                    .map(|track| format!("{}/{}/{}.mp3", context.server_url, STATIC, track.id));
-            }
+                let track = queue_guard.first();
+                if let Some(track) = track {
+                    {
+                        let mut full_track_guard = context.full_track_lock.write().unwrap();
+                        *full_track_guard = Some(get_track(&context, track.id));
+                    }
+                    Some(format!(
+                        "{}/{}/{}.mp3",
+                        context.server_url, STATIC, track.id
+                    ))
+                } else {
+                    None
+                }
+            };
             if let Some(url) = url {
                 // TODO: HttpStreamReader should not be passed directly to the Decoder as this results in audible delays while chunks are downloaded
                 /*let source =
@@ -137,152 +151,14 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
     });
 }
 
-pub struct AlbumsState {
-    stateful_list: StatefulList<Album>,
-}
-
-impl HasStatefulList for AlbumsState {
-    type Item = Album;
-
-    fn stateful_list(&self) -> &StatefulList<Self::Item> {
-        &self.stateful_list
-    }
-
-    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
-        &mut self.stateful_list
-    }
-}
-
-pub struct ArtistsState {
-    stateful_list: StatefulList<Artist>,
-}
-
-impl HasStatefulList for ArtistsState {
-    type Item = Artist;
-
-    fn stateful_list(&self) -> &StatefulList<Self::Item> {
-        &self.stateful_list
-    }
-
-    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
-        &mut self.stateful_list
-    }
-}
-
-pub struct GenresState {
-    stateful_list: StatefulList<Genre>,
-}
-
-impl HasStatefulList for GenresState {
-    type Item = Genre;
-
-    fn stateful_list(&self) -> &StatefulList<Self::Item> {
-        &self.stateful_list
-    }
-
-    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
-        &mut self.stateful_list
-    }
-}
-
-pub struct PlaylistsState {
-    stateful_list: StatefulList<Playlist>,
-}
-
-impl HasStatefulList for PlaylistsState {
-    type Item = Playlist;
-
-    fn stateful_list(&self) -> &StatefulList<Self::Item> {
-        &self.stateful_list
-    }
-
-    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
-        &mut self.stateful_list
-    }
-}
-
-pub struct PromptState {
-    message: String,
-}
-
-pub struct RootState {
-    stateful_list: StatefulList<RootItem>,
-}
-
-pub struct RootItem {
-    name: String,
-}
-
-impl IdName for RootItem {
-    fn id(&self) -> i64 {
-        0
-    }
-
-    fn name(&self) -> &str {
-        &self.name[..]
-    }
-}
-
-impl From<&str> for RootItem {
-    fn from(name: &str) -> Self {
-        RootItem {
-            name: String::from(name),
-        }
-    }
-}
-
-impl HasStatefulList for RootState {
-    type Item = RootItem;
-
-    fn stateful_list(&self) -> &StatefulList<Self::Item> {
-        &self.stateful_list
-    }
-
-    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
-        &mut self.stateful_list
-    }
-}
-
-pub struct TracksState {
-    stateful_list: StatefulList<Track>,
-}
-
-impl HasStatefulList for TracksState {
-    type Item = Track;
-
-    fn stateful_list(&self) -> &StatefulList<Self::Item> {
-        &self.stateful_list
-    }
-
-    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
-        &mut self.stateful_list
-    }
-}
-
-pub trait HasStatefulList {
-    type Item: IdName;
-
-    fn stateful_list(&self) -> &StatefulList<Self::Item>;
-    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item>;
-}
-pub enum State {
-    Albums(AlbumsState),
-    Artists(ArtistsState),
-    Genres(GenresState),
-    Playlists(PlaylistsState),
-    Prompt(PromptState),
-    Root(RootState),
-    Tracks(TracksState),
-}
-
 fn create_layout_with_bottom(
     context: &Context,
     f: &mut Frame<CrosstermBackend<Stdout>>,
 ) -> Option<Vec<Rect>> {
     let play_instant_guard = context.play_instant_lock.read().unwrap();
     let play_instant = (*play_instant_guard)?;
-    let queue_guard = context.queue_lock.read().unwrap();
-    let first = queue_guard.first()?;
+    let full_track_guard = context.full_track_lock.read().unwrap();
+    let full_track = full_track_guard.as_ref()?;
     let lazy_elapsed_guard = context.lazy_elapsed_lock.read().unwrap();
     let sink_guard = context.sink_lock.read().unwrap();
     let elapsed = if sink_guard.is_paused() {
@@ -292,10 +168,14 @@ fn create_layout_with_bottom(
     };
     let elapsed_minutes = elapsed.as_secs() / 60;
     let elapsed_seconds = elapsed.as_secs() % 60;
-    let duration = Duration::from_millis(first.duration as u64);
+    let duration = Duration::from_millis(full_track.duration as u64);
     let duration_minutes = duration.as_secs() / 60;
     let duration_seconds = duration.as_secs() % 60;
-    let title = format!(" {} ", first.name);
+    let title = if let Some(artist) = &full_track.artist {
+        format!(" {} - {} ", full_track.name, artist.name)
+    } else {
+        format!(" {} ", full_track.name)
+    };
     let percent = cmp::min(100, elapsed.as_millis() * 100 / duration.as_millis()) as u16;
     let label = format!(
         "{}:{:0>2} / {}:{:0>2}",
@@ -361,6 +241,7 @@ fn main() -> Result<(), Error> {
     let (_stream, handle) = rodio::OutputStream::try_default().unwrap();
     let sink_lock = RwLock::new(rodio::Sink::new_idle().0);
     let queue_lock = RwLock::new(vec![]);
+    let full_track_lock = RwLock::new(None);
     let play_instant_lock = RwLock::new(None);
     let lazy_elapsed_lock = RwLock::new(Duration::new(0, 0));
 
@@ -371,6 +252,7 @@ fn main() -> Result<(), Error> {
         handle,
         sink_lock,
         queue_lock,
+        full_track_lock,
         play_instant_lock,
         lazy_elapsed_lock,
     });

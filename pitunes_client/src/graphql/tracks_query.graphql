@@ -3,8 +3,5 @@ query TracksQuery {
     id
     name
     duration
-    albumId
-    artistId
-    genreId
   }
 }

@@ -3,8 +3,17 @@ query TrackQuery($id: Int!) {
     id
     name
     duration
-    albumId
-    artistId
-    genreId
+    album {
+      id
+      name
+    }
+    artist {
+      id
+      name
+    }
+    genre {
+      id
+      name
+    }
   }
 }

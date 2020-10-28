@@ -11,16 +11,16 @@ use crate::{
             artist_tracks_query, artists_query, create_album_mutation, create_artist_mutation,
             create_genre_mutation, create_playlist_mutation, delete_playlist_mutation,
             delete_playlist_track_mutation, genre_query, genre_tracks_query, genres_query,
-            playlist_tracks_query, playlists_query, tracks_query, update_album_mutation,
-            update_artist_mutation, update_genre_mutation, update_playlist_mutation,
-            update_playlist_track_mutation, update_track_mutation,
+            playlist_tracks_query, playlists_query, track_query, tracks_query,
+            update_album_mutation, update_artist_mutation, update_genre_mutation,
+            update_playlist_mutation, update_playlist_track_mutation, update_track_mutation,
         },
         Album, AlbumQuery, AlbumTracksQuery, AlbumsQuery, Artist, ArtistAlbumsQuery, ArtistQuery,
         ArtistTracksQuery, ArtistsQuery, CreateAlbumMutation, CreateArtistMutation,
         CreateGenreMutation, CreatePlaylistMutation, DeletePlaylistMutation,
-        DeletePlaylistTrackMutation, Genre, GenreQuery, GenreTracksQuery, GenresQuery, Playlist,
-        PlaylistTracksQuery, PlaylistsQuery, Track, TracksQuery, UpdateAlbumMutation,
-        UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
+        DeletePlaylistTrackMutation, FullTrack, Genre, GenreQuery, GenreTracksQuery, GenresQuery,
+        Playlist, PlaylistTracksQuery, PlaylistsQuery, Track, TrackQuery, TracksQuery,
+        UpdateAlbumMutation, UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
         UpdatePlaylistTrackMutation, UpdateTrackMutation,
     },
     Context,
@@ -339,6 +339,24 @@ pub fn update_playlist(context: &Arc<Context>, playlist: &Playlist, name: &str) 
         .unwrap()
 }
 
+pub fn get_track(context: &Arc<Context>, id: i64) -> FullTrack {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body = TrackQuery::build_query(track_query::Variables { id });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<track_query::ResponseData> = res.json().unwrap();
+    response_body
+        .data
+        .map(|data| data.track)
+        .map(|full_track| full_track.into())
+        .unwrap()
+}
+
 pub fn get_tracks(context: &Arc<Context>) -> Vec<Track> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = TracksQuery::build_query(tracks_query::Variables {});
@@ -361,7 +379,7 @@ pub fn update_track(
     album_id: &Option<i64>,
     artist_id: &Option<i64>,
     genre_id: &Option<i64>,
-) -> Track {
+) -> FullTrack {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = UpdateTrackMutation::build_query(update_track_mutation::Variables {
         id: track.id,
@@ -384,7 +402,7 @@ pub fn update_track(
     response_body
         .data
         .map(|data| data.update_track)
-        .map(|track| track.into())
+        .map(|full_track| full_track.into())
         .unwrap()
 }
 

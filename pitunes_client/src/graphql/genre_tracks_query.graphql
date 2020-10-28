@@ -6,9 +6,6 @@ query GenreTracksQuery($id: Int!) {
       id
       name
       duration
-      albumId
-      artistId
-      genreId
     }
   }
 }

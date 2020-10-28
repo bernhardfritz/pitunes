@@ -21,13 +21,17 @@ use crate::{
     requests::{
         create_album, create_artist, create_genre, create_playlist, delete_playlist,
         delete_playlist_track, get_album, get_albums, get_albums_of_artist, get_artist,
-        get_artists, get_genre, get_genres, get_playlists, get_tracks, get_tracks_of_album,
-        get_tracks_of_artist, get_tracks_of_genre, get_tracks_of_playlist, update_album,
-        update_artist, update_genre, update_playlist, update_playlist_track, update_track,
+        get_artists, get_genre, get_genres, get_playlists, get_track, get_tracks,
+        get_tracks_of_album, get_tracks_of_artist, get_tracks_of_genre, get_tracks_of_playlist,
+        update_album, update_artist, update_genre, update_playlist, update_playlist_track,
+        update_track,
+    },
+    states::{
+        AlbumsState, ArtistsState, GenresState, HasStatefulList, PlaylistsState, PromptState,
+        RootState, State, TracksState,
     },
     util::{self, renderer, stateful_list::StatefulList},
-    AlbumsState, ArtistsState, Context, GenresState, HasStatefulList, PlaylistsState, PromptState,
-    RootState, State, TracksState,
+    Context,
 };
 
 pub struct StateMachine {
@@ -266,7 +270,8 @@ impl StateMachine {
                 }
                 State::Tracks(tracks_state) => {
                     let track = tracks_state.stateful_list_mut().selected_item_mut()?;
-                    *track = update_track(&self.context, track, &line[..], &None, &None, &None);
+                    *track =
+                        update_track(&self.context, track, &line[..], &None, &None, &None).into();
                     // TODO improve update_track
                 }
                 _ => (),

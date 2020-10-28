@@ -13,7 +13,7 @@ use unicode_width::UnicodeWidthStr;
 use crate::{
     constants::{BLANK, ELLIPSIS},
     models::{IdName, Track},
-    HasStatefulList, PromptState, State,
+    states::{HasStatefulList, PromptState, State},
 };
 
 pub fn render_prompt(f: &mut Frame<CrosstermBackend<Stdout>>, prompt_state: &PromptState) {
