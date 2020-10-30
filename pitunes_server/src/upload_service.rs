@@ -1,21 +1,25 @@
-use std::io::{BufReader, BufWriter, Seek, SeekFrom, Write};
-use std::path::Path;
+use std::{
+    io::{BufReader, BufWriter, Seek, SeekFrom, Write},
+    path::Path,
+};
 
 use actix_multipart::Multipart;
 use actix_web::{web, Error, HttpResponse};
 use diesel::prelude::*;
 use futures::{StreamExt, TryStreamExt};
 
-use crate::chunker::Chunker;
-use crate::graphql_schema::Context;
-use crate::models::{
-    Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Track, TrackInputInternal,
+use crate::{
+    chunker::Chunker,
+    graphql_schema::RequestContext,
+    models::{
+        Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Track, TrackInputInternal,
+    },
+    schema::{albums, artists, genres, tracks},
 };
-use crate::schema::{albums, artists, genres, tracks};
 
 #[post("/upload")]
 async fn post_upload(
-    context: web::Data<Context>,
+    context: web::Data<RequestContext>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, Error> {
     let mut vec = Vec::new();

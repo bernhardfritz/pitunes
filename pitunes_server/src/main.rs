@@ -14,20 +14,19 @@ mod models;
 mod schema;
 mod upload_service;
 
-use std::fs;
-use std::sync::Arc;
+use std::{fs, sync::Arc};
 
 use actix_files::Files;
-use actix_web::dev::ServiceRequest;
-use actix_web::{error, web, App, Error, HttpServer};
-use actix_web_httpauth::extractors::bearer::BearerAuth;
-use actix_web_httpauth::middleware::HttpAuthentication;
+use actix_web::{dev::ServiceRequest, error, web, App, Error, HttpServer};
+use actix_web_httpauth::{extractors::bearer::BearerAuth, middleware::HttpAuthentication};
 use base64;
 use clap::{self, value_t};
-use graphql_schema::{create_schema, Context};
+use graphql_schema::{create_schema, RequestContext};
 use lazy_static::lazy_static;
-use openssl::rand;
-use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+use openssl::{
+    rand,
+    ssl::{SslAcceptor, SslFiletype, SslMethod},
+};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
@@ -92,7 +91,6 @@ async fn main() -> std::io::Result<()> {
 
     // r2d2 pool
     let pool = db::establish_connection();
-    let ctx = Context { pool: pool.clone() };
     let st = Arc::new(create_schema());
 
     // load ssl keys
@@ -105,10 +103,11 @@ async fn main() -> std::io::Result<()> {
     builder.set_certificate_chain_file("cert.pem").unwrap();
 
     let http_server = HttpServer::new(move || {
+        let ctx = RequestContext::new(pool.clone());
         let auth = HttpAuthentication::bearer(validator);
         App::new()
             .data(st.clone())
-            .data(ctx.clone())
+            .data(ctx)
             .service(graphql_service::graphiql)
             .service(upload_service::get_upload)
             .service(

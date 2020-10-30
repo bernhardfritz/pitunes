@@ -25,8 +25,7 @@ use crossterm::{
 use dotenv::dotenv;
 use failure::Error;
 // use http_stream_reader::HttpStreamReader;
-use models::{FullTrack, IdName, RootItem, Track};
-use requests::get_track;
+use models::{RootItem, Track};
 use state_machine::StateMachine;
 use states::{RootState, State};
 use tui::{
@@ -48,7 +47,6 @@ pub struct Context {
     handle: rodio::OutputStreamHandle,
     sink_lock: RwLock<rodio::Sink>,
     queue_lock: RwLock<Vec<Track>>,
-    full_track_lock: RwLock<Option<FullTrack>>,
     play_instant_lock: RwLock<Option<Instant>>,
     lazy_elapsed_lock: RwLock<Duration>,
 }
@@ -59,10 +57,6 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
     {
         let mut queue_guard = context.queue_lock.write().unwrap();
         queue_guard.clear();
-    }
-    {
-        let mut full_track_guard = context.full_track_lock.write().unwrap();
-        *full_track_guard = None;
     }
     {
         let sink_guard = context.sink_lock.read().unwrap();
@@ -89,19 +83,9 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
         Some(thread::spawn(move || loop {
             let url = {
                 let queue_guard = context.queue_lock.read().unwrap();
-                let track = queue_guard.first();
-                if let Some(track) = track {
-                    {
-                        let mut full_track_guard = context.full_track_lock.write().unwrap();
-                        *full_track_guard = Some(get_track(&context, track.id));
-                    }
-                    Some(format!(
-                        "{}/{}/{}.mp3",
-                        context.server_url, STATIC, track.id
-                    ))
-                } else {
-                    None
-                }
+                queue_guard
+                    .first()
+                    .map(|track| format!("{}/{}/{}.mp3", context.server_url, STATIC, track.id))
             };
             if let Some(url) = url {
                 // TODO: HttpStreamReader should not be passed directly to the Decoder as this results in audible delays while chunks are downloaded
@@ -157,8 +141,8 @@ fn create_layout_with_bottom(
 ) -> Option<Vec<Rect>> {
     let play_instant_guard = context.play_instant_lock.read().unwrap();
     let play_instant = (*play_instant_guard)?;
-    let full_track_guard = context.full_track_lock.read().unwrap();
-    let full_track = full_track_guard.as_ref()?;
+    let queue_guard = context.queue_lock.read().unwrap();
+    let first = queue_guard.first()?;
     let lazy_elapsed_guard = context.lazy_elapsed_lock.read().unwrap();
     let sink_guard = context.sink_lock.read().unwrap();
     let elapsed = if sink_guard.is_paused() {
@@ -168,13 +152,13 @@ fn create_layout_with_bottom(
     };
     let elapsed_minutes = elapsed.as_secs() / 60;
     let elapsed_seconds = elapsed.as_secs() % 60;
-    let duration = Duration::from_millis(full_track.duration as u64);
+    let duration = Duration::from_millis(first.duration as u64);
     let duration_minutes = duration.as_secs() / 60;
     let duration_seconds = duration.as_secs() % 60;
-    let title = if let Some(artist) = &full_track.artist {
-        format!(" {} - {} ", full_track.name, artist.name)
+    let title = if let Some(artist) = &first.artist {
+        format!(" {} - {} ", first.name, artist.name)
     } else {
-        format!(" {} ", full_track.name)
+        format!(" {} ", first.name)
     };
     let percent = cmp::min(100, elapsed.as_millis() * 100 / duration.as_millis()) as u16;
     let label = format!(
@@ -241,7 +225,6 @@ fn main() -> Result<(), Error> {
     let (_stream, handle) = rodio::OutputStream::try_default().unwrap();
     let sink_lock = RwLock::new(rodio::Sink::new_idle().0);
     let queue_lock = RwLock::new(vec![]);
-    let full_track_lock = RwLock::new(None);
     let play_instant_lock = RwLock::new(None);
     let lazy_elapsed_lock = RwLock::new(Duration::new(0, 0));
 
@@ -252,7 +235,6 @@ fn main() -> Result<(), Error> {
         handle,
         sink_lock,
         queue_lock,
-        full_track_lock,
         play_instant_lock,
         lazy_elapsed_lock,
     });

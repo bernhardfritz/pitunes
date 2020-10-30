@@ -1,21 +1,43 @@
 use std::convert::TryFrom;
+use std::sync::Arc;
 
 use diesel::prelude::*;
 
-use crate::db::SqlitePool;
-use crate::models::{
-    Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Playlist, PlaylistInput,
-    PlaylistTrack, PlaylistTrackInput, PlaylistTrackOrderInput, Track, TrackInput,
+use crate::{
+    db::SqlitePool,
+    models::{
+        Album, AlbumBatcher, AlbumInput, AlbumLoader, Artist, ArtistBatcher, ArtistInput,
+        ArtistLoader, Genre, GenreBatcher, GenreInput, GenreLoader, Playlist, PlaylistInput,
+        PlaylistTrack, PlaylistTrackInput, PlaylistTrackOrderInput, Track, TrackInput,
+    },
+    schema::{albums, artists, genres, playlists, playlists_tracks, tracks},
 };
-use crate::schema::{albums, artists, genres, playlists, playlists_tracks, tracks};
 
 #[derive(Clone)]
-pub struct Context {
-    pub pool: SqlitePool,
+pub struct RequestContext {
+    pub pool: Arc<SqlitePool>,
+    pub album_loader: AlbumLoader,
+    pub artist_loader: ArtistLoader,
+    pub genre_loader: GenreLoader,
+}
+
+impl RequestContext {
+    pub fn new(pool: SqlitePool) -> RequestContext {
+        let pool = Arc::new(pool);
+        let album_loader = AlbumLoader::new(AlbumBatcher { pool: pool.clone() });
+        let artist_loader = ArtistLoader::new(ArtistBatcher { pool: pool.clone() });
+        let genre_loader = GenreLoader::new(GenreBatcher { pool: pool.clone() });
+        RequestContext {
+            pool,
+            album_loader,
+            artist_loader,
+            genre_loader,
+        }
+    }
 }
 
 // To make our context usable by Juniper, we have to implement a marker trait.
-impl juniper::Context for Context {}
+impl juniper::Context for RequestContext {}
 
 pub struct Query;
 
@@ -23,55 +45,55 @@ pub struct Query;
     // Here we specify the context type for the object.
     // We need to do this in every type that
     // needs access to the context.
-    Context = Context,
+    Context = RequestContext,
 )]
 impl Query {
-    fn album(context: &Context, id: i32) -> juniper::FieldResult<Album> {
+    fn album(context: &RequestContext, id: i32) -> juniper::FieldResult<Album> {
         let conn = context.pool.get()?;
         Ok(albums::table.find(id).get_result(&conn)?)
     }
 
-    fn albums(context: &Context) -> juniper::FieldResult<Vec<Album>> {
+    fn albums(context: &RequestContext) -> juniper::FieldResult<Vec<Album>> {
         let conn = context.pool.get()?;
         Ok(albums::table.load::<Album>(&conn)?)
     }
 
-    fn artist(context: &Context, id: i32) -> juniper::FieldResult<Artist> {
+    fn artist(context: &RequestContext, id: i32) -> juniper::FieldResult<Artist> {
         let conn = context.pool.get()?;
         Ok(artists::table.find(id).get_result(&conn)?)
     }
 
-    fn artists(context: &Context) -> juniper::FieldResult<Vec<Artist>> {
+    fn artists(context: &RequestContext) -> juniper::FieldResult<Vec<Artist>> {
         let conn = context.pool.get()?;
         Ok(artists::table.load::<Artist>(&conn)?)
     }
 
-    fn genre(context: &Context, id: i32) -> juniper::FieldResult<Genre> {
+    fn genre(context: &RequestContext, id: i32) -> juniper::FieldResult<Genre> {
         let conn = context.pool.get()?;
         Ok(genres::table.find(id).get_result(&conn)?)
     }
 
-    fn genres(context: &Context) -> juniper::FieldResult<Vec<Genre>> {
+    fn genres(context: &RequestContext) -> juniper::FieldResult<Vec<Genre>> {
         let conn = context.pool.get()?;
         Ok(genres::table.load::<Genre>(&conn)?)
     }
 
-    fn track(context: &Context, id: i32) -> juniper::FieldResult<Track> {
+    fn track(context: &RequestContext, id: i32) -> juniper::FieldResult<Track> {
         let conn = context.pool.get()?;
         Ok(tracks::table.find(id).get_result(&conn)?)
     }
 
-    fn tracks(context: &Context) -> juniper::FieldResult<Vec<Track>> {
+    fn tracks(context: &RequestContext) -> juniper::FieldResult<Vec<Track>> {
         let conn = context.pool.get()?;
         Ok(tracks::table.load::<Track>(&conn)?)
     }
 
-    fn playlist(context: &Context, id: i32) -> juniper::FieldResult<Playlist> {
+    fn playlist(context: &RequestContext, id: i32) -> juniper::FieldResult<Playlist> {
         let conn = context.pool.get()?;
         Ok(playlists::table.find(id).get_result(&conn)?)
     }
 
-    fn playlists(context: &Context) -> juniper::FieldResult<Vec<Playlist>> {
+    fn playlists(context: &RequestContext) -> juniper::FieldResult<Vec<Playlist>> {
         let conn = context.pool.get()?;
         Ok(playlists::table.load::<Playlist>(&conn)?)
     }
@@ -79,9 +101,12 @@ impl Query {
 
 pub struct Mutation;
 
-#[juniper::object(Context = Context)]
+#[juniper::object(Context = RequestContext)]
 impl Mutation {
-    fn create_album(context: &Context, album_input: AlbumInput) -> juniper::FieldResult<Album> {
+    fn create_album(
+        context: &RequestContext,
+        album_input: AlbumInput,
+    ) -> juniper::FieldResult<Album> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
             diesel::insert_into(albums::table)
@@ -92,7 +117,7 @@ impl Mutation {
     }
 
     fn update_album(
-        context: &Context,
+        context: &RequestContext,
         id: i32,
         album_input: AlbumInput,
     ) -> juniper::FieldResult<Album> {
@@ -105,12 +130,15 @@ impl Mutation {
         })?)
     }
 
-    fn delete_album(context: &Context, id: i32) -> juniper::FieldResult<bool> {
+    fn delete_album(context: &RequestContext, id: i32) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
         Ok(diesel::delete(albums::table.find(id)).execute(&conn)? == 1)
     }
 
-    fn create_artist(context: &Context, artist_input: ArtistInput) -> juniper::FieldResult<Artist> {
+    fn create_artist(
+        context: &RequestContext,
+        artist_input: ArtistInput,
+    ) -> juniper::FieldResult<Artist> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
             diesel::insert_into(artists::table)
@@ -123,7 +151,7 @@ impl Mutation {
     }
 
     fn update_artist(
-        context: &Context,
+        context: &RequestContext,
         id: i32,
         artist_input: ArtistInput,
     ) -> juniper::FieldResult<Artist> {
@@ -136,12 +164,15 @@ impl Mutation {
         })?)
     }
 
-    fn delete_artist(context: &Context, id: i32) -> juniper::FieldResult<bool> {
+    fn delete_artist(context: &RequestContext, id: i32) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
         Ok(diesel::delete(artists::table.find(id)).execute(&conn)? == 1)
     }
 
-    fn create_genre(context: &Context, genre_input: GenreInput) -> juniper::FieldResult<Genre> {
+    fn create_genre(
+        context: &RequestContext,
+        genre_input: GenreInput,
+    ) -> juniper::FieldResult<Genre> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
             diesel::insert_into(genres::table)
@@ -152,7 +183,7 @@ impl Mutation {
     }
 
     fn update_genre(
-        context: &Context,
+        context: &RequestContext,
         id: i32,
         genre_input: GenreInput,
     ) -> juniper::FieldResult<Genre> {
@@ -165,13 +196,13 @@ impl Mutation {
         })?)
     }
 
-    fn delete_genre(context: &Context, id: i32) -> juniper::FieldResult<bool> {
+    fn delete_genre(context: &RequestContext, id: i32) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
         Ok(diesel::delete(genres::table.find(id)).execute(&conn)? == 1)
     }
 
     fn update_track(
-        context: &Context,
+        context: &RequestContext,
         id: i32,
         track_input: TrackInput,
     ) -> juniper::FieldResult<Track> {
@@ -185,11 +216,11 @@ impl Mutation {
     }
 
     // TODO
-    // fn delete_track(context: &Context, id: i32) -> juniper::FieldResult<bool> {
+    // fn delete_track(context: &RequestContext, id: i32) -> juniper::FieldResult<bool> {
     // }
 
     fn create_playlist(
-        context: &Context,
+        context: &RequestContext,
         playlist_input: PlaylistInput,
     ) -> juniper::FieldResult<Playlist> {
         let conn = context.pool.get()?;
@@ -204,7 +235,7 @@ impl Mutation {
     }
 
     fn update_playlist(
-        context: &Context,
+        context: &RequestContext,
         id: i32,
         playlist_input: PlaylistInput,
     ) -> juniper::FieldResult<Playlist> {
@@ -217,13 +248,13 @@ impl Mutation {
         })?)
     }
 
-    fn delete_playlist(context: &Context, id: i32) -> juniper::FieldResult<bool> {
+    fn delete_playlist(context: &RequestContext, id: i32) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
         Ok(diesel::delete(playlists::table.find(id)).execute(&conn)? == 1)
     }
 
     fn create_playlist_track(
-        context: &Context,
+        context: &RequestContext,
         id: i32, // playlist_id
         playlist_track_input: PlaylistTrackInput,
     ) -> juniper::FieldResult<Playlist> {
@@ -260,7 +291,7 @@ impl Mutation {
     }
 
     fn update_playlist_track(
-        context: &Context,
+        context: &RequestContext,
         id: i32, // playlist_id
         playlist_track_order_input: PlaylistTrackOrderInput,
     ) -> juniper::FieldResult<Playlist> {
@@ -322,7 +353,7 @@ impl Mutation {
     }
 
     fn delete_playlist_track(
-        context: &Context,
+        context: &RequestContext,
         playlist_id: i32,
         track_id: i32,
         position: Option<i32>,

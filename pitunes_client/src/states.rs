@@ -1,5 +1,5 @@
 use crate::{
-    models::{Album, Artist, FullTrack, Genre, IdName, Playlist, RootItem, Track},
+    models::{Album, Artist, Genre, IdName, Playlist, RootItem, Track},
     util::stateful_list::StatefulList,
 };
 

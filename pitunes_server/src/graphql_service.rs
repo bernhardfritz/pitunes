@@ -3,8 +3,10 @@ use std::sync::Arc;
 use actix_web::{web, Error, HttpResponse};
 use juniper::http::GraphQLRequest;
 
-use crate::graphiql::graphiql_source;
-use crate::graphql_schema::{Context, Schema};
+use crate::{
+    graphiql::graphiql_source,
+    graphql_schema::{RequestContext, Schema},
+};
 
 #[get("/graphiql")]
 async fn graphiql() -> HttpResponse {
@@ -17,7 +19,7 @@ async fn graphiql() -> HttpResponse {
 #[post("/graphql")]
 async fn graphql(
     st: web::Data<Arc<Schema>>,
-    ctx: web::Data<Context>,
+    ctx: web::Data<RequestContext>,
     data: web::Json<GraphQLRequest>,
 ) -> Result<HttpResponse, Error> {
     let json = web::block(move || {

@@ -6,6 +6,18 @@ query PlaylistTracksQuery($id: Int!) {
       id
       name
       duration
+      album {
+        id
+        name
+      }
+      artist {
+        id
+        name
+      }
+      genre {
+        id
+        name
+      }
     }
   }
 }

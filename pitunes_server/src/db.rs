@@ -1,6 +1,8 @@
-use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, Pool, PoolError};
-use diesel::sqlite::SqliteConnection;
+use diesel::{
+    prelude::*,
+    r2d2::{ConnectionManager, Pool, PoolError},
+    sqlite::SqliteConnection,
+};
 
 embed_migrations!();
 
