@@ -293,7 +293,6 @@ impl IdName for RootItem {
 
 #[derive(Clone)]
 pub struct Track {
-    // todo change Track to be FullTrack and remove FullTrack
     pub id: i64,
     pub name: String,
     pub duration: i64,
@@ -309,6 +308,67 @@ impl IdName for Track {
 
     fn name(&self) -> &str {
         &self.name[..]
+    }
+}
+
+#[derive(Clone)]
+pub struct TrackInputBuilder {
+    id: i64,
+    name: String,
+    album_id: Option<i64>,
+    artist_id: Option<i64>,
+    genre_id: Option<i64>,
+    track_number: Option<i64>,
+}
+
+impl TrackInputBuilder {
+    pub fn new(id: i64, name: String) -> TrackInputBuilder {
+        TrackInputBuilder {
+            id,
+            name,
+            album_id: None,
+            artist_id: None,
+            genre_id: None,
+            track_number: None,
+        }
+    }
+
+    pub fn name(&mut self, name: String) -> &mut TrackInputBuilder {
+        self.name = name;
+        self
+    }
+
+    pub fn album_id(&mut self, album_id: Option<i64>) -> &mut TrackInputBuilder {
+        self.album_id = album_id;
+        self
+    }
+
+    pub fn artist_id(&mut self, artist_id: Option<i64>) -> &mut TrackInputBuilder {
+        self.artist_id = artist_id;
+        self
+    }
+
+    pub fn genre_id(&mut self, genre_id: Option<i64>) -> &mut TrackInputBuilder {
+        self.genre_id = genre_id;
+        self
+    }
+
+    pub fn track_number(&mut self, track_number: Option<i64>) -> &mut TrackInputBuilder {
+        self.track_number = track_number;
+        self
+    }
+
+    pub fn build(&self) -> update_track_mutation::Variables {
+        update_track_mutation::Variables {
+            id: self.id,
+            track_input: update_track_mutation::TrackInput {
+                name: self.name.clone(),
+                album_id: self.album_id,
+                artist_id: self.artist_id,
+                genre_id: self.genre_id,
+                track_number: self.track_number,
+            },
+        }
     }
 }
 

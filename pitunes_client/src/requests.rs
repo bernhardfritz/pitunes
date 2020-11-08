@@ -372,25 +372,9 @@ pub fn get_tracks(context: &Arc<Context>) -> Vec<Track> {
     tracks.into_iter().map(|track| track.into()).collect()
 }
 
-pub fn update_track(
-    context: &Arc<Context>,
-    track: &Track,
-    name: &str,
-    album_id: &Option<i64>,
-    artist_id: &Option<i64>,
-    genre_id: &Option<i64>,
-) -> Track {
+pub fn update_track(context: &Arc<Context>, variables: update_track_mutation::Variables) -> Track {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
-    let request_body = UpdateTrackMutation::build_query(update_track_mutation::Variables {
-        id: track.id,
-        track_input: update_track_mutation::TrackInput {
-            name: String::from(name),
-            album_id: album_id.clone(),
-            artist_id: artist_id.clone(),
-            genre_id: genre_id.clone(),
-            track_number: None,
-        },
-    });
+    let request_body = UpdateTrackMutation::build_query(variables);
     let res = context
         .client
         .post(&url)

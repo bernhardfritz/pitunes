@@ -165,11 +165,9 @@ fn create_layout_with_bottom(
         "{}:{:0>2} / {}:{:0>2}",
         elapsed_minutes, elapsed_seconds, duration_minutes, duration_seconds
     );
-    let size = f.size();
-    let constraints = vec![Constraint::Min(0), Constraint::Length(3)];
     let chunks = Layout::default()
-        .constraints(constraints.as_ref())
-        .split(size);
+        .constraints([Constraint::Min(0), Constraint::Length(3)].as_ref())
+        .split(f.size());
     let bottom_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
@@ -185,15 +183,23 @@ fn create_layout_with_bottom(
     Some(chunks)
 }
 
-fn create_layout(context: &Context, f: &mut Frame<CrosstermBackend<Stdout>>) -> Vec<Rect> {
-    if let Some(chunks) = create_layout_with_bottom(context, f) {
-        chunks
-    } else {
-        let size = f.size();
-        let constraints = vec![Constraint::Min(0)];
+fn create_layout(
+    context: &Context,
+    f: &mut Frame<CrosstermBackend<Stdout>>,
+    is_prompt_state: bool,
+) -> Vec<Rect> {
+    if is_prompt_state {
         Layout::default()
-            .constraints(constraints.as_ref())
-            .split(size)
+            .constraints(vec![Constraint::Min(0)])
+            .split(f.size())
+    } else {
+        if let Some(chunks) = create_layout_with_bottom(context, f) {
+            chunks
+        } else {
+            Layout::default()
+                .constraints(vec![Constraint::Min(0)])
+                .split(f.size())
+        }
     }
 }
 
@@ -242,13 +248,15 @@ fn main() -> Result<(), Error> {
     let mut state_machine = StateMachine {
         context: context.clone(),
         state: State::Root(RootState {
-            stateful_list: StatefulList::with_items(vec![
-                RootItem::from(ALBUMS),
-                RootItem::from(ARTISTS),
-                RootItem::from(GENRES),
-                RootItem::from(PLAYLISTS),
-                RootItem::from(TRACKS),
-            ]),
+            stateful_list: StatefulList::builder()
+                .items(vec![
+                    RootItem::from(ALBUMS),
+                    RootItem::from(ARTISTS),
+                    RootItem::from(GENRES),
+                    RootItem::from(PLAYLISTS),
+                    RootItem::from(TRACKS),
+                ])
+                .build(),
         }),
         undo: Vec::new(),
         redo: Vec::new(),
@@ -256,7 +264,7 @@ fn main() -> Result<(), Error> {
 
     loop {
         terminal.draw(|f| {
-            let chunks = create_layout(&context, f);
+            let chunks = create_layout(&context, f, state_machine.is_prompt_state());
             state_machine.render(f, chunks[0]);
         })?;
 

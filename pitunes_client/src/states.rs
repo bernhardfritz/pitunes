@@ -1,5 +1,5 @@
 use crate::{
-    models::{Album, Artist, Genre, IdName, Playlist, RootItem, Track},
+    models::{Album, Artist, Genre, IdName, Playlist, RootItem, Track, TrackInputBuilder},
     util::stateful_list::StatefulList,
 };
 
@@ -68,7 +68,13 @@ impl HasStatefulList for PlaylistsState {
 }
 
 pub struct PromptState {
-    pub message: String,
+    pub prompt: String,
+}
+
+impl HasPrompt for PromptState {
+    fn prompt(&self) -> &str {
+        &self.prompt[..]
+    }
 }
 
 pub struct RootState {
@@ -95,6 +101,89 @@ impl HasStatefulList for RootState {
     }
 }
 
+pub struct TrackAlbumPromptState {
+    pub prompt: String,
+    pub stateful_list: StatefulList<Album>,
+    pub track_input_builder: TrackInputBuilder,
+}
+
+impl HasPrompt for TrackAlbumPromptState {
+    fn prompt(&self) -> &str {
+        &self.prompt[..]
+    }
+}
+
+impl HasStatefulList for TrackAlbumPromptState {
+    type Item = Album;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
+pub struct TrackArtistPromptState {
+    pub prompt: String,
+    pub stateful_list: StatefulList<Artist>,
+    pub track_input_builder: TrackInputBuilder,
+}
+
+impl HasPrompt for TrackArtistPromptState {
+    fn prompt(&self) -> &str {
+        &self.prompt[..]
+    }
+}
+
+impl HasStatefulList for TrackArtistPromptState {
+    type Item = Artist;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
+pub struct TrackGenrePromptState {
+    pub prompt: String,
+    pub stateful_list: StatefulList<Genre>,
+    pub track_input_builder: TrackInputBuilder,
+}
+
+impl HasPrompt for TrackGenrePromptState {
+    fn prompt(&self) -> &str {
+        &self.prompt[..]
+    }
+}
+
+impl HasStatefulList for TrackGenrePromptState {
+    type Item = Genre;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
+pub struct TrackNamePromptState {
+    pub prompt: String,
+    pub track_input_builder: TrackInputBuilder,
+}
+
+impl HasPrompt for TrackNamePromptState {
+    fn prompt(&self) -> &str {
+        &self.prompt[..]
+    }
+}
+
 pub struct TracksState {
     pub stateful_list: StatefulList<Track>,
 }
@@ -111,6 +200,10 @@ impl HasStatefulList for TracksState {
     }
 }
 
+pub trait HasPrompt {
+    fn prompt(&self) -> &str;
+}
+
 pub trait HasStatefulList {
     type Item: IdName;
 
@@ -124,5 +217,9 @@ pub enum State {
     Playlists(PlaylistsState),
     Prompt(PromptState),
     Root(RootState),
+    TrackAlbumPrompt(TrackAlbumPromptState),
+    TrackArtistPrompt(TrackArtistPromptState),
+    TrackGenrePrompt(TrackGenrePromptState),
+    TrackNamePrompt(TrackNamePromptState),
     Tracks(TracksState),
 }

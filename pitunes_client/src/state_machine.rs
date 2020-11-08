@@ -13,8 +13,8 @@ use crate::{
         ArtistTracksQuery, ArtistsQuery, CreateAlbumMutation, CreateArtistMutation,
         CreateGenreMutation, CreatePlaylistMutation, DeletePlaylistMutation,
         DeletePlaylistTrackMutation, Genre, GenreQuery, GenreTracksQuery, GenresQuery, IdName,
-        Playlist, PlaylistTracksQuery, PlaylistsQuery, Track, TracksQuery, UpdateAlbumMutation,
-        UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
+        Playlist, PlaylistTracksQuery, PlaylistsQuery, Track, TrackInputBuilder, TracksQuery,
+        UpdateAlbumMutation, UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
         UpdatePlaylistTrackMutation, UpdateTrackMutation,
     },
     play_queue,
@@ -28,7 +28,8 @@ use crate::{
     },
     states::{
         AlbumsState, ArtistsState, GenresState, HasStatefulList, PlaylistsState, PromptState,
-        RootState, State, TracksState,
+        RootState, State, TrackAlbumPromptState, TrackArtistPromptState, TrackGenrePromptState,
+        TrackNamePromptState, TracksState,
     },
     util::{self, renderer, stateful_list::StatefulList},
     Context,
@@ -43,50 +44,82 @@ pub struct StateMachine {
 
 impl StateMachine {
     pub fn transition(&mut self, key: &KeyEvent) {
-        match key.code {
-            KeyCode::Char('[') => {
-                if let Some(to) = self.undo.pop() {
-                    self.redo.push(mem::replace(&mut self.state, to))
+        match &self.state {
+            State::Albums(_)
+            | State::Artists(_)
+            | State::Genres(_)
+            | State::Playlists(_)
+            | State::Root(_)
+            | State::Tracks(_) => match key.code {
+                KeyCode::Char('[') => {
+                    if let Some(to) = self.undo.pop() {
+                        self.redo.push(mem::replace(&mut self.state, to))
+                    }
+                    return;
                 }
+                KeyCode::Char(']') => {
+                    if let Some(to) = self.redo.pop() {
+                        self.undo.push(mem::replace(&mut self.state, to))
+                    }
+                    return;
+                }
+                _ => (),
+            },
+            _ => (),
+        }
+        match &mut self.state {
+            State::Albums(albums_state) => StateMachine::mutate_stateful_list(albums_state, key),
+            State::Artists(artists_state) => StateMachine::mutate_stateful_list(artists_state, key),
+            State::Genres(genres_state) => StateMachine::mutate_stateful_list(genres_state, key),
+            State::Playlists(playlists_state) => {
+                StateMachine::mutate_stateful_list(playlists_state, key)
             }
-            KeyCode::Char(']') => {
-                if let Some(to) = self.redo.pop() {
-                    self.undo.push(mem::replace(&mut self.state, to))
-                }
+            State::Root(root_state) => StateMachine::mutate_stateful_list(root_state, key),
+            State::TrackAlbumPrompt(track_album_prompt_state) => {
+                StateMachine::mutate_stateful_list(track_album_prompt_state, key);
             }
-            _ => {
-                match &mut self.state {
-                    State::Albums(albums_state) => {
-                        StateMachine::mutate_stateful_list(albums_state, key)
-                    }
-                    State::Artists(artists_state) => {
-                        StateMachine::mutate_stateful_list(artists_state, key)
-                    }
-                    State::Genres(genres_state) => {
-                        StateMachine::mutate_stateful_list(genres_state, key)
-                    }
-                    State::Playlists(playlists_state) => {
-                        StateMachine::mutate_stateful_list(playlists_state, key)
-                    }
-                    State::Tracks(tracks_state) => {
-                        StateMachine::mutate_stateful_list(tracks_state, key)
-                    }
-                    State::Root(root_state) => StateMachine::mutate_stateful_list(root_state, key),
-                    _ => (),
-                }
-                let to = match &self.state {
-                    State::Albums(albums_state) => self.from_albums(albums_state, key),
-                    State::Artists(artists_state) => self.from_artists(artists_state, key),
-                    State::Genres(genres_state) => self.from_genres(genres_state, key),
-                    State::Playlists(playlists_state) => self.from_playlists(playlists_state, key),
-                    State::Tracks(tracks_state) => self.from_tracks(tracks_state, key),
-                    State::Root(root_state) => self.from_root(root_state, key),
-                    _ => None,
-                };
+            State::TrackArtistPrompt(track_artist_prompt_state) => {
+                StateMachine::mutate_stateful_list(track_artist_prompt_state, key);
+            }
+            State::TrackGenrePrompt(track_genre_prompt_state) => {
+                StateMachine::mutate_stateful_list(track_genre_prompt_state, key);
+                let to = self.from_track_genre_prompt(key);
                 if let Some(to) = to {
-                    self.undo.push(mem::replace(&mut self.state, to));
+                    self.state = to;
+                    return;
+                }
+            }
+            State::Tracks(tracks_state) => StateMachine::mutate_stateful_list(tracks_state, key),
+            _ => (),
+        }
+        let to = match &self.state {
+            State::Albums(albums_state) => self.from_albums(albums_state, key),
+            State::Artists(artists_state) => self.from_artists(artists_state, key),
+            State::Genres(genres_state) => self.from_genres(genres_state, key),
+            State::Playlists(playlists_state) => self.from_playlists(playlists_state, key),
+            State::Root(root_state) => self.from_root(root_state, key),
+            State::TrackAlbumPrompt(track_album_prompt_state) => {
+                self.from_track_album_prompt(track_album_prompt_state, key)
+            }
+            State::TrackArtistPrompt(track_artist_prompt_state) => {
+                self.from_track_artist_prompt(track_artist_prompt_state, key)
+            }
+            State::Tracks(tracks_state) => self.from_tracks(tracks_state, key),
+            _ => None,
+        };
+        if let Some(to) = to {
+            let old_state = mem::replace(&mut self.state, to);
+            match old_state {
+                State::Albums(_)
+                | State::Artists(_)
+                | State::Genres(_)
+                | State::Playlists(_)
+                | State::Root(_)
+                | State::Tracks(_) => {
+                    self.undo.push(old_state);
                     self.redo.clear();
                 }
+                _ => (),
             }
         }
     }
@@ -94,6 +127,7 @@ impl StateMachine {
     pub fn inputless_transition(&mut self) {
         let to = match &mut self.state {
             State::Prompt(_) => self.from_prompt(),
+            State::TrackNamePrompt(_) => self.from_track_name_prompt(),
             _ => None,
         };
         if let Some(to) = to {
@@ -101,73 +135,80 @@ impl StateMachine {
         }
     }
 
+    pub fn is_prompt_state(&self) -> bool {
+        match self.state {
+            State::Prompt(_) => true,
+            State::TrackNamePrompt(_) => true,
+            State::TrackAlbumPrompt(_) => true,
+            State::TrackArtistPrompt(_) => true,
+            State::TrackGenrePrompt(_) => true,
+            _ => false,
+        }
+    }
+
     pub fn render(&mut self, f: &mut Frame<CrosstermBackend<Stdout>>, chunk: Rect) {
-        match &self.state {
-            State::Albums(albums_state) => renderer::render_top_block(
+        match &mut self.state {
+            State::Albums(albums_state) => renderer::render_top_block_and_stateful_list(
                 f,
                 chunk,
                 &self.context.server_url[..],
                 &self.undo[..],
                 albums_state,
+                None,
             ),
-            State::Artists(artists_state) => renderer::render_top_block(
+            State::Artists(artists_state) => renderer::render_top_block_and_stateful_list(
                 f,
                 chunk,
                 &self.context.server_url[..],
                 &self.undo[..],
                 artists_state,
+                None,
             ),
-            State::Genres(genres_state) => renderer::render_top_block(
+            State::Genres(genres_state) => renderer::render_top_block_and_stateful_list(
                 f,
                 chunk,
                 &self.context.server_url[..],
                 &self.undo[..],
                 genres_state,
+                None,
             ),
-            State::Playlists(playlists_state) => renderer::render_top_block(
+            State::Playlists(playlists_state) => renderer::render_top_block_and_stateful_list(
                 f,
                 chunk,
                 &self.context.server_url[..],
                 &self.undo[..],
                 playlists_state,
+                None,
             ),
-            State::Prompt(prompt_state) => renderer::render_prompt(f, prompt_state),
-            State::Tracks(tracks_state) => renderer::render_top_block(
+            State::Prompt(prompt_state) => renderer::render_prompt(f, chunk, prompt_state),
+            State::Tracks(tracks_state) => renderer::render_top_block_and_stateful_list(
                 f,
                 chunk,
                 &self.context.server_url[..],
                 &self.undo[..],
                 tracks_state,
+                Some(&self.context.queue_lock),
             ),
-            State::Root(root_state) => renderer::render_top_block(
+            State::TrackAlbumPrompt(track_album_prompt_state) => {
+                renderer::render_autocomplete_prompt(f, chunk, track_album_prompt_state)
+            }
+            State::TrackArtistPrompt(track_artist_prompt_state) => {
+                renderer::render_autocomplete_prompt(f, chunk, track_artist_prompt_state)
+            }
+            State::TrackGenrePrompt(track_genre_prompt_state) => {
+                renderer::render_autocomplete_prompt(f, chunk, track_genre_prompt_state)
+            }
+            State::TrackNamePrompt(track_name_prompt_state) => {
+                renderer::render_prompt(f, chunk, track_name_prompt_state)
+            }
+            State::Root(root_state) => renderer::render_top_block_and_stateful_list(
                 f,
                 chunk,
                 &self.context.server_url[..],
                 &self.undo[..],
                 root_state,
+                None,
             ),
-        }
-        match &mut self.state {
-            State::Albums(albums_state) => {
-                renderer::render_stateful_list(f, chunk, albums_state, None)
-            }
-            State::Artists(artists_state) => {
-                renderer::render_stateful_list(f, chunk, artists_state, None)
-            }
-            State::Genres(genres_state) => {
-                renderer::render_stateful_list(f, chunk, genres_state, None)
-            }
-            State::Playlists(playlists_state) => {
-                renderer::render_stateful_list(f, chunk, playlists_state, None)
-            }
-            State::Tracks(tracks_state) => renderer::render_stateful_list(
-                f,
-                chunk,
-                tracks_state,
-                Some(&self.context.queue_lock),
-            ),
-            State::Root(root_state) => renderer::render_stateful_list(f, chunk, root_state, None),
-            _ => (),
         }
     }
 
@@ -177,24 +218,38 @@ impl StateMachine {
             KeyCode::Up => stateful_list.previous(),
             KeyCode::Down => stateful_list.next(),
             KeyCode::Char(c) => {
+                if stateful_list.autocomplete() {
+                    if let Some(selected_item) = stateful_list.selected_item() {
+                        stateful_list.pattern = String::from(selected_item.name());
+                    }
+                }
                 stateful_list.pattern.push(c);
                 let old_indices = stateful_list.update_indices(&IdName::name);
-                if stateful_list.indices.is_empty() {
+                if !stateful_list.autocomplete() && stateful_list.indices.is_empty() {
                     stateful_list.pattern.pop();
                     stateful_list.indices = old_indices;
                 }
             }
             KeyCode::Backspace => {
+                if stateful_list.autocomplete() {
+                    if let Some(selected_item) = stateful_list.selected_item() {
+                        stateful_list.pattern = String::from(selected_item.name());
+                    }
+                }
                 if stateful_list.pattern.pop().is_some() {
                     stateful_list.update_indices(&IdName::name);
                 }
             }
             KeyCode::Esc | KeyCode::Enter => {
-                if !stateful_list.pattern.is_empty() {
-                    stateful_list.pattern.clear();
-                    let selected_index = stateful_list.selected_index();
-                    stateful_list.update_indices(&IdName::name);
-                    stateful_list.state.select(selected_index);
+                if stateful_list.autocomplete() {
+                    // TODO
+                } else {
+                    if !stateful_list.pattern.is_empty() {
+                        stateful_list.pattern.clear();
+                        let selected_index = stateful_list.selected_index();
+                        stateful_list.update_indices(&IdName::name);
+                        stateful_list.state.select(selected_index);
+                    }
                 }
             }
             _ => (),
@@ -247,32 +302,27 @@ impl StateMachine {
         disable_raw_mode().ok()?;
         let line = util::read_line().ok()?;
         enable_raw_mode().ok()?;
+        let line = line.trim();
         if !line.is_empty() {
             let previous_state = self.undo.last_mut()?;
             match previous_state {
                 State::Albums(albums_state) => {
                     let album = albums_state.stateful_list_mut().selected_item_mut()?;
                     if album.id > 0 {
-                        *album = update_album(&self.context, album, &line[..]);
+                        *album = update_album(&self.context, album, line);
                     }
                 }
                 State::Artists(artists_state) => {
                     let artist = artists_state.stateful_list_mut().selected_item_mut()?;
-                    *artist = update_artist(&self.context, artist, &line[..]);
+                    *artist = update_artist(&self.context, artist, line);
                 }
                 State::Genres(genres_state) => {
                     let genre = genres_state.stateful_list_mut().selected_item_mut()?;
-                    *genre = update_genre(&self.context, genre, &line[..]);
+                    *genre = update_genre(&self.context, genre, line);
                 }
                 State::Playlists(playlists_state) => {
                     let playlist = playlists_state.stateful_list_mut().selected_item_mut()?;
-                    *playlist = update_playlist(&self.context, playlist, &line[..]);
-                }
-                State::Tracks(tracks_state) => {
-                    let track = tracks_state.stateful_list_mut().selected_item_mut()?;
-                    *track =
-                        update_track(&self.context, track, &line[..], &None, &None, &None).into();
-                    // TODO improve update_track
+                    *playlist = update_playlist(&self.context, playlist, line);
                 }
                 _ => (),
             }
@@ -295,6 +345,169 @@ impl StateMachine {
         }
     }
 
+    fn from_track_name_prompt(&self) -> Option<State> {
+        disable_raw_mode().ok()?;
+        let line = util::read_line().ok()?;
+        enable_raw_mode().ok()?;
+        let line = line.trim();
+        let mut track_input_builder =
+            if let State::TrackNamePrompt(track_name_prompt_state) = &self.state {
+                track_name_prompt_state.track_input_builder.clone()
+            } else {
+                panic!()
+            };
+        if !line.is_empty() {
+            track_input_builder.name(String::from(line));
+        }
+        let track = if let Some(State::Tracks(tracks_state)) = self.undo.last() {
+            tracks_state.stateful_list.selected_item().unwrap()
+        } else {
+            panic!()
+        };
+        self.to_track_artist_prompt(
+            format!(
+                "Artist name: ({}) ",
+                track.artist.as_ref().map_or("", |artist| artist.name())
+            ),
+            track_input_builder,
+        )
+    }
+
+    fn from_track_album_prompt(
+        &self,
+        track_album_prompt_state: &TrackAlbumPromptState,
+        key: &KeyEvent,
+    ) -> Option<State> {
+        if key.code != KeyCode::Enter {
+            return None;
+        }
+        let track = if let Some(State::Tracks(tracks_state)) = self.undo.last() {
+            tracks_state.stateful_list.selected_item().unwrap()
+        } else {
+            panic!()
+        };
+        let stateful_list = track_album_prompt_state.stateful_list();
+        let track_input_builder = {
+            let mut track_input_builder = track_album_prompt_state.track_input_builder.clone();
+            if let Some(album) = stateful_list.selected_item() {
+                track_input_builder.album_id(Some(album.id));
+            } else {
+                let name = stateful_list.pattern.trim();
+                if name.is_empty() {
+                    let album = track.album.as_ref();
+                    track_input_builder.album_id(album.map(|album| album.id));
+                } else {
+                    let album = create_album(&self.context, name);
+                    track_input_builder.album_id(Some(album.id));
+                };
+            }
+            track_input_builder
+        };
+        self.to_track_genre_prompt(
+            format!(
+                "Genre name: ({}) ",
+                track.genre.as_ref().map_or("", |genre| genre.name())
+            ),
+            track_input_builder,
+        )
+    }
+
+    fn from_track_artist_prompt(
+        &self,
+        track_artist_prompt_state: &TrackArtistPromptState,
+        key: &KeyEvent,
+    ) -> Option<State> {
+        if key.code != KeyCode::Enter {
+            return None;
+        }
+        let track = if let Some(State::Tracks(tracks_state)) = self.undo.last() {
+            tracks_state.stateful_list.selected_item().unwrap()
+        } else {
+            panic!()
+        };
+        let track_input_builder = {
+            let mut track_input_builder = track_artist_prompt_state.track_input_builder.clone();
+            let stateful_list = track_artist_prompt_state.stateful_list();
+            if let Some(artist) = stateful_list.selected_item() {
+                track_input_builder.artist_id(Some(artist.id));
+            } else {
+                let name = stateful_list.pattern.trim();
+                if name.is_empty() {
+                    let artist = track.artist.as_ref();
+                    track_input_builder.artist_id(artist.map(|artist| artist.id));
+                } else {
+                    let artist = create_artist(&self.context, name);
+                    track_input_builder.artist_id(Some(artist.id));
+                };
+            }
+            track_input_builder
+        };
+        self.to_track_album_prompt(
+            format!(
+                "Album name: ({}) ",
+                track.album.as_ref().map_or("", |album| album.name())
+            ),
+            track_input_builder,
+        )
+    }
+
+    fn from_track_genre_prompt(&mut self, key: &KeyEvent) -> Option<State> {
+        if key.code != KeyCode::Enter {
+            return None;
+        }
+        let track_genre_prompt_state =
+            if let State::TrackGenrePrompt(track_genre_prompt_state) = &self.state {
+                track_genre_prompt_state
+            } else {
+                panic!()
+            };
+        let track = if let Some(State::Tracks(tracks_state)) = self.undo.last() {
+            tracks_state.stateful_list.selected_item().unwrap()
+        } else {
+            panic!()
+        };
+        let track_input_builder = {
+            let mut track_input_builder = track_genre_prompt_state.track_input_builder.clone();
+            let stateful_list = track_genre_prompt_state.stateful_list();
+            if let Some(genre) = stateful_list.selected_item() {
+                track_input_builder.genre_id(Some(genre.id));
+            } else {
+                let name = stateful_list.pattern.trim();
+                if name.is_empty() {
+                    let genre = track.genre.as_ref();
+                    track_input_builder.genre_id(genre.map(|genre| genre.id));
+                } else {
+                    let genre = create_genre(&self.context, name);
+                    track_input_builder.genre_id(Some(genre.id));
+                };
+            }
+            track_input_builder
+        };
+        let state = {
+            let mut state = self.undo.pop()?;
+            let track = if let State::Tracks(tracks_state) = &mut state {
+                tracks_state
+                    .stateful_list_mut()
+                    .selected_item_mut()
+                    .unwrap()
+            } else {
+                panic!()
+            };
+            *track = update_track(&self.context, track_input_builder.build());
+            state
+        };
+        Some(state)
+    }
+
+    // let mut state = self.undo.pop()?;
+    // let track = if let State::Tracks(tracks_state) = &mut state {
+    //     tracks_state.stateful_list_mut().selected_item_mut().unwrap()
+    // } else {
+    //     panic!()
+    // };
+    // // TODO update track_input_builder
+    // *track = update_track(&self.context, track_album_prompt_state.track_input_builder.build());
+
     fn from_tracks(&self, tracks_state: &TracksState, key: &KeyEvent) -> Option<State> {
         let stateful_list = tracks_state.stateful_list();
         match key.code {
@@ -307,16 +520,81 @@ impl StateMachine {
                 play_queue(self.context.clone(), queue);
                 None
             }
-            KeyCode::F(2) => self.to_prompt(format!(
-                "Track name: ({}) ",
-                stateful_list.selected_item()?.name()
-            )),
+            // KeyCode::F(2) => self.to_prompt(format!(
+            //     "Track name: ({}) ",
+            //     stateful_list.selected_item()?.name()
+            // )),
+            KeyCode::F(2) => self.to_track_name_prompt(
+                stateful_list.selected_item()?,
+                format!("Track name: ({}) ", stateful_list.selected_item()?.name()),
+            ),
             _ => None,
         }
     }
 
-    fn to_prompt(&self, message: String) -> Option<State> {
-        Some(State::Prompt(PromptState { message }))
+    fn to_prompt(&self, prompt: String) -> Option<State> {
+        Some(State::Prompt(PromptState { prompt }))
+    }
+
+    fn to_track_album_prompt(
+        &self,
+        prompt: String,
+        track_input_builder: TrackInputBuilder,
+    ) -> Option<State> {
+        let albums = get_albums(&self.context);
+        Some(State::TrackAlbumPrompt(TrackAlbumPromptState {
+            prompt,
+            stateful_list: StatefulList::builder()
+                .items(albums)
+                .autocomplete(true)
+                .build(),
+            track_input_builder,
+        }))
+    }
+
+    fn to_track_artist_prompt(
+        &self,
+        prompt: String,
+        track_input_builder: TrackInputBuilder,
+    ) -> Option<State> {
+        let artists = get_artists(&self.context);
+        Some(State::TrackArtistPrompt(TrackArtistPromptState {
+            prompt,
+            stateful_list: StatefulList::builder()
+                .items(artists)
+                .autocomplete(true)
+                .build(),
+            track_input_builder,
+        }))
+    }
+
+    fn to_track_genre_prompt(
+        &self,
+        prompt: String,
+        track_input_builder: TrackInputBuilder,
+    ) -> Option<State> {
+        let genres = get_genres(&self.context);
+        Some(State::TrackGenrePrompt(TrackGenrePromptState {
+            prompt,
+            stateful_list: StatefulList::builder()
+                .items(genres)
+                .autocomplete(true)
+                .build(),
+            track_input_builder,
+        }))
+    }
+
+    fn to_track_name_prompt(&self, track: &Track, prompt: String) -> Option<State> {
+        let mut track_input_builder = TrackInputBuilder::new(track.id, track.name.clone());
+        track_input_builder
+            .album_id(track.album.as_ref().map(|album| album.id))
+            .artist_id(track.artist.as_ref().map(|artist| artist.id))
+            .genre_id(track.genre.as_ref().map(|genre| genre.id));
+        // .track_number(track.track_number); // TODO
+        Some(State::TrackNamePrompt(TrackNamePromptState {
+            prompt,
+            track_input_builder,
+        }))
     }
 
     fn to_tracks_of_album(&self, album: &Album) -> Option<State> {
@@ -332,14 +610,14 @@ impl StateMachine {
             )
         };
         Some(State::Tracks(TracksState {
-            stateful_list: StatefulList::with_items(tracks),
+            stateful_list: StatefulList::builder().items(tracks).build(),
         }))
     }
 
     fn to_albums(&self) -> Option<State> {
         let albums = get_albums(&self.context);
         Some(State::Albums(AlbumsState {
-            stateful_list: StatefulList::with_items(albums),
+            stateful_list: StatefulList::builder().items(albums).build(),
         }))
     }
 
@@ -356,49 +634,49 @@ impl StateMachine {
             albums
         };
         Some(State::Albums(AlbumsState {
-            stateful_list: StatefulList::with_items(albums),
+            stateful_list: StatefulList::builder().items(albums).build(),
         }))
     }
 
     fn to_artists(&self) -> Option<State> {
         let artists = get_artists(&self.context);
         Some(State::Artists(ArtistsState {
-            stateful_list: StatefulList::with_items(artists),
+            stateful_list: StatefulList::builder().items(artists).build(),
         }))
     }
 
     fn to_genres(&self) -> Option<State> {
         let genres = get_genres(&self.context);
         Some(State::Genres(GenresState {
-            stateful_list: StatefulList::with_items(genres),
+            stateful_list: StatefulList::builder().items(genres).build(),
         }))
     }
 
     fn to_playlists(&self) -> Option<State> {
         let playlists = get_playlists(&self.context);
         Some(State::Playlists(PlaylistsState {
-            stateful_list: StatefulList::with_items(playlists),
+            stateful_list: StatefulList::builder().items(playlists).build(),
         }))
     }
 
     fn to_tracks(&self) -> Option<State> {
         let tracks = get_tracks(&self.context);
         Some(State::Tracks(TracksState {
-            stateful_list: StatefulList::with_items(tracks),
+            stateful_list: StatefulList::builder().items(tracks).build(),
         }))
     }
 
     fn to_tracks_of_genre(&self, genre: &Genre) -> Option<State> {
         let tracks = get_tracks_of_genre(&self.context, genre);
         Some(State::Tracks(TracksState {
-            stateful_list: StatefulList::with_items(tracks),
+            stateful_list: StatefulList::builder().items(tracks).build(),
         }))
     }
 
     fn to_tracks_of_playlist(&self, playlist: &Playlist) -> Option<State> {
         let tracks = get_tracks_of_playlist(&self.context, playlist);
         Some(State::Tracks(TracksState {
-            stateful_list: StatefulList::with_items(tracks),
+            stateful_list: StatefulList::builder().items(tracks).build(),
         }))
     }
 }

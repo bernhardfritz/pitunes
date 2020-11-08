@@ -116,6 +116,7 @@ impl Album {
 }
 
 #[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
+#[changeset_options(treat_none_as_null = "true")]
 #[table_name = "albums"]
 pub struct AlbumInput {
     pub name: String,
@@ -164,6 +165,7 @@ impl Artist {
 }
 
 #[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
+#[changeset_options(treat_none_as_null = "true")]
 #[table_name = "artists"]
 pub struct ArtistInput {
     pub name: String,
@@ -197,6 +199,7 @@ impl Genre {
 }
 
 #[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
+#[changeset_options(treat_none_as_null = "true")]
 #[table_name = "genres"]
 pub struct GenreInput {
     pub name: String,
@@ -277,6 +280,7 @@ pub struct TrackInputInternal {
 }
 
 #[derive(AsChangeset, juniper::GraphQLInputObject)]
+#[changeset_options(treat_none_as_null = "true")]
 #[table_name = "tracks"]
 pub struct TrackInput {
     pub name: String,
@@ -318,6 +322,7 @@ impl Playlist {
 }
 
 #[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
+#[changeset_options(treat_none_as_null = "true")]
 #[table_name = "playlists"]
 pub struct PlaylistInput {
     pub name: String,

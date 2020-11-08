@@ -8,29 +8,22 @@ pub struct StatefulList<T> {
     pub items: Vec<T>,
     pub pattern: String,
     pub indices: Vec<usize>,
+    autocomplete: bool,
 }
 
 impl<T> StatefulList<T> {
-    pub fn new() -> StatefulList<T> {
-        StatefulList {
-            state: ListState::default(),
-            items: Vec::new(),
-            pattern: String::new(),
-            indices: Vec::new(),
-        }
-    }
-
-    pub fn with_items(items: Vec<T>) -> StatefulList<T> {
+    pub fn builder() -> StatefulListBuilder<T> {
         let state = {
             let mut state = ListState::default();
             state.select(Some(0));
             state
         };
-        StatefulList {
+        StatefulListBuilder {
             state,
-            indices: (0..items.len()).collect(),
-            items,
+            items: Vec::new(),
             pattern: String::new(),
+            indices: Vec::new(),
+            autocomplete: false,
         }
     }
 
@@ -38,28 +31,42 @@ impl<T> StatefulList<T> {
         let i = match self.state.selected() {
             Some(i) => {
                 if i >= self.indices.len() - 1 {
-                    0
+                    if self.autocomplete {
+                        None
+                    } else {
+                        Some(0)
+                    }
                 } else {
-                    i + 1
+                    Some(i + 1)
                 }
             }
-            None => 0,
+            None => Some(0),
         };
-        self.state.select(Some(i));
+        self.state.select(i);
     }
 
     pub fn previous(&mut self) {
         let i = match self.state.selected() {
             Some(i) => {
                 if i == 0 {
-                    self.indices.len() - 1
+                    if self.autocomplete {
+                        None
+                    } else {
+                        Some(self.indices.len() - 1)
+                    }
                 } else {
-                    i - 1
+                    Some(i - 1)
                 }
             }
-            None => 0,
+            None => {
+                if self.autocomplete {
+                    Some(self.indices.len() - 1)
+                } else {
+                    Some(0)
+                }
+            }
         };
-        self.state.select(Some(i));
+        self.state.select(i);
     }
 
     pub fn unselect(&mut self) {
@@ -95,7 +102,50 @@ impl<T> StatefulList<T> {
             &mut self.indices,
             indices_score.iter().map(|(i, _score)| *i).collect(),
         );
-        self.state.select(Some(0));
+        self.unselect(); // reset offset
+        if !self.autocomplete {
+            self.state.select(Some(0));
+        }
         old_indices
+    }
+
+    pub fn autocomplete(&self) -> bool {
+        self.autocomplete
+    }
+}
+
+pub struct StatefulListBuilder<T> {
+    state: ListState,
+    items: Vec<T>,
+    pattern: String,
+    indices: Vec<usize>,
+    autocomplete: bool,
+}
+
+impl<T> StatefulListBuilder<T> {
+    pub fn items(mut self, items: Vec<T>) -> StatefulListBuilder<T> {
+        self.items = items;
+        self.indices = (0..self.items.len()).collect();
+        self
+    }
+
+    pub fn autocomplete(mut self, autocomplete: bool) -> StatefulListBuilder<T> {
+        self.autocomplete = autocomplete;
+        if self.autocomplete {
+            self.state.select(None);
+        } else {
+            self.state.select(Some(0));
+        }
+        self
+    }
+
+    pub fn build(self) -> StatefulList<T> {
+        StatefulList {
+            state: self.state,
+            items: self.items,
+            pattern: self.pattern,
+            indices: self.indices,
+            autocomplete: self.autocomplete,
+        }
     }
 }

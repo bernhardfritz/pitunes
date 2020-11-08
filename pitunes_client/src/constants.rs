@@ -1,7 +1,6 @@
 pub const ALBUMS: &str = "Albums";
 pub const ALL_TRACKS: &str = "All tracks";
 pub const ARTISTS: &str = "Artists";
-pub const BLANK: &str = "\u{2800}";
 // pub const CREATE_NEW_ALBUM: &str = "Create new album...";
 // pub const CREATE_NEW_ARTIST: &str = "Create new artist...";
 // pub const CREATE_NEW_GENRE: &str = "Create new genre...";
