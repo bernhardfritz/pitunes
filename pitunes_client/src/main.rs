@@ -190,14 +190,14 @@ fn create_layout(
 ) -> Vec<Rect> {
     if is_prompt_state {
         Layout::default()
-            .constraints(vec![Constraint::Min(0)])
+            .constraints([Constraint::Min(0)].as_ref())
             .split(f.size())
     } else {
         if let Some(chunks) = create_layout_with_bottom(context, f) {
             chunks
         } else {
             Layout::default()
-                .constraints(vec![Constraint::Min(0)])
+                .constraints([Constraint::Min(0)].as_ref())
                 .split(f.size())
         }
     }
