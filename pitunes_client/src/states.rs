@@ -69,11 +69,16 @@ impl HasStatefulList for PlaylistsState {
 
 pub struct PromptState {
     pub prompt: String,
+    pub answer: String,
 }
 
 impl HasPrompt for PromptState {
     fn prompt(&self) -> &str {
         &self.prompt[..]
+    }
+
+    fn answer(&self) -> &str {
+        &self.answer[..]
     }
 }
 
@@ -111,6 +116,15 @@ impl HasPrompt for TrackAlbumPromptState {
     fn prompt(&self) -> &str {
         &self.prompt[..]
     }
+
+    fn answer(&self) -> &str {
+        let stateful_list = self.stateful_list();
+        if let Some(selected_item) = stateful_list.selected_item() {
+            selected_item.name()
+        } else {
+            &self.stateful_list().pattern[..]
+        }
+    }
 }
 
 impl HasStatefulList for TrackAlbumPromptState {
@@ -135,6 +149,15 @@ impl HasPrompt for TrackArtistPromptState {
     fn prompt(&self) -> &str {
         &self.prompt[..]
     }
+
+    fn answer(&self) -> &str {
+        let stateful_list = self.stateful_list();
+        if let Some(selected_item) = stateful_list.selected_item() {
+            selected_item.name()
+        } else {
+            &self.stateful_list().pattern[..]
+        }
+    }
 }
 
 impl HasStatefulList for TrackArtistPromptState {
@@ -158,6 +181,15 @@ pub struct TrackGenrePromptState {
 impl HasPrompt for TrackGenrePromptState {
     fn prompt(&self) -> &str {
         &self.prompt[..]
+    }
+
+    fn answer(&self) -> &str {
+        let stateful_list = self.stateful_list();
+        if let Some(selected_item) = stateful_list.selected_item() {
+            selected_item.name()
+        } else {
+            &self.stateful_list().pattern[..]
+        }
     }
 }
 
@@ -191,6 +223,7 @@ impl HasStatefulList for TracksState {
 
 pub trait HasPrompt {
     fn prompt(&self) -> &str;
+    fn answer(&self) -> &str;
 }
 
 pub trait HasStatefulList {

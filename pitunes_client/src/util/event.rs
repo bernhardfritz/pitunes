@@ -1,8 +1,5 @@
 use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        mpsc, Arc,
-    },
+    sync::mpsc,
     thread,
     time::{Duration, Instant},
 };
@@ -19,7 +16,6 @@ pub enum Event<I> {
 pub struct Events {
     rx: mpsc::Receiver<Event<KeyEvent>>,
     input_handle: thread::JoinHandle<()>,
-    ignore_events: Arc<AtomicBool>,
     tick_handle: thread::JoinHandle<()>,
 }
 
@@ -43,16 +39,11 @@ impl Events {
 
     pub fn with_config(config: Config) -> Events {
         let (tx, rx) = mpsc::channel();
-        let ignore_events = Arc::new(AtomicBool::new(false));
         let input_handle = {
             let tx = tx.clone();
-            let ignore_events = ignore_events.clone();
             thread::spawn(move || {
                 let mut last_tick = Instant::now();
                 loop {
-                    if ignore_events.load(Ordering::Relaxed) {
-                        continue;
-                    }
                     // poll for tick rate duration, if no events, sent tick event.
                     let timeout = config
                         .tick_rate
@@ -83,7 +74,6 @@ impl Events {
         };
         Events {
             rx,
-            ignore_events,
             input_handle,
             tick_handle,
         }
@@ -91,9 +81,5 @@ impl Events {
 
     pub fn next(&self) -> Result<Event<KeyEvent>, mpsc::RecvError> {
         self.rx.recv()
-    }
-
-    pub fn ignore_events(&mut self, ignore_events: bool) {
-        self.ignore_events.store(ignore_events, Ordering::Relaxed);
     }
 }

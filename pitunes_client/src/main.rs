@@ -1,11 +1,12 @@
 mod constants;
-#[allow(dead_code)]
-mod util;
 // mod http_stream_reader;
 mod models;
+mod renderer;
 mod requests;
 mod state_machine;
 mod states;
+#[allow(dead_code)]
+mod util;
 
 use std::{
     cmp, env,
@@ -225,7 +226,7 @@ fn main() -> Result<(), Error> {
     execute!(terminal.backend_mut(), EnterAlternateScreen)?;
     enable_raw_mode()?;
 
-    let mut events = Events::new();
+    let events = Events::new();
 
     let client = reqwest::blocking::Client::new();
     let (_stream, handle) = rodio::OutputStream::try_default().unwrap();
@@ -267,10 +268,6 @@ fn main() -> Result<(), Error> {
             let chunks = create_layout(&context, f, state_machine.is_prompt_state());
             state_machine.render(f, chunks[0]);
         })?;
-
-        events.ignore_events(true);
-        state_machine.inputless_transition();
-        events.ignore_events(false);
 
         if let Event::Input(key) = events.next()? {
             match key {

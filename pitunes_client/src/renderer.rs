@@ -38,8 +38,13 @@ pub fn render_prompt(
     chunk: Rect,
     has_prompt: &impl HasPrompt,
 ) {
-    f.set_cursor(UnicodeWidthStr::width(has_prompt.prompt()) as u16, 0);
-    f.render_widget(Paragraph::new(Span::from(has_prompt.prompt())), chunk);
+    let text = {
+        let mut text = String::from(has_prompt.prompt());
+        text.push_str(has_prompt.answer());
+        text
+    };
+    f.set_cursor(UnicodeWidthStr::width(&text[..]) as u16, 0);
+    f.render_widget(Paragraph::new(Span::from(text)), chunk);
 }
 
 pub fn render_autocomplete_prompt<T: HasPrompt + HasStatefulList>(
@@ -50,18 +55,7 @@ pub fn render_autocomplete_prompt<T: HasPrompt + HasStatefulList>(
     let chunks = Layout::default()
         .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
         .split(chunk);
-    let text = {
-        let mut text = String::from(t.prompt());
-        let stateful_list = t.stateful_list();
-        if let Some(selected_item) = stateful_list.selected_item() {
-            text.push_str(selected_item.name())
-        } else {
-            text.push_str(&t.stateful_list().pattern[..]);
-        }
-        text
-    };
-    f.set_cursor(UnicodeWidthStr::width(&text[..]) as u16, 0);
-    f.render_widget(Paragraph::new(Span::from(text)), chunks[0]);
+    render_prompt(f, chunks[0], t);
     render_stateful_list(f, chunks[1], t, None);
 }
 

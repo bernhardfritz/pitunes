@@ -1,9 +1,6 @@
 use std::{io::Stdout, mem, sync::Arc};
 
-use crossterm::{
-    event::{KeyCode, KeyEvent},
-    terminal::{disable_raw_mode, enable_raw_mode},
-};
+use crossterm::event::{KeyCode, KeyEvent};
 use tui::{backend::CrosstermBackend, layout::Rect, Frame};
 
 use crate::{
@@ -17,7 +14,7 @@ use crate::{
         UpdateAlbumMutation, UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
         UpdatePlaylistTrackMutation, UpdateTrackMutation,
     },
-    play_queue,
+    play_queue, renderer,
     requests::{
         create_album, create_artist, create_genre, create_playlist, delete_playlist,
         delete_playlist_track, get_album, get_albums, get_albums_of_artist, get_artist,
@@ -31,7 +28,7 @@ use crate::{
         RootState, State, TrackAlbumPromptState, TrackArtistPromptState, TrackGenrePromptState,
         TracksState,
     },
-    util::{self, renderer, stateful_list::StatefulList},
+    util::stateful_list::StatefulList,
     Context,
 };
 
@@ -74,6 +71,14 @@ impl StateMachine {
             State::Playlists(playlists_state) => {
                 StateMachine::mutate_stateful_list(playlists_state, key)
             }
+            State::Prompt(prompt_state) => {
+                StateMachine::mutate_prompt(prompt_state, key);
+                let to = self.from_prompt(key);
+                if let Some(to) = to {
+                    self.state = to;
+                    return;
+                }
+            }
             State::Root(root_state) => StateMachine::mutate_stateful_list(root_state, key),
             State::TrackAlbumPrompt(track_album_prompt_state) => {
                 StateMachine::mutate_stateful_list(track_album_prompt_state, key);
@@ -90,7 +95,6 @@ impl StateMachine {
                 }
             }
             State::Tracks(tracks_state) => StateMachine::mutate_stateful_list(tracks_state, key),
-            _ => (),
         }
         let to = match &self.state {
             State::Albums(albums_state) => self.from_albums(albums_state, key),
@@ -121,16 +125,6 @@ impl StateMachine {
                 }
                 _ => (),
             }
-        }
-    }
-
-    pub fn inputless_transition(&mut self) {
-        let to = match &self.state {
-            State::Prompt(_) => self.from_prompt(),
-            _ => None,
-        };
-        if let Some(to) = to {
-            self.state = to;
         }
     }
 
@@ -251,6 +245,18 @@ impl StateMachine {
         }
     }
 
+    fn mutate_prompt(prompt_state: &mut PromptState, key: &KeyEvent) {
+        match key.code {
+            KeyCode::Char(c) => {
+                prompt_state.answer.push(c);
+            }
+            KeyCode::Backspace => {
+                prompt_state.answer.pop();
+            }
+            _ => (),
+        }
+    }
+
     fn from_albums(&self, albums_state: &AlbumsState, key: &KeyEvent) -> Option<State> {
         let album = albums_state.stateful_list().selected_item()?;
         match key.code {
@@ -293,33 +299,46 @@ impl StateMachine {
         }
     }
 
-    fn from_prompt(&mut self) -> Option<State> {
-        disable_raw_mode().ok()?;
-        let line = util::read_line().ok()?;
-        enable_raw_mode().ok()?;
-        let line = line.trim();
+    fn from_prompt(&mut self, key: &KeyEvent) -> Option<State> {
+        if key.code != KeyCode::Enter {
+            return None;
+        }
+        let prompt_state = if let State::Prompt(prompt_state) = &self.state {
+            prompt_state
+        } else {
+            panic!()
+        };
+        let answer = prompt_state.answer.trim();
         let previous_state = self.undo.last_mut()?;
         match previous_state {
             State::Albums(albums_state) => {
-                let album = albums_state.stateful_list_mut().selected_item_mut()?;
-                if album.id > 0 {
-                    *album = update_album(&self.context, album, line);
+                if !answer.is_empty() {
+                    let album = albums_state.stateful_list_mut().selected_item_mut()?;
+                    if album.id > 0 {
+                        *album = update_album(&self.context, album, answer);
+                    }
                 }
                 self.undo.pop()
             }
             State::Artists(artists_state) => {
-                let artist = artists_state.stateful_list_mut().selected_item_mut()?;
-                *artist = update_artist(&self.context, artist, line);
+                if !answer.is_empty() {
+                    let artist = artists_state.stateful_list_mut().selected_item_mut()?;
+                    *artist = update_artist(&self.context, artist, answer);
+                }
                 self.undo.pop()
             }
             State::Genres(genres_state) => {
-                let genre = genres_state.stateful_list_mut().selected_item_mut()?;
-                *genre = update_genre(&self.context, genre, line);
+                if !answer.is_empty() {
+                    let genre = genres_state.stateful_list_mut().selected_item_mut()?;
+                    *genre = update_genre(&self.context, genre, answer);
+                }
                 self.undo.pop()
             }
             State::Playlists(playlists_state) => {
-                let playlist = playlists_state.stateful_list_mut().selected_item_mut()?;
-                *playlist = update_playlist(&self.context, playlist, line);
+                if !answer.is_empty() {
+                    let playlist = playlists_state.stateful_list_mut().selected_item_mut()?;
+                    *playlist = update_playlist(&self.context, playlist, answer);
+                }
                 self.undo.pop()
             }
             State::Tracks(tracks_state) => {
@@ -332,8 +351,8 @@ impl StateMachine {
                         .artist_id(track.artist.as_ref().map(|artist| artist.id))
                         .genre_id(track.genre.as_ref().map(|genre| genre.id));
                     // .track_number(track.track_number); // TODO
-                    if !line.is_empty() {
-                        track_input_builder.name(String::from(line));
+                    if !answer.is_empty() {
+                        track_input_builder.name(String::from(answer));
                     }
                     track_input_builder
                 };
@@ -509,7 +528,10 @@ impl StateMachine {
     }
 
     fn to_prompt(&self, prompt: String) -> Option<State> {
-        Some(State::Prompt(PromptState { prompt }))
+        Some(State::Prompt(PromptState {
+            prompt,
+            answer: String::new(),
+        }))
     }
 
     fn to_track_album_prompt(
