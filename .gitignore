@@ -8,3 +8,5 @@ pitunes.db
 pitunes.toml
 !/**/.gitkeep
 /graphdoc
+/dist
+/node_modules
