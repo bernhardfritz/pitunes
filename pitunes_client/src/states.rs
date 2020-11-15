@@ -205,6 +205,22 @@ impl HasStatefulList for TrackGenrePromptState {
     }
 }
 
+pub struct TrackNumberPromptState {
+    pub prompt: String,
+    pub answer: String,
+    pub track_input_builder: TrackInputBuilder,
+}
+
+impl HasPrompt for TrackNumberPromptState {
+    fn prompt(&self) -> &str {
+        &self.prompt[..]
+    }
+
+    fn answer(&self) -> &str {
+        &self.answer[..]
+    }
+}
+
 pub struct TracksState {
     pub stateful_list: StatefulList<Track>,
 }
@@ -242,5 +258,6 @@ pub enum State {
     TrackAlbumPrompt(TrackAlbumPromptState),
     TrackArtistPrompt(TrackArtistPromptState),
     TrackGenrePrompt(TrackGenrePromptState),
+    TrackNumberPrompt(TrackNumberPromptState),
     Tracks(TracksState),
 }

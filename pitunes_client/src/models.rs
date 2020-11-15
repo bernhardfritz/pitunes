@@ -299,6 +299,7 @@ pub struct Track {
     pub album: Option<Album>,
     pub artist: Option<Artist>,
     pub genre: Option<Genre>,
+    pub track_number: Option<i64>,
 }
 
 impl IdName for Track {
@@ -387,6 +388,7 @@ impl From<album_tracks_query::AlbumTracksQueryAlbumTracks> for Track {
             album,
             artist,
             genre,
+            track_number,
         }: album_tracks_query::AlbumTracksQueryAlbumTracks,
     ) -> Track {
         Track {
@@ -396,6 +398,7 @@ impl From<album_tracks_query::AlbumTracksQueryAlbumTracks> for Track {
             album: album.map(|album| album.into()),
             artist: artist.map(|artist| artist.into()),
             genre: genre.map(|genre| genre.into()),
+            track_number,
         }
     }
 }
@@ -465,6 +468,7 @@ impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for Track {
             album,
             artist,
             genre,
+            track_number,
         }: artist_tracks_query::ArtistTracksQueryArtistTracks,
     ) -> Track {
         Track {
@@ -474,6 +478,7 @@ impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for Track {
             album: album.map(|album| album.into()),
             artist: artist.map(|artist| artist.into()),
             genre: genre.map(|genre| genre.into()),
+            track_number,
         }
     }
 }
@@ -533,6 +538,7 @@ impl From<genre_tracks_query::GenreTracksQueryGenreTracks> for Track {
             album,
             artist,
             genre,
+            track_number,
         }: genre_tracks_query::GenreTracksQueryGenreTracks,
     ) -> Track {
         Track {
@@ -542,6 +548,7 @@ impl From<genre_tracks_query::GenreTracksQueryGenreTracks> for Track {
             album: album.map(|album| album.into()),
             artist: artist.map(|artist| artist.into()),
             genre: genre.map(|genre| genre.into()),
+            track_number,
         }
     }
 }
@@ -627,6 +634,7 @@ impl From<playlist_tracks_query::PlaylistTracksQueryPlaylistTracks> for Track {
             album,
             artist,
             genre,
+            track_number,
         }: playlist_tracks_query::PlaylistTracksQueryPlaylistTracks,
     ) -> Track {
         Track {
@@ -636,6 +644,7 @@ impl From<playlist_tracks_query::PlaylistTracksQueryPlaylistTracks> for Track {
             album: album.map(|album| album.into()),
             artist: artist.map(|artist| artist.into()),
             genre: genre.map(|genre| genre.into()),
+            track_number,
         }
     }
 }
@@ -689,6 +698,7 @@ impl From<track_query::TrackQueryTrack> for Track {
             album,
             artist,
             genre,
+            track_number,
         }: track_query::TrackQueryTrack,
     ) -> Track {
         Track {
@@ -698,6 +708,7 @@ impl From<track_query::TrackQueryTrack> for Track {
             album: album.map(|album| album.into()),
             artist: artist.map(|artist| artist.into()),
             genre: genre.map(|genre| genre.into()),
+            track_number,
         }
     }
 }
@@ -735,6 +746,7 @@ impl From<tracks_query::TracksQueryTracks> for Track {
             album,
             artist,
             genre,
+            track_number,
         }: tracks_query::TracksQueryTracks,
     ) -> Track {
         Track {
@@ -744,6 +756,7 @@ impl From<tracks_query::TracksQueryTracks> for Track {
             album: album.map(|album| album.into()),
             artist: artist.map(|artist| artist.into()),
             genre: genre.map(|genre| genre.into()),
+            track_number,
         }
     }
 }
@@ -783,6 +796,7 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
             album,
             artist,
             genre,
+            track_number,
         }: update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks,
     ) -> Track {
         Track {
@@ -792,6 +806,7 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
             album: album.map(|album| album.into()),
             artist: artist.map(|artist| artist.into()),
             genre: genre.map(|genre| genre.into()),
+            track_number,
         }
     }
 }
@@ -836,6 +851,7 @@ impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
             album,
             artist,
             genre,
+            track_number,
         }: update_track_mutation::UpdateTrackMutationUpdateTrack,
     ) -> Track {
         Track {
@@ -845,6 +861,7 @@ impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
             album: album.map(|album| album.into()),
             artist: artist.map(|artist| artist.into()),
             genre: genre.map(|genre| genre.into()),
+            track_number,
         }
     }
 }

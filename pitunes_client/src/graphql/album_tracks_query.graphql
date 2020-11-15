@@ -18,6 +18,7 @@ query AlbumTracksQuery($id: Int!) {
         id
         name
       }
+      trackNumber
     }
   }
 }

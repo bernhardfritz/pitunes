@@ -15,5 +15,6 @@ query TracksQuery {
       id
       name
     }
+    trackNumber
   }
 }

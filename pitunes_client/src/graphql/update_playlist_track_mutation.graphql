@@ -18,6 +18,7 @@ mutation UpdatePlaylistTrackMutation($id: Int!, $playlistTrackOrderInput: Playli
         id
         name
       }
+      trackNumber
     }
   }
 }

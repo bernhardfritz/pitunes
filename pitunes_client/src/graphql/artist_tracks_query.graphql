@@ -18,6 +18,7 @@ query ArtistTracksQuery($id: Int!) {
         id
         name
       }
+      trackNumber
     }
   }
 }

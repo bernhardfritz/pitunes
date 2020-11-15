@@ -88,7 +88,7 @@ fn render_top_block(
         }
         title.push_str(&stateful_list.pattern[..]);
         title.push_str("  ");
-        truncate(title, chunk.width as usize - 1, ELLIPSIS)
+        truncate(title, chunk.width as usize - 2, ELLIPSIS)
     };
     let top_block = Block::default()
         .borders(Borders::ALL)

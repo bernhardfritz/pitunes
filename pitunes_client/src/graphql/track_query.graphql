@@ -15,5 +15,6 @@ query TrackQuery($id: Int!) {
       id
       name
     }
+    trackNumber
   }
 }

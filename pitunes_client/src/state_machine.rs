@@ -26,7 +26,7 @@ use crate::{
     states::{
         AlbumsState, ArtistsState, GenresState, HasStatefulList, PlaylistsState, PromptState,
         RootState, State, TrackAlbumPromptState, TrackArtistPromptState, TrackGenrePromptState,
-        TracksState,
+        TrackNumberPromptState, TracksState,
     },
     util::stateful_list::StatefulList,
     Context,
@@ -94,6 +94,9 @@ impl StateMachine {
                     return;
                 }
             }
+            State::TrackNumberPrompt(track_number_prompt_state) => {
+                StateMachine::mutate_track_number_prompt(track_number_prompt_state, key);
+            }
             State::Tracks(tracks_state) => StateMachine::mutate_stateful_list(tracks_state, key),
         }
         let to = match &self.state {
@@ -107,6 +110,9 @@ impl StateMachine {
             }
             State::TrackArtistPrompt(track_artist_prompt_state) => {
                 self.from_track_artist_prompt(track_artist_prompt_state, key)
+            }
+            State::TrackNumberPrompt(track_number_prompt_state) => {
+                self.from_track_number_prompt(track_number_prompt_state, key)
             }
             State::Tracks(tracks_state) => self.from_tracks(tracks_state, key),
             _ => None,
@@ -134,6 +140,7 @@ impl StateMachine {
             State::TrackAlbumPrompt(_) => true,
             State::TrackArtistPrompt(_) => true,
             State::TrackGenrePrompt(_) => true,
+            State::TrackNumberPrompt(_) => true,
             _ => false,
         }
     }
@@ -189,6 +196,9 @@ impl StateMachine {
             }
             State::TrackGenrePrompt(track_genre_prompt_state) => {
                 renderer::render_autocomplete_prompt(f, chunk, track_genre_prompt_state)
+            }
+            State::TrackNumberPrompt(track_number_prompt_state) => {
+                renderer::render_prompt(f, chunk, track_number_prompt_state)
             }
             State::Root(root_state) => renderer::render_top_block_and_stateful_list(
                 f,
@@ -252,6 +262,26 @@ impl StateMachine {
             }
             KeyCode::Backspace => {
                 prompt_state.answer.pop();
+            }
+            _ => (),
+        }
+    }
+
+    fn mutate_track_number_prompt(track_number_prompt_state: &mut TrackNumberPromptState, key: &KeyEvent) {
+        match key.code {
+            KeyCode::Char(c) => {
+                if track_number_prompt_state.answer.is_empty() {
+                    if let '1'..='9' = c {
+                        track_number_prompt_state.answer.push(c)
+                    }
+                } else {
+                    if let '0'..='9' = c {
+                        track_number_prompt_state.answer.push(c)
+                    }
+                }
+            }
+            KeyCode::Backspace => {
+                track_number_prompt_state.answer.pop();
             }
             _ => (),
         }
@@ -349,8 +379,8 @@ impl StateMachine {
                     track_input_builder
                         .album_id(track.album.as_ref().map(|album| album.id))
                         .artist_id(track.artist.as_ref().map(|artist| artist.id))
-                        .genre_id(track.genre.as_ref().map(|genre| genre.id));
-                    // .track_number(track.track_number); // TODO
+                        .genre_id(track.genre.as_ref().map(|genre| genre.id))
+                        .track_number(track.track_number);
                     if !answer.is_empty() {
                         track_input_builder.name(String::from(answer));
                     }
@@ -411,13 +441,7 @@ impl StateMachine {
             }
             track_input_builder
         };
-        self.to_track_genre_prompt(
-            format!(
-                "Genre name: ({}) ",
-                track.genre.as_ref().map_or("", |genre| genre.name())
-            ),
-            track_input_builder,
-        )
+        self.to_track_number_prompt(format!("Track number: ({}) ", track.track_number.as_ref().map_or(String::new(), |track_number| track_number.to_string())), track_input_builder)
     }
 
     fn from_track_artist_prompt(
@@ -507,6 +531,32 @@ impl StateMachine {
         Some(state)
     }
 
+    fn from_track_number_prompt(&self, track_number_prompt_state: &TrackNumberPromptState, key: &KeyEvent) -> Option<State> {
+        if key.code != KeyCode::Enter {
+            return None;
+        }
+        let track = if let Some(State::Tracks(tracks_state)) = self.undo.last() {
+            tracks_state.stateful_list.selected_item().unwrap()
+        } else {
+            panic!()
+        };
+        let track_input_builder = {
+            let mut track_input_builder = track_number_prompt_state.track_input_builder.clone();
+            let track_number = track_number_prompt_state.answer.trim();
+            if !track_number.is_empty() {
+                track_input_builder.track_number(Some(track_number.parse().unwrap()));
+            }
+            track_input_builder
+        };
+        self.to_track_genre_prompt(
+            format!(
+                "Genre name: ({}) ",
+                track.genre.as_ref().map_or("", |genre| genre.name())
+            ),
+            track_input_builder,
+        )
+    }
+
     fn from_tracks(&self, tracks_state: &TracksState, key: &KeyEvent) -> Option<State> {
         let stateful_list = tracks_state.stateful_list();
         match key.code {
@@ -578,6 +628,14 @@ impl StateMachine {
                 .items(genres)
                 .autocomplete(true)
                 .build(),
+            track_input_builder,
+        }))
+    }
+
+    fn to_track_number_prompt(&self, prompt: String, track_input_builder: TrackInputBuilder) -> Option<State> {
+        Some(State::TrackNumberPrompt(TrackNumberPromptState {
+            prompt,
+            answer: String::new(),
             track_input_builder,
         }))
     }

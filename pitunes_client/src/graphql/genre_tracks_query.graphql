@@ -18,6 +18,7 @@ query GenreTracksQuery($id: Int!) {
         id
         name
       }
+      trackNumber
     }
   }
 }

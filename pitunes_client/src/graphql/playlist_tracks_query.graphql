@@ -18,6 +18,7 @@ query PlaylistTracksQuery($id: Int!) {
         id
         name
       }
+      trackNumber
     }
   }
 }
