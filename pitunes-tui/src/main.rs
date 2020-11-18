@@ -17,7 +17,7 @@ use std::{
 };
 
 use clap::{self, value_t};
-use constants::{ALBUMS, ARTISTS, GENRES, PLAYLISTS, STATIC, TRACKS};
+use constants::{ALBUMS, ARTISTS, GENRES, PLAYLISTS, TRACKS, TRACKS_RESOURCE};
 use crossterm::{
     event::{KeyCode, KeyEvent, KeyModifiers},
     execute,
@@ -84,9 +84,12 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
         Some(thread::spawn(move || loop {
             let url = {
                 let queue_guard = context.queue_lock.read().unwrap();
-                queue_guard
-                    .first()
-                    .map(|track| format!("{}/{}/{}.mp3", context.server_url, STATIC, track.id))
+                queue_guard.first().map(|track| {
+                    format!(
+                        "{}/{}/{}.mp3",
+                        context.server_url, TRACKS_RESOURCE, track.id
+                    )
+                })
             };
             if let Some(url) = url {
                 // TODO: HttpStreamReader should not be passed directly to the Decoder as this results in audible delays while chunks are downloaded

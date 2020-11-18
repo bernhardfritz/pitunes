@@ -1,5 +1,5 @@
 [package]
-name = "pitunes_client"
+name = "pitunes-tui"
 version = "0.1.0"
 authors = ["Bernhard Fritz <bernhard.e.fritz@gmail.com>"]
 edition = "2018"

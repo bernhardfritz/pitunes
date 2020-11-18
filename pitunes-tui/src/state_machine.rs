@@ -267,7 +267,10 @@ impl StateMachine {
         }
     }
 
-    fn mutate_track_number_prompt(track_number_prompt_state: &mut TrackNumberPromptState, key: &KeyEvent) {
+    fn mutate_track_number_prompt(
+        track_number_prompt_state: &mut TrackNumberPromptState,
+        key: &KeyEvent,
+    ) {
         match key.code {
             KeyCode::Char(c) => {
                 if track_number_prompt_state.answer.is_empty() {
@@ -441,7 +444,16 @@ impl StateMachine {
             }
             track_input_builder
         };
-        self.to_track_number_prompt(format!("Track number: ({}) ", track.track_number.as_ref().map_or(String::new(), |track_number| track_number.to_string())), track_input_builder)
+        self.to_track_number_prompt(
+            format!(
+                "Track number: ({}) ",
+                track
+                    .track_number
+                    .as_ref()
+                    .map_or(String::new(), |track_number| track_number.to_string())
+            ),
+            track_input_builder,
+        )
     }
 
     fn from_track_artist_prompt(
@@ -531,7 +543,11 @@ impl StateMachine {
         Some(state)
     }
 
-    fn from_track_number_prompt(&self, track_number_prompt_state: &TrackNumberPromptState, key: &KeyEvent) -> Option<State> {
+    fn from_track_number_prompt(
+        &self,
+        track_number_prompt_state: &TrackNumberPromptState,
+        key: &KeyEvent,
+    ) -> Option<State> {
         if key.code != KeyCode::Enter {
             return None;
         }
@@ -632,7 +648,11 @@ impl StateMachine {
         }))
     }
 
-    fn to_track_number_prompt(&self, prompt: String, track_input_builder: TrackInputBuilder) -> Option<State> {
+    fn to_track_number_prompt(
+        &self,
+        prompt: String,
+        track_input_builder: TrackInputBuilder,
+    ) -> Option<State> {
         Some(State::TrackNumberPrompt(TrackNumberPromptState {
             prompt,
             answer: String::new(),

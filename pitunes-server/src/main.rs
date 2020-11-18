@@ -7,7 +7,6 @@ extern crate diesel_migrations;
 
 mod chunker;
 mod db;
-mod graphiql;
 mod graphql_schema;
 mod graphql_service;
 mod models;
@@ -16,8 +15,9 @@ mod upload_service;
 
 use std::{fs, sync::Arc};
 
+use actix_cors::Cors;
 use actix_files::Files;
-use actix_web::{dev::ServiceRequest, error, web, App, Error, HttpServer};
+use actix_web::{dev::ServiceRequest, error, http::header, web, App, Error, HttpServer};
 use actix_web_httpauth::{extractors::bearer::BearerAuth, middleware::HttpAuthentication};
 use base64;
 use clap::{self, value_t};
@@ -104,18 +104,25 @@ async fn main() -> std::io::Result<()> {
 
     let http_server = HttpServer::new(move || {
         let ctx = RequestContext::new(pool.clone());
+        let cors = Cors::new()
+            // .allowed_origin("http://localhost:3000")
+            // .allowed_methods(vec!["GET", "POST"])
+            // .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
+            // .allowed_header(header::CONTENT_TYPE)
+            .supports_credentials()
+            // .max_age(3600)
+            .finish();
         let auth = HttpAuthentication::bearer(validator);
         App::new()
+            .wrap(auth)
+            .wrap(cors)
             .data(st.clone())
             .data(ctx)
-            .service(graphql_service::graphiql)
-            .service(upload_service::get_upload)
             .service(
-                web::scope("")
-                    .wrap(auth)
+                web::scope("/api")
                     .service(graphql_service::graphql)
-                    .service(upload_service::post_upload)
-                    .service(Files::new("/static", "static")),
+                    .service(upload_service::upload)
+                    .service(Files::new("/tracks", "tracks")),
             )
     })
     .bind_openssl(format!("0.0.0.0:{}", port), builder)?;

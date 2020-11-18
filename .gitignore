@@ -3,10 +3,9 @@
 .env
 pitunes.db
 *.mp3
-/static/*.*
+**/tracks/*.*
 *.pem
 pitunes.toml
 !/**/.gitkeep
-/graphdoc
-/dist
-/node_modules
+dist
+node_modules

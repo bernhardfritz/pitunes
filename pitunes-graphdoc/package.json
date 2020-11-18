@@ -1,5 +1,5 @@
 {
-  "name": "pitunes",
+  "name": "pitunes-graphdoc",
   "version": "1.0.0",
   "main": "index.js",
   "repository": "https://github.com/bernhardfritz/pitunes.git",
@@ -9,7 +9,7 @@
   "description": "piTunes GraphQL API",
   "graphdoc": {
     "logo": "<a href=\"/pitunes/\" style=\"display: flex; justify-content: center; align-items: center; margin-bottom: 0.25rem;\"><img src=\"https://raw.githubusercontent.com/bernhardfritz/pitunes/master/pitunes.png\" style=\"height: 3rem;\"/><span><span style=\"font-size: 1.5rem;\">piTunes</span><sub>API</sub></span></a>",
-    "schemaFile": "pitunes_client/src/graphql/schema.json",
+    "schemaFile": "../pitunes-tui/src/graphql/schema.json",
     "output": "dist"
   },
   "devDependencies": {

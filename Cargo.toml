@@ -1,6 +1,6 @@
 [workspace]
 
 members = [
-    "pitunes_client",
-    "pitunes_server",
+    "pitunes-server",
+    "pitunes-tui",
 ]

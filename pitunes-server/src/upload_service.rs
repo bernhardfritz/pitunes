@@ -18,7 +18,7 @@ use crate::{
 };
 
 #[post("/upload")]
-async fn post_upload(
+async fn upload(
     context: web::Data<RequestContext>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, Error> {
@@ -154,7 +154,7 @@ async fn post_upload(
         }) {
             let reader = BufReader::new(tf);
             let mut chunker = Chunker::new(reader);
-            let filepath = format!("./static/{}.mp3", track.id());
+            let filepath = format!("./tracks/{}.mp3", track.id());
             // File::create is blocking operation, use threadpool
             let f = web::block(|| std::fs::File::create(filepath)).await?;
             let mut writer = BufWriter::new(f);
@@ -166,45 +166,4 @@ async fn post_upload(
         }
     }
     Ok(HttpResponse::Ok().json(vec))
-}
-
-#[get("/upload")]
-fn get_upload() -> HttpResponse {
-    let html = r#"
-<!DOCTYPE html>
-<html>
-    <head>
-        <title>Upload</title>
-    </head>
-    <body>
-        <label for="api-key">API_KEY=</label>
-        <input id="api-key" name="api-key" type="password"/>
-        <form enctype="multipart/form-data" method="post" name="upload-form">
-            <input type="file" multiple name="file"/>
-            <input type="submit" value="Upload">
-        </form>
-        <label for="output"></label>
-        <textarea id="output" name="output" disabled></textarea>
-        <script>
-            const apiKey = document.getElementById('api-key');
-            const uploadForm = document.forms.namedItem('upload-form');
-            const outputTextArea = document.getElementById('output');
-            uploadForm.addEventListener('submit', event => {
-                const oData = new FormData(uploadForm);
-                const oReq = new XMLHttpRequest();
-                oReq.open('POST', 'upload', true);
-                oReq.setRequestHeader('Authorization', `Bearer ${apiKey.value}`);
-                oReq.onload = event => {
-                    outputTextArea.value = oReq.responseText;
-                };
-                oReq.send(oData);
-                event.preventDefault();
-            }, false);
-        </script>
-    </body>
-</html>
-"#;
-    HttpResponse::Ok()
-        .content_type("text/html; charset=utf-8")
-        .body(html)
 }
