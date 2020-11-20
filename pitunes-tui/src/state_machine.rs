@@ -16,17 +16,17 @@ use crate::{
     },
     play_queue, renderer,
     requests::{
-        create_album, create_artist, create_genre, create_playlist, delete_playlist,
-        delete_playlist_track, get_album, get_albums, get_albums_of_artist, get_artist,
-        get_artists, get_genre, get_genres, get_playlists, get_track, get_tracks,
+        create_album, create_artist, create_genre, create_playlist, create_playlist_track,
+        delete_playlist, delete_playlist_track, get_album, get_albums, get_albums_of_artist,
+        get_artist, get_artists, get_genre, get_genres, get_playlists, get_track, get_tracks,
         get_tracks_of_album, get_tracks_of_artist, get_tracks_of_genre, get_tracks_of_playlist,
         update_album, update_artist, update_genre, update_playlist, update_playlist_track,
         update_track,
     },
     states::{
-        AlbumsState, ArtistsState, GenresState, HasStatefulList, PlaylistsState, PromptState,
-        RootState, State, TrackAlbumPromptState, TrackArtistPromptState, TrackGenrePromptState,
-        TrackNumberPromptState, TracksState,
+        AddToPlaylistPromptState, AlbumsState, ArtistsState, GenresState, HasStatefulList,
+        PlaylistsState, PromptState, RootState, State, TrackAlbumPromptState,
+        TrackArtistPromptState, TrackGenrePromptState, TrackNumberPromptState, TracksState,
     },
     util::stateful_list::StatefulList,
     Context,
@@ -65,6 +65,14 @@ impl StateMachine {
             _ => (),
         }
         match &mut self.state {
+            State::AddToPlaylistPrompt(add_to_playlist_prompt_state) => {
+                StateMachine::mutate_stateful_list(add_to_playlist_prompt_state, key);
+                let to = self.from_add_to_playlist_prompt(key);
+                if let Some(to) = to {
+                    self.state = to;
+                    return;
+                }
+            }
             State::Albums(albums_state) => StateMachine::mutate_stateful_list(albums_state, key),
             State::Artists(artists_state) => StateMachine::mutate_stateful_list(artists_state, key),
             State::Genres(genres_state) => StateMachine::mutate_stateful_list(genres_state, key),
@@ -136,6 +144,7 @@ impl StateMachine {
 
     pub fn is_prompt_state(&self) -> bool {
         match self.state {
+            State::AddToPlaylistPrompt(_) => true,
             State::Prompt(_) => true,
             State::TrackAlbumPrompt(_) => true,
             State::TrackArtistPrompt(_) => true,
@@ -147,6 +156,9 @@ impl StateMachine {
 
     pub fn render(&mut self, f: &mut Frame<CrosstermBackend<Stdout>>, chunk: Rect) {
         match &mut self.state {
+            State::AddToPlaylistPrompt(add_to_playlist_prompt_state) => {
+                renderer::render_autocomplete_prompt(f, chunk, add_to_playlist_prompt_state)
+            }
             State::Albums(albums_state) => renderer::render_top_block_and_stateful_list(
                 f,
                 chunk,
@@ -288,6 +300,35 @@ impl StateMachine {
             }
             _ => (),
         }
+    }
+
+    fn from_add_to_playlist_prompt(&mut self, key: &KeyEvent) -> Option<State> {
+        if key.code != KeyCode::Enter {
+            return None;
+        }
+        let add_to_playlist_prompt_state =
+            if let State::AddToPlaylistPrompt(add_to_playlist_prompt_state) = &self.state {
+                add_to_playlist_prompt_state
+            } else {
+                panic!()
+            };
+        let stateful_list = add_to_playlist_prompt_state.stateful_list();
+        let state = self.undo.pop()?;
+        let track = if let State::Tracks(tracks_state) = &state {
+            tracks_state.stateful_list().selected_item().unwrap()
+        } else {
+            panic!()
+        };
+        if let Some(playlist) = stateful_list.selected_item() {
+            create_playlist_track(&self.context, playlist, track);
+        } else {
+            let name = stateful_list.pattern.trim();
+            if !name.is_empty() {
+                let playlist = create_playlist(&self.context, name);
+                create_playlist_track(&self.context, &playlist, track);
+            }
+        }
+        Some(state)
     }
 
     fn from_albums(&self, albums_state: &AlbumsState, key: &KeyEvent) -> Option<State> {
@@ -589,8 +630,20 @@ impl StateMachine {
                 "Track name: ({}) ",
                 stateful_list.selected_item()?.name()
             )),
+            KeyCode::F(4) => self.to_add_to_playlist_prompt(String::from("Playlist name: ")),
             _ => None,
         }
+    }
+
+    fn to_add_to_playlist_prompt(&self, prompt: String) -> Option<State> {
+        let playlists = get_playlists(&self.context);
+        Some(State::AddToPlaylistPrompt(AddToPlaylistPromptState {
+            prompt,
+            stateful_list: StatefulList::builder()
+                .items(playlists)
+                .autocomplete(true)
+                .build(),
+        }))
     }
 
     fn to_prompt(&self, prompt: String) -> Option<State> {

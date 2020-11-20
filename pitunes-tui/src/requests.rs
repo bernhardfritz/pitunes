@@ -9,18 +9,18 @@ use crate::{
         exports::{
             album_query, album_tracks_query, albums_query, artist_albums_query, artist_query,
             artist_tracks_query, artists_query, create_album_mutation, create_artist_mutation,
-            create_genre_mutation, create_playlist_mutation, delete_playlist_mutation,
-            delete_playlist_track_mutation, genre_query, genre_tracks_query, genres_query,
-            playlist_tracks_query, playlists_query, track_query, tracks_query,
-            update_album_mutation, update_artist_mutation, update_genre_mutation,
+            create_genre_mutation, create_playlist_mutation, create_playlist_track_mutation,
+            delete_playlist_mutation, delete_playlist_track_mutation, genre_query,
+            genre_tracks_query, genres_query, playlist_tracks_query, playlists_query, track_query,
+            tracks_query, update_album_mutation, update_artist_mutation, update_genre_mutation,
             update_playlist_mutation, update_playlist_track_mutation, update_track_mutation,
         },
         Album, AlbumQuery, AlbumTracksQuery, AlbumsQuery, Artist, ArtistAlbumsQuery, ArtistQuery,
         ArtistTracksQuery, ArtistsQuery, CreateAlbumMutation, CreateArtistMutation,
-        CreateGenreMutation, CreatePlaylistMutation, DeletePlaylistMutation,
-        DeletePlaylistTrackMutation, Genre, GenreQuery, GenreTracksQuery, GenresQuery, Playlist,
-        PlaylistTracksQuery, PlaylistsQuery, Track, TrackQuery, TracksQuery, UpdateAlbumMutation,
-        UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
+        CreateGenreMutation, CreatePlaylistMutation, CreatePlaylistTrackMutation,
+        DeletePlaylistMutation, DeletePlaylistTrackMutation, Genre, GenreQuery, GenreTracksQuery,
+        GenresQuery, Playlist, PlaylistTracksQuery, PlaylistsQuery, Track, TrackQuery, TracksQuery,
+        UpdateAlbumMutation, UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
         UpdatePlaylistTrackMutation, UpdateTrackMutation,
     },
     Context,
@@ -490,6 +490,36 @@ pub fn get_tracks_of_playlist(context: &Arc<Context>, playlist: &Playlist) -> Ve
     tracks.into_iter().map(|track| track.into()).collect()
 }
 
+pub fn create_playlist_track(
+    context: &Arc<Context>,
+    playlist: &Playlist,
+    track: &Track,
+) -> Vec<Track> {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body =
+        CreatePlaylistTrackMutation::build_query(create_playlist_track_mutation::Variables {
+            id: playlist.id,
+            playlist_track_input: create_playlist_track_mutation::PlaylistTrackInput {
+                id: track.id,
+                position: None,
+            },
+        });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<create_playlist_track_mutation::ResponseData> = res.json().unwrap();
+    let tracks = response_body
+        .data
+        .map(|data| data.create_playlist_track)
+        .map(|playlist| playlist.tracks)
+        .unwrap();
+    tracks.into_iter().map(|track| track.into()).collect()
+}
+
 pub fn update_playlist_track(
     context: &Arc<Context>,
     playlist: &Playlist,
@@ -531,9 +561,11 @@ pub fn delete_playlist_track(
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         DeletePlaylistTrackMutation::build_query(delete_playlist_track_mutation::Variables {
-            playlist_id: playlist.id,
-            track_id: track.id,
-            position,
+            id: playlist.id,
+            playlist_track_input: delete_playlist_track_mutation::PlaylistTrackInput {
+                id: track.id,
+                position,
+            },
         });
     let res = context
         .client

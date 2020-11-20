@@ -354,17 +354,16 @@ impl Mutation {
 
     fn delete_playlist_track(
         context: &RequestContext,
-        playlist_id: i32,
-        track_id: i32,
-        position: Option<i32>,
+        id: i32, // playlist_id
+        playlist_track_input: PlaylistTrackInput,
     ) -> juniper::FieldResult<bool> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
-            let deleted = if let Some(position) = position {
+            let deleted = if let Some(position) = playlist_track_input.position {
                 diesel::delete(
                     playlists_tracks::table
-                        .filter(playlists_tracks::playlist_id.eq(playlist_id))
-                        .filter(playlists_tracks::track_id.eq(track_id))
+                        .filter(playlists_tracks::playlist_id.eq(id))
+                        .filter(playlists_tracks::track_id.eq(playlist_track_input.track_id))
                         .filter(playlists_tracks::position.eq(position)),
                 )
                 .execute(&conn)?
@@ -372,8 +371,8 @@ impl Mutation {
             } else {
                 diesel::delete(
                     playlists_tracks::table
-                        .filter(playlists_tracks::playlist_id.eq(playlist_id))
-                        .filter(playlists_tracks::track_id.eq(track_id)),
+                        .filter(playlists_tracks::playlist_id.eq(id))
+                        .filter(playlists_tracks::track_id.eq(playlist_track_input.track_id)),
                 )
                 .execute(&conn)?
                     >= 1
@@ -382,7 +381,7 @@ impl Mutation {
                 return Err(diesel::result::Error::RollbackTransaction);
             }
             let playlist_tracks = playlists_tracks::table
-                .filter(playlists_tracks::playlist_id.eq(playlist_id))
+                .filter(playlists_tracks::playlist_id.eq(id))
                 .order(playlists_tracks::position.asc())
                 .load::<PlaylistTrack>(&conn)?;
             for (i, playlist_track) in playlist_tracks.iter().enumerate() {

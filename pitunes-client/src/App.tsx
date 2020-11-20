@@ -23,17 +23,13 @@ class App extends React.Component<{}, AppState> {
       apiKey: '',
       responseText: '',
     };
-
-    this.handleChange = this.handleChange.bind(this);
-    this.handleFiles = this.handleFiles.bind(this);
-    this.graphQLFetcher = this.graphQLFetcher.bind(this);
   }
 
-  handleChange(event: any) {
+  handleChange = (event: any) => {
     this.setState({apiKey: event.target.value});
   }
 
-  async handleFiles(event: any) {
+  handleFiles = async (event: any) => {
     const formData = new FormData();
     for (const file of event.target.files) {
       formData.append("file", file);
@@ -45,13 +41,10 @@ class App extends React.Component<{}, AppState> {
       },
       body: formData
     }).then(response => response.text());
-    this.setState({
-      apiKey: this.state.apiKey,
-      responseText
-    });
+    this.setState({responseText});
   }
 
-  graphQLFetcher(graphQLParams: any) {
+  graphQLFetcher = (graphQLParams: any) => {
     return fetch('https://localhost:8080/api/graphql', {
       method: 'post',
       headers: {

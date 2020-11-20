@@ -3,6 +3,38 @@ use crate::{
     util::stateful_list::StatefulList,
 };
 
+pub struct AddToPlaylistPromptState {
+    pub prompt: String,
+    pub stateful_list: StatefulList<Playlist>,
+}
+
+impl HasPrompt for AddToPlaylistPromptState {
+    fn prompt(&self) -> &str {
+        &self.prompt[..]
+    }
+
+    fn answer(&self) -> &str {
+        let stateful_list = self.stateful_list();
+        if let Some(selected_item) = stateful_list.selected_item() {
+            selected_item.name()
+        } else {
+            &self.stateful_list().pattern[..]
+        }
+    }
+}
+
+impl HasStatefulList for AddToPlaylistPromptState {
+    type Item = Playlist;
+
+    fn stateful_list(&self) -> &StatefulList<Self::Item> {
+        &self.stateful_list
+    }
+
+    fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item> {
+        &mut self.stateful_list
+    }
+}
+
 pub struct AlbumsState {
     pub stateful_list: StatefulList<Album>,
 }
@@ -248,7 +280,9 @@ pub trait HasStatefulList {
     fn stateful_list(&self) -> &StatefulList<Self::Item>;
     fn stateful_list_mut(&mut self) -> &mut StatefulList<Self::Item>;
 }
+
 pub enum State {
+    AddToPlaylistPrompt(AddToPlaylistPromptState),
     Albums(AlbumsState),
     Artists(ArtistsState),
     Genres(GenresState),

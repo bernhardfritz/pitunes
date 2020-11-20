@@ -801,7 +801,7 @@
               "description": null,
               "args": [
                 {
-                  "name": "playlistId",
+                  "name": "id",
                   "description": null,
                   "type": {
                     "kind": "NON_NULL",
@@ -815,26 +815,16 @@
                   "defaultValue": null
                 },
                 {
-                  "name": "trackId",
+                  "name": "playlistTrackInput",
                   "description": null,
                   "type": {
                     "kind": "NON_NULL",
                     "name": null,
                     "ofType": {
-                      "kind": "SCALAR",
-                      "name": "Int",
+                      "kind": "INPUT_OBJECT",
+                      "name": "PlaylistTrackInput",
                       "ofType": null
                     }
-                  },
-                  "defaultValue": null
-                },
-                {
-                  "name": "position",
-                  "description": null,
-                  "type": {
-                    "kind": "SCALAR",
-                    "name": "Int",
-                    "ofType": null
                   },
                   "defaultValue": null
                 }
@@ -1861,7 +1851,7 @@
           "fields": null,
           "inputFields": [
             {
-              "name": "trackId",
+              "name": "id",
               "description": null,
               "type": {
                 "kind": "NON_NULL",

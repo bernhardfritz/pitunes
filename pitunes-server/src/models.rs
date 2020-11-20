@@ -343,6 +343,7 @@ pub struct PlaylistTrack {
 #[derive(Insertable, juniper::GraphQLInputObject)]
 #[table_name = "playlists_tracks"]
 pub struct PlaylistTrackInput {
+    #[graphql(name = "id")]
     pub track_id: i32,
     pub position: Option<i32>,
 }
