@@ -1,6 +1,6 @@
 use std::{io::Stdout, mem, sync::Arc};
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use tui::{backend::CrosstermBackend, layout::Rect, Frame};
 
 use crate::{
@@ -105,7 +105,14 @@ impl StateMachine {
             State::TrackNumberPrompt(track_number_prompt_state) => {
                 StateMachine::mutate_track_number_prompt(track_number_prompt_state, key);
             }
-            State::Tracks(tracks_state) => StateMachine::mutate_stateful_list(tracks_state, key),
+            State::Tracks(tracks_state) => {
+                StateMachine::mutate_stateful_list(tracks_state, key);
+                let to = self.from_tracks_mut(key);
+                if let Some(to) = to {
+                    self.state = to;
+                    return;
+                }
+            }
         }
         let to = match &self.state {
             State::Albums(albums_state) => self.from_albums(albums_state, key),
@@ -225,23 +232,23 @@ impl StateMachine {
 
     fn mutate_stateful_list(has_stateful_list: &mut impl HasStatefulList, key: &KeyEvent) {
         let stateful_list = has_stateful_list.stateful_list_mut();
-        match key.code {
-            KeyCode::Up => stateful_list.previous(),
-            KeyCode::Down => stateful_list.next(),
-            KeyCode::Char(c) => {
+        match key {
+            KeyEvent { code: KeyCode::Up, modifiers: KeyModifiers::NONE } => stateful_list.previous(),
+            KeyEvent { code: KeyCode::Down, modifiers: KeyModifiers::NONE } => stateful_list.next(),
+            KeyEvent { code: KeyCode::Char(c), modifiers: _ } => {
                 if stateful_list.autocomplete() {
                     if let Some(selected_item) = stateful_list.selected_item() {
                         stateful_list.pattern = String::from(selected_item.name());
                     }
                 }
-                stateful_list.pattern.push(c);
+                stateful_list.pattern.push(*c);
                 let old_indices = stateful_list.update_indices(&IdName::name);
                 if !stateful_list.autocomplete() && stateful_list.indices.is_empty() {
                     stateful_list.pattern.pop();
                     stateful_list.indices = old_indices;
                 }
             }
-            KeyCode::Backspace => {
+            KeyEvent { code: KeyCode::Backspace, modifiers: _ } => {
                 if stateful_list.autocomplete() {
                     if let Some(selected_item) = stateful_list.selected_item() {
                         stateful_list.pattern = String::from(selected_item.name());
@@ -251,7 +258,7 @@ impl StateMachine {
                     stateful_list.update_indices(&IdName::name);
                 }
             }
-            KeyCode::Esc | KeyCode::Enter => {
+            KeyEvent { code: KeyCode::Esc, modifiers: _ } | KeyEvent { code: KeyCode::Enter, modifiers: _ } => {
                 if stateful_list.autocomplete() {
                     // TODO
                 } else {
@@ -631,6 +638,44 @@ impl StateMachine {
                 stateful_list.selected_item()?.name()
             )),
             KeyCode::F(4) => self.to_add_to_playlist_prompt(String::from("Playlist name: ")),
+            _ => None,
+        }
+    }
+
+    fn from_tracks_mut(&mut self, key: &KeyEvent) -> Option<State> {
+        let tracks_state = if let State::Tracks(tracks_state) = &mut self.state {
+            tracks_state
+        } else {
+            panic!()
+        };
+        let stateful_list = tracks_state.stateful_list_mut();
+        match key {
+            KeyEvent { code: KeyCode::Up, modifiers: KeyModifiers::ALT } => {
+                if let Some(State::Playlists(playlists_state)) = self.undo.last() {
+                    if let Some(playlist) = playlists_state.stateful_list().selected_item() {
+                        if let Some(selected_index) = stateful_list.selected_index() {
+                            if selected_index > 0 {
+                                stateful_list.items = update_playlist_track(&self.context, playlist, selected_index, selected_index - 1);
+                                stateful_list.previous();
+                            }
+                        }
+                    }
+                }
+                None
+            }
+            KeyEvent { code: KeyCode::Down, modifiers: KeyModifiers::ALT } => {
+                if let Some(State::Playlists(playlists_state)) = self.undo.last() {
+                    if let Some(playlist) = playlists_state.stateful_list().selected_item() {
+                        if let Some(selected_index) = stateful_list.selected_index() {
+                            if selected_index < stateful_list.items.len() - 1 {
+                                stateful_list.items = update_playlist_track(&self.context, playlist, selected_index, selected_index + 2);
+                                stateful_list.next();
+                            }
+                        }
+                    }
+                }
+                None
+            }
             _ => None,
         }
     }
