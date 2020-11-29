@@ -321,6 +321,122 @@ impl IdName for Track {
 }
 
 #[derive(Clone)]
+pub struct AlbumInputBuilder {
+    id: i64,
+    name: String,
+}
+
+impl AlbumInputBuilder {
+    pub fn new(album: &Album) -> AlbumInputBuilder {
+        AlbumInputBuilder {
+            id: album.id,
+            name: album.name.clone(),
+        }
+    }
+
+    pub fn name(&mut self, name: String) -> &mut AlbumInputBuilder {
+        self.name = name;
+        self
+    }
+
+    pub fn build(&self) -> update_album_mutation::Variables {
+        update_album_mutation::Variables {
+            id: self.id,
+            album_input: update_album_mutation::AlbumInput {
+                name: self.name.clone(),
+            },
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct ArtistInputBuilder {
+    id: i64,
+    name: String,
+}
+
+impl ArtistInputBuilder {
+    pub fn new(artist: &Artist) -> ArtistInputBuilder {
+        ArtistInputBuilder {
+            id: artist.id,
+            name: artist.name.clone(),
+        }
+    }
+
+    pub fn name(&mut self, name: String) -> &mut ArtistInputBuilder {
+        self.name = name;
+        self
+    }
+
+    pub fn build(&self) -> update_artist_mutation::Variables {
+        update_artist_mutation::Variables {
+            id: self.id,
+            artist_input: update_artist_mutation::ArtistInput {
+                name: self.name.clone(),
+            },
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct GenreInputBuilder {
+    id: i64,
+    name: String,
+}
+
+impl GenreInputBuilder {
+    pub fn new(genre: &Genre) -> GenreInputBuilder {
+        GenreInputBuilder {
+            id: genre.id,
+            name: genre.name.clone(),
+        }
+    }
+
+    pub fn name(&mut self, name: String) -> &mut GenreInputBuilder {
+        self.name = name;
+        self
+    }
+
+    pub fn build(&self) -> update_genre_mutation::Variables {
+        update_genre_mutation::Variables {
+            id: self.id,
+            genre_input: update_genre_mutation::GenreInput {
+                name: self.name.clone(),
+            },
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct PlaylistInputBuilder {
+    id: i64,
+    name: String,
+}
+
+impl PlaylistInputBuilder {
+    pub fn new(playlist: &Playlist) -> PlaylistInputBuilder {
+        PlaylistInputBuilder {
+            id: playlist.id,
+            name: playlist.name.clone(),
+        }
+    }
+
+    pub fn name(&mut self, name: String) -> &mut PlaylistInputBuilder {
+        self.name = name;
+        self
+    }
+
+    pub fn build(&self) -> update_playlist_mutation::Variables {
+        update_playlist_mutation::Variables {
+            id: self.id,
+            playlist_input: update_playlist_mutation::PlaylistInput {
+                name: self.name.clone(),
+            },
+        }
+    }
+}
+
+#[derive(Clone)]
 pub struct TrackInputBuilder {
     id: i64,
     name: String,
@@ -331,14 +447,14 @@ pub struct TrackInputBuilder {
 }
 
 impl TrackInputBuilder {
-    pub fn new(id: i64, name: String) -> TrackInputBuilder {
+    pub fn new(track: &Track) -> TrackInputBuilder {
         TrackInputBuilder {
-            id,
-            name,
-            album_id: None,
-            artist_id: None,
-            genre_id: None,
-            track_number: None,
+            id: track.id,
+            name: track.name.clone(),
+            album_id: track.album.as_ref().map(|album| album.id),
+            artist_id: track.artist.as_ref().map(|artist| artist.id),
+            genre_id: track.genre.as_ref().map(|genre| genre.id),
+            track_number: track.track_number,
         }
     }
 

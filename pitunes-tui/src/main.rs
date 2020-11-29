@@ -28,7 +28,7 @@ use failure::Error;
 // use http_stream_reader::HttpStreamReader;
 use models::{RootItem, Track};
 use state_machine::StateMachine;
-use states::{RootState, State};
+use states::{Root, State};
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Layout, Rect},
@@ -190,9 +190,9 @@ fn create_layout_with_bottom(
 fn create_layout(
     context: &Context,
     f: &mut Frame<CrosstermBackend<Stdout>>,
-    is_prompt_state: bool,
+    is_prompt: bool,
 ) -> Vec<Rect> {
-    if is_prompt_state {
+    if is_prompt {
         Layout::default()
             .constraints([Constraint::Min(0)].as_ref())
             .split(f.size())
@@ -251,7 +251,7 @@ fn main() -> Result<(), Error> {
 
     let mut state_machine = StateMachine {
         context: context.clone(),
-        state: State::Root(RootState {
+        state: State::Root(Root {
             stateful_list: StatefulList::builder()
                 .items(vec![
                     RootItem::from(ALBUMS),
@@ -268,7 +268,7 @@ fn main() -> Result<(), Error> {
 
     loop {
         terminal.draw(|f| {
-            let chunks = create_layout(&context, f, state_machine.is_prompt_state());
+            let chunks = create_layout(&context, f, state_machine.is_prompt());
             state_machine.render(f, chunks[0]);
         })?;
 

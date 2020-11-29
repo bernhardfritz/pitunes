@@ -73,12 +73,12 @@ fn render_top_block(
         title.push('/');
         for state in history {
             let breadcrumb = match state {
-                State::Albums(albums_state) => breadcrumb(albums_state),
-                State::Artists(artists_state) => breadcrumb(artists_state),
-                State::Genres(genres_state) => breadcrumb(genres_state),
-                State::Playlists(playlists_state) => breadcrumb(playlists_state),
-                State::Tracks(tracks_state) => breadcrumb(tracks_state),
-                State::Root(root_state) => breadcrumb(root_state),
+                State::Albums(albums) => breadcrumb(albums),
+                State::ArtistAlbums(artist_albums) => breadcrumb(artist_albums),
+                State::Artists(artists) => breadcrumb(artists),
+                State::Genres(genres) => breadcrumb(genres),
+                State::Playlists(playlists) => breadcrumb(playlists),
+                State::Root(root) => breadcrumb(root),
                 _ => None,
             };
             if let Some(breadcrumb) = breadcrumb {

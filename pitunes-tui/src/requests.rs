@@ -59,14 +59,9 @@ pub fn get_albums(context: &Arc<Context>) -> Vec<Album> {
     albums.into_iter().map(|album| album.into()).collect()
 }
 
-pub fn update_album(context: &Arc<Context>, album: &Album, name: &str) -> Album {
+pub fn update_album(context: &Arc<Context>, variables: update_album_mutation::Variables) -> Album {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
-    let request_body = UpdateAlbumMutation::build_query(update_album_mutation::Variables {
-        id: album.id,
-        album_input: update_album_mutation::AlbumInput {
-            name: String::from(name),
-        },
-    });
+    let request_body = UpdateAlbumMutation::build_query(variables);
     let res = context
         .client
         .post(&url)
@@ -115,14 +110,12 @@ pub fn get_artists(context: &Arc<Context>) -> Vec<Artist> {
     artists.into_iter().map(|artist| artist.into()).collect()
 }
 
-pub fn update_artist(context: &Arc<Context>, artist: &Artist, name: &str) -> Artist {
+pub fn update_artist(
+    context: &Arc<Context>,
+    variables: update_artist_mutation::Variables,
+) -> Artist {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
-    let request_body = UpdateArtistMutation::build_query(update_artist_mutation::Variables {
-        id: artist.id,
-        artist_input: update_artist_mutation::ArtistInput {
-            name: String::from(name),
-        },
-    });
+    let request_body = UpdateArtistMutation::build_query(variables);
     let res = context
         .client
         .post(&url)
@@ -171,14 +164,9 @@ pub fn get_genres(context: &Arc<Context>) -> Vec<Genre> {
     genres.into_iter().map(|genre| genre.into()).collect()
 }
 
-pub fn update_genre(context: &Arc<Context>, genre: &Genre, name: &str) -> Genre {
+pub fn update_genre(context: &Arc<Context>, variables: update_genre_mutation::Variables) -> Genre {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
-    let request_body = UpdateGenreMutation::build_query(update_genre_mutation::Variables {
-        id: genre.id,
-        genre_input: update_genre_mutation::GenreInput {
-            name: String::from(name),
-        },
-    });
+    let request_body = UpdateGenreMutation::build_query(variables);
     let res = context
         .client
         .post(&url)
@@ -316,14 +304,12 @@ pub fn get_playlists(context: &Arc<Context>) -> Vec<Playlist> {
         .collect()
 }
 
-pub fn update_playlist(context: &Arc<Context>, playlist: &Playlist, name: &str) -> Playlist {
+pub fn update_playlist(
+    context: &Arc<Context>,
+    variables: update_playlist_mutation::Variables,
+) -> Playlist {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
-    let request_body = UpdatePlaylistMutation::build_query(update_playlist_mutation::Variables {
-        id: playlist.id,
-        playlist_input: update_playlist_mutation::PlaylistInput {
-            name: String::from(name),
-        },
-    });
+    let request_body = UpdatePlaylistMutation::build_query(variables);
     let res = context
         .client
         .post(&url)
@@ -556,7 +542,7 @@ pub fn delete_playlist_track(
     context: &Arc<Context>,
     playlist: &Playlist,
     track: &Track,
-    position: Option<i64>,
+    position: Option<usize>,
 ) -> bool {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
@@ -564,7 +550,7 @@ pub fn delete_playlist_track(
             id: playlist.id,
             playlist_track_input: delete_playlist_track_mutation::PlaylistTrackInput {
                 id: track.id,
-                position,
+                position: position.map(|p| p as i64),
             },
         });
     let res = context
