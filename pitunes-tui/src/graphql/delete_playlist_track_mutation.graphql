@@ -1,3 +1,24 @@
 mutation DeletePlaylistTrackMutation($id: Int!, $playlistTrackInput: PlaylistTrackInput!) {
-  deletePlaylistTrack(id: $id, playlistTrackInput: $playlistTrackInput)
+  deletePlaylistTrack(id: $id, playlistTrackInput: $playlistTrackInput) {
+    id
+    name
+    tracks {
+      id
+      name
+      duration
+      album {
+        id
+        name
+      }
+      artist {
+        id
+        name
+      }
+      genre {
+        id
+        name
+      }
+      trackNumber
+    }
+  }
 }

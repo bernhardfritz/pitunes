@@ -99,6 +99,30 @@ pub struct CreatePlaylistTrackMutation;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/delete_album_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct DeleteAlbumMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/delete_artist_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct DeleteArtistMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/delete_genre_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct DeleteGenreMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
     query_path = "src/graphql/delete_playlist_mutation.graphql",
     response_derives = "Debug"
 )]
@@ -1023,6 +1047,63 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
     }
 }
 
+impl From<delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracks>
+    for Track
+{
+    fn from(
+        delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracks {
+            id,
+            name,
+            duration,
+            album,
+            artist,
+            genre,
+            track_number,
+        }: delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracks,
+    ) -> Track {
+        Track {
+            id,
+            name,
+            duration,
+            album: album.map(|album| album.into()),
+            artist: artist.map(|artist| artist.into()),
+            genre: genre.map(|genre| genre.into()),
+            track_number,
+        }
+    }
+}
+
+impl From<delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksAlbum>
+    for Album
+{
+    fn from(
+        delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksAlbum { id, name }: delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksAlbum,
+    ) -> Album {
+        Album { id, name }
+    }
+}
+
+impl
+    From<delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksArtist>
+    for Artist
+{
+    fn from(
+        delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksArtist { id, name }: delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksArtist,
+    ) -> Artist {
+        Artist { id, name }
+    }
+}
+
+impl From<delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksGenre>
+    for Genre
+{
+    fn from(
+        delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksGenre { id, name }: delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksGenre,
+    ) -> Genre {
+        Genre { id, name }
+    }
+}
+
 impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
     fn from(
         update_track_mutation::UpdateTrackMutationUpdateTrack {
@@ -1076,6 +1157,7 @@ pub mod exports {
         album_query, album_tracks_query, albums_query, artist_albums_query, artist_query,
         artist_tracks_query, artists_query, create_album_mutation, create_artist_mutation,
         create_genre_mutation, create_playlist_mutation, create_playlist_track_mutation,
+        delete_album_mutation, delete_artist_mutation, delete_genre_mutation,
         delete_playlist_mutation, delete_playlist_track_mutation, genre_query, genre_tracks_query,
         genres_query, playlist_tracks_query, playlists_query, track_query, tracks_query,
         update_album_mutation, update_artist_mutation, update_genre_mutation,

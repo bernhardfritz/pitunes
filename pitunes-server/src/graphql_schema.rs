@@ -356,7 +356,7 @@ impl Mutation {
         context: &RequestContext,
         id: i32, // playlist_id
         playlist_track_input: PlaylistTrackInput,
-    ) -> juniper::FieldResult<bool> {
+    ) -> juniper::FieldResult<Playlist> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
             let deleted = if let Some(position) = playlist_track_input.position {
@@ -392,7 +392,7 @@ impl Mutation {
                         .execute(&conn)?;
                 }
             }
-            Ok(deleted)
+            playlists::table.find(id).get_result(&conn)
         })?)
     }
 }

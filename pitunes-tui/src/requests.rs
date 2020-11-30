@@ -10,6 +10,7 @@ use crate::{
             album_query, album_tracks_query, albums_query, artist_albums_query, artist_query,
             artist_tracks_query, artists_query, create_album_mutation, create_artist_mutation,
             create_genre_mutation, create_playlist_mutation, create_playlist_track_mutation,
+            delete_album_mutation, delete_artist_mutation, delete_genre_mutation,
             delete_playlist_mutation, delete_playlist_track_mutation, genre_query,
             genre_tracks_query, genres_query, playlist_tracks_query, playlists_query, track_query,
             tracks_query, update_album_mutation, update_artist_mutation, update_genre_mutation,
@@ -18,15 +19,16 @@ use crate::{
         Album, AlbumQuery, AlbumTracksQuery, AlbumsQuery, Artist, ArtistAlbumsQuery, ArtistQuery,
         ArtistTracksQuery, ArtistsQuery, CreateAlbumMutation, CreateArtistMutation,
         CreateGenreMutation, CreatePlaylistMutation, CreatePlaylistTrackMutation,
-        DeletePlaylistMutation, DeletePlaylistTrackMutation, Genre, GenreQuery, GenreTracksQuery,
-        GenresQuery, Playlist, PlaylistTracksQuery, PlaylistsQuery, Track, TrackQuery, TracksQuery,
-        UpdateAlbumMutation, UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
+        DeleteAlbumMutation, DeleteArtistMutation, DeleteGenreMutation, DeletePlaylistMutation,
+        DeletePlaylistTrackMutation, Genre, GenreQuery, GenreTracksQuery, GenresQuery, Playlist,
+        PlaylistTracksQuery, PlaylistsQuery, Track, TrackQuery, TracksQuery, UpdateAlbumMutation,
+        UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
         UpdatePlaylistTrackMutation, UpdateTrackMutation,
     },
     Context,
 };
 
-pub fn get_album(context: &Arc<Context>, id: i64) -> Album {
+pub fn read_album(context: &Arc<Context>, id: i64) -> Album {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = AlbumQuery::build_query(album_query::Variables { id });
     let res = context
@@ -44,7 +46,7 @@ pub fn get_album(context: &Arc<Context>, id: i64) -> Album {
         .unwrap()
 }
 
-pub fn get_albums(context: &Arc<Context>) -> Vec<Album> {
+pub fn read_albums(context: &Arc<Context>) -> Vec<Album> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = AlbumsQuery::build_query(albums_query::Variables {});
     let res = context
@@ -77,7 +79,22 @@ pub fn update_album(context: &Arc<Context>, variables: update_album_mutation::Va
         .unwrap()
 }
 
-pub fn get_artist(context: &Arc<Context>, id: i64) -> Artist {
+pub fn delete_album(context: &Arc<Context>, album: &Album) -> bool {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body =
+        DeleteAlbumMutation::build_query(delete_album_mutation::Variables { id: album.id });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<delete_album_mutation::ResponseData> = res.json().unwrap();
+    response_body.data.map(|data| data.delete_album).unwrap()
+}
+
+pub fn read_artist(context: &Arc<Context>, id: i64) -> Artist {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = ArtistQuery::build_query(artist_query::Variables { id });
     let res = context
@@ -95,7 +112,7 @@ pub fn get_artist(context: &Arc<Context>, id: i64) -> Artist {
         .unwrap()
 }
 
-pub fn get_artists(context: &Arc<Context>) -> Vec<Artist> {
+pub fn read_artists(context: &Arc<Context>) -> Vec<Artist> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = ArtistsQuery::build_query(artists_query::Variables {});
     let res = context
@@ -131,7 +148,22 @@ pub fn update_artist(
         .unwrap()
 }
 
-pub fn get_genre(context: &Arc<Context>, id: i64) -> Genre {
+pub fn delete_artist(context: &Arc<Context>, artist: &Artist) -> bool {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body =
+        DeleteArtistMutation::build_query(delete_artist_mutation::Variables { id: artist.id });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<delete_artist_mutation::ResponseData> = res.json().unwrap();
+    response_body.data.map(|data| data.delete_artist).unwrap()
+}
+
+pub fn read_genre(context: &Arc<Context>, id: i64) -> Genre {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = GenreQuery::build_query(genre_query::Variables { id });
     let res = context
@@ -149,7 +181,7 @@ pub fn get_genre(context: &Arc<Context>, id: i64) -> Genre {
         .unwrap()
 }
 
-pub fn get_genres(context: &Arc<Context>) -> Vec<Genre> {
+pub fn read_genres(context: &Arc<Context>) -> Vec<Genre> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = GenresQuery::build_query(genres_query::Variables {});
     let res = context
@@ -180,6 +212,21 @@ pub fn update_genre(context: &Arc<Context>, variables: update_genre_mutation::Va
         .map(|data| data.update_genre)
         .map(|genre| genre.into())
         .unwrap()
+}
+
+pub fn delete_genre(context: &Arc<Context>, genre: &Genre) -> bool {
+    let url = format!("{}/{}", context.server_url, GRAPHQL);
+    let request_body =
+        DeleteGenreMutation::build_query(delete_genre_mutation::Variables { id: genre.id });
+    let res = context
+        .client
+        .post(&url)
+        .bearer_auth(&context.api_key[..])
+        .json(&request_body)
+        .send()
+        .unwrap();
+    let response_body: Response<delete_genre_mutation::ResponseData> = res.json().unwrap();
+    response_body.data.map(|data| data.delete_genre).unwrap()
 }
 
 pub fn create_album(context: &Arc<Context>, name: &str) -> Album {
@@ -286,7 +333,7 @@ pub fn delete_playlist(context: &Arc<Context>, playlist: &Playlist) -> bool {
     response_body.data.map(|data| data.delete_playlist).unwrap()
 }
 
-pub fn get_playlists(context: &Arc<Context>) -> Vec<Playlist> {
+pub fn read_playlists(context: &Arc<Context>) -> Vec<Playlist> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = PlaylistsQuery::build_query(playlists_query::Variables {});
     let res = context
@@ -325,7 +372,7 @@ pub fn update_playlist(
         .unwrap()
 }
 
-pub fn get_track(context: &Arc<Context>, id: i64) -> Track {
+pub fn read_track(context: &Arc<Context>, id: i64) -> Track {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = TrackQuery::build_query(track_query::Variables { id });
     let res = context
@@ -343,7 +390,7 @@ pub fn get_track(context: &Arc<Context>, id: i64) -> Track {
         .unwrap()
 }
 
-pub fn get_tracks(context: &Arc<Context>) -> Vec<Track> {
+pub fn read_tracks(context: &Arc<Context>) -> Vec<Track> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body = TracksQuery::build_query(tracks_query::Variables {});
     let res = context
@@ -376,7 +423,7 @@ pub fn update_track(context: &Arc<Context>, variables: update_track_mutation::Va
         .unwrap()
 }
 
-pub fn get_tracks_of_album(context: &Arc<Context>, album: &Album) -> Vec<Track> {
+pub fn read_tracks_of_album(context: &Arc<Context>, album: &Album) -> Vec<Track> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         AlbumTracksQuery::build_query(album_tracks_query::Variables { id: album.id });
@@ -396,7 +443,7 @@ pub fn get_tracks_of_album(context: &Arc<Context>, album: &Album) -> Vec<Track> 
     tracks.into_iter().map(|track| track.into()).collect()
 }
 
-pub fn get_tracks_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Track> {
+pub fn read_tracks_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Track> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         ArtistTracksQuery::build_query(artist_tracks_query::Variables { id: artist.id });
@@ -416,7 +463,7 @@ pub fn get_tracks_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Trac
     tracks.into_iter().map(|track| track.into()).collect()
 }
 
-pub fn get_albums_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Album> {
+pub fn read_albums_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Album> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
@@ -436,7 +483,7 @@ pub fn get_albums_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Albu
     albums.into_iter().map(|album| album.into()).collect()
 }
 
-pub fn get_tracks_of_genre(context: &Arc<Context>, genre: &Genre) -> Vec<Track> {
+pub fn read_tracks_of_genre(context: &Arc<Context>, genre: &Genre) -> Vec<Track> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         GenreTracksQuery::build_query(genre_tracks_query::Variables { id: genre.id });
@@ -456,7 +503,7 @@ pub fn get_tracks_of_genre(context: &Arc<Context>, genre: &Genre) -> Vec<Track> 
     tracks.into_iter().map(|track| track.into()).collect()
 }
 
-pub fn get_tracks_of_playlist(context: &Arc<Context>, playlist: &Playlist) -> Vec<Track> {
+pub fn read_tracks_of_playlist(context: &Arc<Context>, playlist: &Playlist) -> Vec<Track> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         PlaylistTracksQuery::build_query(playlist_tracks_query::Variables { id: playlist.id });
@@ -543,7 +590,7 @@ pub fn delete_playlist_track(
     playlist: &Playlist,
     track: &Track,
     position: Option<usize>,
-) -> bool {
+) -> Vec<Track> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
     let request_body =
         DeletePlaylistTrackMutation::build_query(delete_playlist_track_mutation::Variables {
@@ -561,8 +608,10 @@ pub fn delete_playlist_track(
         .send()
         .unwrap();
     let response_body: Response<delete_playlist_track_mutation::ResponseData> = res.json().unwrap();
-    response_body
+    let tracks = response_body
         .data
         .map(|data| data.delete_playlist_track)
-        .unwrap()
+        .map(|playlist| playlist.tracks)
+        .unwrap();
+    tracks.into_iter().map(|track| track.into()).collect()
 }

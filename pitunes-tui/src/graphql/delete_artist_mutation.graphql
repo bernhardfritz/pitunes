@@ -1,0 +1,3 @@
+mutation DeleteArtistMutation($id: Int!) {
+  deleteArtist(id: $id)
+}

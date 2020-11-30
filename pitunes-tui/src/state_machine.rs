@@ -18,11 +18,11 @@ use crate::{
     play_queue, renderer,
     requests::{
         create_album, create_artist, create_genre, create_playlist, create_playlist_track,
-        delete_playlist, delete_playlist_track, get_album, get_albums, get_albums_of_artist,
-        get_artist, get_artists, get_genre, get_genres, get_playlists, get_track, get_tracks,
-        get_tracks_of_album, get_tracks_of_artist, get_tracks_of_genre, get_tracks_of_playlist,
-        update_album, update_artist, update_genre, update_playlist, update_playlist_track,
-        update_track,
+        delete_album, delete_artist, delete_genre, delete_playlist, delete_playlist_track,
+        read_album, read_albums, read_albums_of_artist, read_artist, read_artists, read_genre,
+        read_genres, read_playlists, read_track, read_tracks, read_tracks_of_album,
+        read_tracks_of_artist, read_tracks_of_genre, read_tracks_of_playlist, update_album,
+        update_artist, update_genre, update_playlist, update_playlist_track, update_track,
     },
     states::HasPrompt,
     states::{
@@ -75,12 +75,7 @@ impl StateMachine {
         }
         match &mut self.state {
             State::AddToPlaylistPrompt(add_to_playlist_prompt) => {
-                StateMachine::mutate_stateful_list(add_to_playlist_prompt, key);
-                let to = self.from_add_to_playlist_prompt(key);
-                if let Some(to) = to {
-                    self.state = to;
-                    return;
-                }
+                StateMachine::mutate_stateful_list(add_to_playlist_prompt, key)
             }
             State::AlbumNamePrompt(album_name_prompt) => {
                 StateMachine::mutate_prompt(album_name_prompt, key)
@@ -142,6 +137,9 @@ impl StateMachine {
             }
         }
         let refresh = match &self.state {
+            State::AddToPlaylistPrompt(add_to_playlist_prompt) => {
+                self.from_add_to_playlist_prompt(add_to_playlist_prompt, key)
+            }
             State::AlbumNamePrompt(album_name_prompt) => {
                 self.from_album_name_prompt(album_name_prompt, key)
             }
@@ -469,23 +467,17 @@ impl StateMachine {
         }
     }
 
-    fn from_add_to_playlist_prompt(&mut self, key: &KeyEvent) -> Option<State> {
+    fn from_add_to_playlist_prompt(
+        &self,
+        add_to_playlist_prompt: &AddToPlaylistPrompt,
+        key: &KeyEvent,
+    ) -> Option<()> {
         if key.code != KeyCode::Enter {
             return None;
         }
-        let add_to_playlist_prompt =
-            if let State::AddToPlaylistPrompt(add_to_playlist_prompt) = &self.state {
-                add_to_playlist_prompt
-            } else {
-                panic!()
-            };
         let stateful_list = add_to_playlist_prompt.stateful_list();
-        let state = self.undo.pop()?;
-        let track = if let State::Tracks(tracks) = &state {
-            tracks.stateful_list().selected_item().unwrap()
-        } else {
-            panic!()
-        };
+        let last = self.undo.last()?;
+        let track = last.selected_track()?;
         if let Some(playlist) = stateful_list.selected_item() {
             create_playlist_track(&self.context, playlist, track);
         } else {
@@ -495,7 +487,7 @@ impl StateMachine {
                 create_playlist_track(&self.context, &playlist, track);
             }
         }
-        Some(state)
+        Some(())
     }
 
     fn from_album_name_prompt(
@@ -532,6 +524,13 @@ impl StateMachine {
                     None
                 }
             }
+            KeyCode::Delete => {
+                if album.id > 0 {
+                    self.to_confirm_prompt(album)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
@@ -560,6 +559,7 @@ impl StateMachine {
         match key.code {
             KeyCode::Enter => self.to_artist_albums(artist),
             KeyCode::F(2) => self.to_artist_name_prompt(artist),
+            KeyCode::Delete => self.to_confirm_prompt(artist),
             _ => None,
         }
     }
@@ -572,6 +572,21 @@ impl StateMachine {
             if &confirm_prompt.answer[..] == "y" || &confirm_prompt.answer[..] == "Y" {
                 let last = self.undo.last()?;
                 match last {
+                    State::Albums(albums) => {
+                        delete_album(&self.context, albums.stateful_list().selected_item()?);
+                    }
+                    State::ArtistAlbums(artist_albums) => {
+                        delete_album(
+                            &self.context,
+                            artist_albums.stateful_list().selected_item()?,
+                        );
+                    }
+                    State::Artists(artists) => {
+                        delete_artist(&self.context, artists.stateful_list().selected_item()?);
+                    }
+                    State::Genres(genres) => {
+                        delete_genre(&self.context, genres.stateful_list().selected_item()?);
+                    }
                     State::Playlists(playlists) => {
                         delete_playlist(&self.context, playlists.stateful_list().selected_item()?);
                     }
@@ -614,6 +629,7 @@ impl StateMachine {
         match key.code {
             KeyCode::Enter => self.to_genre_tracks(genre),
             KeyCode::F(2) => self.to_genre_name_prompt(genre),
+            KeyCode::Delete => self.to_confirm_prompt(genre),
             _ => None,
         }
     }
@@ -890,7 +906,7 @@ impl StateMachine {
     }
 
     fn to_add_to_playlist_prompt(&self) -> Option<State> {
-        let playlists = get_playlists(&self.context);
+        let playlists = read_playlists(&self.context);
         Some(State::AddToPlaylistPrompt(AddToPlaylistPrompt {
             prompt: String::from("Playlist name: "),
             stateful_list: StatefulList::builder()
@@ -910,7 +926,7 @@ impl StateMachine {
 
     fn to_album_tracks(&self, album: &Album) -> Option<State> {
         if album.id > 0 {
-            let tracks = get_tracks_of_album(&self.context, album);
+            let tracks = read_tracks_of_album(&self.context, album);
             Some(State::AlbumTracks(AlbumTracks {
                 album: album.clone(),
                 stateful_list: StatefulList::builder().items(tracks).build(),
@@ -925,7 +941,7 @@ impl StateMachine {
     }
 
     fn to_albums(&self) -> Option<State> {
-        let albums = get_albums(&self.context);
+        let albums = read_albums(&self.context);
         Some(State::Albums(Albums {
             stateful_list: StatefulList::builder().items(albums).build(),
         }))
@@ -933,7 +949,7 @@ impl StateMachine {
 
     fn to_artist_albums(&self, artist: &Artist) -> Option<State> {
         let albums = {
-            let mut albums = get_albums_of_artist(&self.context, artist);
+            let mut albums = read_albums_of_artist(&self.context, artist);
             albums.insert(
                 0,
                 Album {
@@ -958,7 +974,7 @@ impl StateMachine {
     }
 
     fn to_artist_tracks(&self, artist: &Artist) -> Option<State> {
-        let tracks = get_tracks_of_artist(&self.context, artist);
+        let tracks = read_tracks_of_artist(&self.context, artist);
         Some(State::ArtistTracks(ArtistTracks {
             artist: artist.clone(),
             stateful_list: StatefulList::builder().items(tracks).build(),
@@ -966,7 +982,7 @@ impl StateMachine {
     }
 
     fn to_artists(&self) -> Option<State> {
-        let artists = get_artists(&self.context);
+        let artists = read_artists(&self.context);
         Some(State::Artists(Artists {
             stateful_list: StatefulList::builder().items(artists).build(),
         }))
@@ -988,7 +1004,7 @@ impl StateMachine {
     }
 
     fn to_genre_tracks(&self, genre: &Genre) -> Option<State> {
-        let tracks = get_tracks_of_genre(&self.context, genre);
+        let tracks = read_tracks_of_genre(&self.context, genre);
         Some(State::GenreTracks(GenreTracks {
             genre: genre.clone(),
             stateful_list: StatefulList::builder().items(tracks).build(),
@@ -996,7 +1012,7 @@ impl StateMachine {
     }
 
     fn to_genres(&self) -> Option<State> {
-        let genres = get_genres(&self.context);
+        let genres = read_genres(&self.context);
         Some(State::Genres(Genres {
             stateful_list: StatefulList::builder().items(genres).build(),
         }))
@@ -1011,7 +1027,7 @@ impl StateMachine {
     }
 
     fn to_playlist_tracks(&self, playlist: &Playlist) -> Option<State> {
-        let tracks = get_tracks_of_playlist(&self.context, playlist);
+        let tracks = read_tracks_of_playlist(&self.context, playlist);
         Some(State::PlaylistTracks(PlaylistTracks {
             playlist: playlist.clone(),
             stateful_list: StatefulList::builder().items(tracks).build(),
@@ -1019,7 +1035,7 @@ impl StateMachine {
     }
 
     fn to_playlists(&self) -> Option<State> {
-        let playlists = get_playlists(&self.context);
+        let playlists = read_playlists(&self.context);
         Some(State::Playlists(Playlists {
             stateful_list: StatefulList::builder().items(playlists).build(),
         }))
@@ -1030,7 +1046,7 @@ impl StateMachine {
         track: &Track,
         track_input_builder: TrackInputBuilder,
     ) -> Option<State> {
-        let albums = get_albums(&self.context);
+        let albums = read_albums(&self.context);
         Some(State::TrackAlbumPrompt(TrackAlbumPrompt {
             prompt: format!(
                 "Album name: ({}) ",
@@ -1049,7 +1065,7 @@ impl StateMachine {
         track: &Track,
         track_input_builder: TrackInputBuilder,
     ) -> Option<State> {
-        let artists = get_artists(&self.context);
+        let artists = read_artists(&self.context);
         Some(State::TrackArtistPrompt(TrackArtistPrompt {
             prompt: format!(
                 "Artist name: ({}) ",
@@ -1068,7 +1084,7 @@ impl StateMachine {
         track: &Track,
         track_input_builder: TrackInputBuilder,
     ) -> Option<State> {
-        let genres = get_genres(&self.context);
+        let genres = read_genres(&self.context);
         Some(State::TrackGenrePrompt(TrackGenrePrompt {
             prompt: format!(
                 "Genre name: ({}) ",
@@ -1109,7 +1125,7 @@ impl StateMachine {
     }
 
     fn to_tracks(&self) -> Option<State> {
-        let tracks = get_tracks(&self.context);
+        let tracks = read_tracks(&self.context);
         Some(State::Tracks(Tracks {
             stateful_list: StatefulList::builder().items(tracks).build(),
         }))
