@@ -10,7 +10,8 @@ mod util;
 
 use std::{
     cmp, env,
-    io::{self, Cursor, Stdout, Write},
+    fs::File,
+    io::{self, BufReader, Cursor, Read, Stdout, Write},
     sync::{Arc, Mutex, RwLock},
     thread::{self, JoinHandle},
     time::{Duration, Instant},
@@ -44,7 +45,7 @@ use util::{
 pub struct Context {
     server_url: String,
     api_key: String,
-    client: reqwest::blocking::Client,
+    agent: ureq::Agent,
     handle: rodio::OutputStreamHandle,
     sink_lock: RwLock<rodio::Sink>,
     queue_lock: RwLock<Vec<Track>>,
@@ -93,20 +94,24 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
             };
             if let Some(url) = url {
                 // TODO: HttpStreamReader should not be passed directly to the Decoder as this results in audible delays while chunks are downloaded
-                /*let source =
-                rodio::Decoder::new(HttpStreamReader::new(url, context.api_key.to_string()))
-                    .unwrap();*/
+                // let source =
+                // rodio::Decoder::new(HttpStreamReader::new(url, context.api_key.to_string(), context.agent.clone()))
+                //     .unwrap();
                 // download full track until issue with partial downloads is resolved
                 let cursor = {
-                    let mut res = context
-                        .client
-                        .get(&url)
-                        .bearer_auth(&context.api_key[..])
-                        .send()
+                    let res = context
+                        .agent
+                        .get(&url[..])
+                        .set("Authorization", &format!("Bearer {}", context.api_key)[..])
+                        .call()
                         .unwrap();
-                    let mut buf = vec![];
-                    std::io::copy(&mut res, &mut buf).unwrap();
-                    Cursor::new(buf)
+                    let len = res
+                        .header("Content-Length")
+                        .and_then(|s| s.parse::<usize>().ok())
+                        .unwrap();
+                    let mut bytes: Vec<u8> = Vec::with_capacity(len);
+                    res.into_reader().read_to_end(&mut bytes).unwrap();
+                    Cursor::new(bytes)
                 };
                 let source = rodio::Decoder::new(cursor).unwrap();
                 {
@@ -222,6 +227,16 @@ fn main() -> Result<(), Error> {
     let server_url = value_t!(matches, "server-url", String).unwrap();
     dotenv().ok();
     let api_key = env::var("API_KEY").expect("Environment variable API_KEY is not present");
+    let cert = env::var("CERT").ok(); // only needed for self-signed certificates, e.g. during development
+    let tls_config = if let Some(cert) = cert {
+        let pem_file = File::open(cert)?;
+        let mut pem_file = BufReader::new(pem_file);
+        let mut tls_config = rustls::ClientConfig::new();
+        tls_config.root_store.add_pem_file(&mut pem_file).unwrap();
+        Some(Arc::new(tls_config))
+    } else {
+        None
+    };
 
     // Terminal initialization
     let backend = CrosstermBackend::new(io::stdout());
@@ -231,7 +246,13 @@ fn main() -> Result<(), Error> {
 
     let events = Events::new();
 
-    let client = reqwest::blocking::Client::new();
+    let agent = {
+        let mut agent_builder = ureq::AgentBuilder::new().timeout(Duration::from_secs(3));
+        if let Some(tls_config) = tls_config {
+            agent_builder = agent_builder.tls_config(tls_config);
+        }
+        agent_builder.build()
+    };
     let (_stream, handle) = rodio::OutputStream::try_default().unwrap();
     let sink_lock = RwLock::new(rodio::Sink::new_idle().0);
     let queue_lock = RwLock::new(vec![]);
@@ -241,7 +262,7 @@ fn main() -> Result<(), Error> {
     let context = Arc::new(Context {
         server_url,
         api_key,
-        client,
+        agent,
         handle,
         sink_lock,
         queue_lock,

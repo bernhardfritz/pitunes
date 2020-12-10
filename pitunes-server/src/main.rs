@@ -81,11 +81,11 @@ async fn main() -> std::io::Result<()> {
                 .short("p")
                 .long("port")
                 .value_name("PORT")
-                .help("Port to use (defaults to 8080)")
+                .help("Port to use (defaults to 8443)")
                 .takes_value(true),
         )
         .get_matches();
-    let port = value_t!(matches, "port", u16).unwrap_or(8080);
+    let port = value_t!(matches, "port", u16).unwrap_or(8443);
 
     lazy_static::initialize(&CONFIG);
 
@@ -95,7 +95,7 @@ async fn main() -> std::io::Result<()> {
 
     // load ssl keys
     // to create a self-signed temporary cert for testing:
-    // `openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365 -subj '/CN=localhost'`
+    // https://letsencrypt.org/docs/certificates-for-localhost/#making-and-trusting-your-own-certificates
     let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
     builder
         .set_private_key_file("key.pem", SslFiletype::PEM)

@@ -139,6 +139,14 @@ pub struct DeletePlaylistTrackMutation;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "src/graphql/schema.json",
+    query_path = "src/graphql/delete_track_mutation.graphql",
+    response_derives = "Debug"
+)]
+pub struct DeleteTrackMutation;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "src/graphql/schema.json",
     query_path = "src/graphql/genre_query.graphql",
     response_derives = "Debug"
 )]
@@ -534,54 +542,219 @@ macro_rules! impl_from {
 }
 
 impl_from!(album_query::AlbumQueryAlbum, Album, id, name);
-impl_from!(album_tracks_query::AlbumTracksQueryAlbumTracksAlbum, Album, id, name);
+impl_from!(
+    album_tracks_query::AlbumTracksQueryAlbumTracksAlbum,
+    Album,
+    id,
+    name
+);
 impl_from!(albums_query::AlbumsQueryAlbums, Album, id, name);
-impl_from!(artist_albums_query::ArtistAlbumsQueryArtistAlbums, Album, id, name);
-impl_from!(artist_tracks_query::ArtistTracksQueryArtistTracksAlbum, Album, id, name);
-impl_from!(create_album_mutation::CreateAlbumMutationCreateAlbum, Album, id, name);
-impl_from!(create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlaylistTrackTracksAlbum, Album, id, name);
-impl_from!(genre_tracks_query::GenreTracksQueryGenreTracksAlbum, Album, id, name);
-impl_from!(playlist_tracks_query::PlaylistTracksQueryPlaylistTracksAlbum, Album, id, name);
+impl_from!(
+    artist_albums_query::ArtistAlbumsQueryArtistAlbums,
+    Album,
+    id,
+    name
+);
+impl_from!(
+    artist_tracks_query::ArtistTracksQueryArtistTracksAlbum,
+    Album,
+    id,
+    name
+);
+impl_from!(
+    create_album_mutation::CreateAlbumMutationCreateAlbum,
+    Album,
+    id,
+    name
+);
+impl_from!(
+    create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlaylistTrackTracksAlbum,
+    Album,
+    id,
+    name
+);
+impl_from!(
+    genre_tracks_query::GenreTracksQueryGenreTracksAlbum,
+    Album,
+    id,
+    name
+);
+impl_from!(
+    playlist_tracks_query::PlaylistTracksQueryPlaylistTracksAlbum,
+    Album,
+    id,
+    name
+);
 impl_from!(track_query::TrackQueryTrackAlbum, Album, id, name);
 impl_from!(tracks_query::TracksQueryTracksAlbum, Album, id, name);
-impl_from!(update_album_mutation::UpdateAlbumMutationUpdateAlbum, Album, id, name);
-impl_from!(delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksAlbum, Album, id, name);
-impl_from!(update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracksAlbum, Album, id, name);
-impl_from!(update_track_mutation::UpdateTrackMutationUpdateTrackAlbum, Album, id, name);
+impl_from!(
+    update_album_mutation::UpdateAlbumMutationUpdateAlbum,
+    Album,
+    id,
+    name
+);
+impl_from!(
+    delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksAlbum,
+    Album,
+    id,
+    name
+);
+impl_from!(
+    update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracksAlbum,
+    Album,
+    id,
+    name
+);
+impl_from!(
+    update_track_mutation::UpdateTrackMutationUpdateTrackAlbum,
+    Album,
+    id,
+    name
+);
 
-impl_from!(album_tracks_query::AlbumTracksQueryAlbumTracksArtist, Artist, id, name);
+impl_from!(
+    album_tracks_query::AlbumTracksQueryAlbumTracksArtist,
+    Artist,
+    id,
+    name
+);
 impl_from!(artist_query::ArtistQueryArtist, Artist, id, name);
-impl_from!(artist_tracks_query::ArtistTracksQueryArtistTracksArtist, Artist, id, name);
+impl_from!(
+    artist_tracks_query::ArtistTracksQueryArtistTracksArtist,
+    Artist,
+    id,
+    name
+);
 impl_from!(artists_query::ArtistsQueryArtists, Artist, id, name);
-impl_from!(create_artist_mutation::CreateArtistMutationCreateArtist, Artist, id, name);
-impl_from!(create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlaylistTrackTracksArtist, Artist, id, name);
-impl_from!(delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksArtist, Artist, id, name);
-impl_from!(genre_tracks_query::GenreTracksQueryGenreTracksArtist, Artist, id, name);
-impl_from!(playlist_tracks_query::PlaylistTracksQueryPlaylistTracksArtist, Artist, id, name);
+impl_from!(
+    create_artist_mutation::CreateArtistMutationCreateArtist,
+    Artist,
+    id,
+    name
+);
+impl_from!(
+    create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlaylistTrackTracksArtist,
+    Artist,
+    id,
+    name
+);
+impl_from!(
+    delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksArtist,
+    Artist,
+    id,
+    name
+);
+impl_from!(
+    genre_tracks_query::GenreTracksQueryGenreTracksArtist,
+    Artist,
+    id,
+    name
+);
+impl_from!(
+    playlist_tracks_query::PlaylistTracksQueryPlaylistTracksArtist,
+    Artist,
+    id,
+    name
+);
 impl_from!(track_query::TrackQueryTrackArtist, Artist, id, name);
 impl_from!(tracks_query::TracksQueryTracksArtist, Artist, id, name);
-impl_from!(update_artist_mutation::UpdateArtistMutationUpdateArtist, Artist, id, name);
-impl_from!(update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracksArtist, Artist, id, name);
-impl_from!(update_track_mutation::UpdateTrackMutationUpdateTrackArtist, Artist, id, name);
+impl_from!(
+    update_artist_mutation::UpdateArtistMutationUpdateArtist,
+    Artist,
+    id,
+    name
+);
+impl_from!(
+    update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracksArtist,
+    Artist,
+    id,
+    name
+);
+impl_from!(
+    update_track_mutation::UpdateTrackMutationUpdateTrackArtist,
+    Artist,
+    id,
+    name
+);
 
-impl_from!(album_tracks_query::AlbumTracksQueryAlbumTracksGenre, Genre, id, name);
-impl_from!(artist_tracks_query::ArtistTracksQueryArtistTracksGenre, Genre, id, name);
-impl_from!(create_genre_mutation::CreateGenreMutationCreateGenre, Genre, id, name);
-impl_from!(create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlaylistTrackTracksGenre, Genre, id, name);
+impl_from!(
+    album_tracks_query::AlbumTracksQueryAlbumTracksGenre,
+    Genre,
+    id,
+    name
+);
+impl_from!(
+    artist_tracks_query::ArtistTracksQueryArtistTracksGenre,
+    Genre,
+    id,
+    name
+);
+impl_from!(
+    create_genre_mutation::CreateGenreMutationCreateGenre,
+    Genre,
+    id,
+    name
+);
+impl_from!(
+    create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlaylistTrackTracksGenre,
+    Genre,
+    id,
+    name
+);
 impl_from!(genre_query::GenreQueryGenre, Genre, id, name);
-impl_from!(genre_tracks_query::GenreTracksQueryGenreTracksGenre, Genre, id, name);
+impl_from!(
+    genre_tracks_query::GenreTracksQueryGenreTracksGenre,
+    Genre,
+    id,
+    name
+);
 impl_from!(genres_query::GenresQueryGenres, Genre, id, name);
-impl_from!(playlist_tracks_query::PlaylistTracksQueryPlaylistTracksGenre, Genre, id, name);
+impl_from!(
+    playlist_tracks_query::PlaylistTracksQueryPlaylistTracksGenre,
+    Genre,
+    id,
+    name
+);
 impl_from!(track_query::TrackQueryTrackGenre, Genre, id, name);
 impl_from!(tracks_query::TracksQueryTracksGenre, Genre, id, name);
-impl_from!(update_genre_mutation::UpdateGenreMutationUpdateGenre, Genre, id, name);
-impl_from!(delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksGenre, Genre, id, name);
-impl_from!(update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracksGenre, Genre, id, name);
-impl_from!(update_track_mutation::UpdateTrackMutationUpdateTrackGenre, Genre, id, name);
+impl_from!(
+    update_genre_mutation::UpdateGenreMutationUpdateGenre,
+    Genre,
+    id,
+    name
+);
+impl_from!(
+    delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracksGenre,
+    Genre,
+    id,
+    name
+);
+impl_from!(
+    update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracksGenre,
+    Genre,
+    id,
+    name
+);
+impl_from!(
+    update_track_mutation::UpdateTrackMutationUpdateTrackGenre,
+    Genre,
+    id,
+    name
+);
 
-impl_from!(create_playlist_mutation::CreatePlaylistMutationCreatePlaylist, Playlist, id, name);
+impl_from!(
+    create_playlist_mutation::CreatePlaylistMutationCreatePlaylist,
+    Playlist,
+    id,
+    name
+);
 impl_from!(playlists_query::PlaylistsQueryPlaylists, Playlist, id, name);
-impl_from!(update_playlist_mutation::UpdatePlaylistMutationUpdatePlaylist, Playlist, id, name);
+impl_from!(
+    update_playlist_mutation::UpdatePlaylistMutationUpdatePlaylist,
+    Playlist,
+    id,
+    name
+);
 
 impl From<album_tracks_query::AlbumTracksQueryAlbumTracks> for Track {
     fn from(
@@ -835,9 +1008,10 @@ pub mod exports {
         artist_tracks_query, artists_query, create_album_mutation, create_artist_mutation,
         create_genre_mutation, create_playlist_mutation, create_playlist_track_mutation,
         delete_album_mutation, delete_artist_mutation, delete_genre_mutation,
-        delete_playlist_mutation, delete_playlist_track_mutation, genre_query, genre_tracks_query,
-        genres_query, playlist_tracks_query, playlists_query, track_query, tracks_query,
-        update_album_mutation, update_artist_mutation, update_genre_mutation,
-        update_playlist_mutation, update_playlist_track_mutation, update_track_mutation,
+        delete_playlist_mutation, delete_playlist_track_mutation, delete_track_mutation,
+        genre_query, genre_tracks_query, genres_query, playlist_tracks_query, playlists_query,
+        track_query, tracks_query, update_album_mutation, update_artist_mutation,
+        update_genre_mutation, update_playlist_mutation, update_playlist_track_mutation,
+        update_track_mutation,
     };
 }

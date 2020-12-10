@@ -9,18 +9,18 @@ use crate::{
         Album, AlbumInputBuilder, AlbumQuery, AlbumTracksQuery, AlbumsQuery, Artist,
         ArtistAlbumsQuery, ArtistInputBuilder, ArtistQuery, ArtistTracksQuery, ArtistsQuery,
         CreateAlbumMutation, CreateArtistMutation, CreateGenreMutation, CreatePlaylistMutation,
-        DeletePlaylistMutation, DeletePlaylistTrackMutation, Genre, GenreInputBuilder, GenreQuery,
-        GenreTracksQuery, GenresQuery, IdName, Playlist, PlaylistInputBuilder, PlaylistTracksQuery,
-        PlaylistsQuery, Track, TrackInputBuilder, TracksQuery, UpdateAlbumMutation,
-        UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
-        UpdatePlaylistTrackMutation, UpdateTrackMutation,
+        DeletePlaylistMutation, DeletePlaylistTrackMutation, DeleteTrackMutation, Genre,
+        GenreInputBuilder, GenreQuery, GenreTracksQuery, GenresQuery, IdName, Playlist,
+        PlaylistInputBuilder, PlaylistTracksQuery, PlaylistsQuery, Track, TrackInputBuilder,
+        TracksQuery, UpdateAlbumMutation, UpdateArtistMutation, UpdateGenreMutation,
+        UpdatePlaylistMutation, UpdatePlaylistTrackMutation, UpdateTrackMutation,
     },
     play_queue, renderer,
     requests::{
         create_album, create_artist, create_genre, create_playlist, create_playlist_track,
         delete_album, delete_artist, delete_genre, delete_playlist, delete_playlist_track,
-        read_album, read_albums, read_albums_of_artist, read_artist, read_artists, read_genre,
-        read_genres, read_playlists, read_track, read_tracks, read_tracks_of_album,
+        delete_track, read_album, read_albums, read_albums_of_artist, read_artist, read_artists,
+        read_genre, read_genres, read_playlists, read_track, read_tracks, read_tracks_of_album,
         read_tracks_of_artist, read_tracks_of_genre, read_tracks_of_playlist, update_album,
         update_artist, update_genre, update_playlist, update_playlist_track, update_track,
     },
@@ -526,7 +526,7 @@ impl StateMachine {
             }
             KeyCode::Delete => {
                 if album.id > 0 {
-                    self.to_confirm_prompt(album)
+                    self.to_delete_prompt(album)
                 } else {
                     None
                 }
@@ -559,7 +559,7 @@ impl StateMachine {
         match key.code {
             KeyCode::Enter => self.to_artist_albums(artist),
             KeyCode::F(2) => self.to_artist_name_prompt(artist),
-            KeyCode::Delete => self.to_confirm_prompt(artist),
+            KeyCode::Delete => self.to_delete_prompt(artist),
             _ => None,
         }
     }
@@ -591,12 +591,16 @@ impl StateMachine {
                         delete_playlist(&self.context, playlists.stateful_list().selected_item()?);
                     }
                     State::PlaylistTracks(playlist_tracks) => {
+                        let stateful_list = playlist_tracks.stateful_list();
                         delete_playlist_track(
                             &self.context,
                             &playlist_tracks.playlist,
-                            last.selected_track()?,
-                            playlist_tracks.stateful_list().selected_index(),
+                            stateful_list.selected_item()?,
+                            stateful_list.selected_index(),
                         );
+                    }
+                    State::Tracks(tracks) => {
+                        delete_track(&self.context, tracks.stateful_list().selected_item()?);
                     }
                     _ => (),
                 }
@@ -629,7 +633,7 @@ impl StateMachine {
         match key.code {
             KeyCode::Enter => self.to_genre_tracks(genre),
             KeyCode::F(2) => self.to_genre_name_prompt(genre),
-            KeyCode::Delete => self.to_confirm_prompt(genre),
+            KeyCode::Delete => self.to_delete_prompt(genre),
             _ => None,
         }
     }
@@ -659,7 +663,7 @@ impl StateMachine {
         match key.code {
             KeyCode::Enter => self.to_playlist_tracks(playlist),
             KeyCode::F(2) => self.to_playlist_name_prompt(playlist),
-            KeyCode::Delete => self.to_confirm_prompt(playlist),
+            KeyCode::Delete => self.to_delete_prompt(playlist),
             _ => None,
         }
     }
@@ -825,7 +829,7 @@ impl StateMachine {
             }
             KeyCode::F(2) => self.to_track_name_prompt(stateful_list.selected_item()?),
             KeyCode::F(4) => self.to_add_to_playlist_prompt(),
-            KeyCode::Delete => self.to_confirm_prompt(stateful_list.selected_item()?),
+            KeyCode::Delete => self.to_delete_prompt(stateful_list.selected_item()?),
             _ => None,
         }
     }
@@ -988,11 +992,15 @@ impl StateMachine {
         }))
     }
 
-    fn to_confirm_prompt(&self, id_name: &impl IdName) -> Option<State> {
+    fn to_confirm_prompt(&self, prompt: String) -> Option<State> {
         Some(State::ConfirmPrompt(ConfirmPrompt {
-            prompt: format!("Delete {} ? (y/N) ", id_name.name()),
+            prompt,
             answer: String::new(),
         }))
+    }
+
+    fn to_delete_prompt(&self, id_name: &impl IdName) -> Option<State> {
+        self.to_confirm_prompt(format!("Delete `{}`? (y/N) ", id_name.name()))
     }
 
     fn to_genre_name_prompt(&self, genre: &Genre) -> Option<State> {

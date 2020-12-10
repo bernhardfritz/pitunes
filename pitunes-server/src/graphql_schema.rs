@@ -215,9 +215,15 @@ impl Mutation {
         })?)
     }
 
-    // TODO
-    // fn delete_track(context: &RequestContext, id: i32) -> juniper::FieldResult<bool> {
-    // }
+    fn delete_track(context: &RequestContext, id: i32) -> juniper::FieldResult<bool> {
+        let conn = context.pool.get()?;
+        let deleted = diesel::delete(tracks::table.find(id)).execute(&conn)? == 1;
+        if deleted {
+            let filepath = format!("./tracks/{}.mp3", id);
+            std::fs::remove_file(filepath)?;
+        }
+        Ok(deleted)
+    }
 
     fn create_playlist(
         context: &RequestContext,

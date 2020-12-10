@@ -34,7 +34,7 @@ class App extends React.Component<{}, AppState> {
     for (const file of event.target.files) {
       formData.append("file", file);
     }
-    const responseText = await fetch('https://localhost:8080/api/upload', {
+    const responseText = await fetch('https://localhost:8443/api/upload', {
       method: 'post',
       headers: {
         'Authorization': `Bearer ${this.state.apiKey}`,
@@ -45,7 +45,7 @@ class App extends React.Component<{}, AppState> {
   }
 
   graphQLFetcher = (graphQLParams: any) => {
-    return fetch('https://localhost:8080/api/graphql', {
+    return fetch('https://localhost:8443/api/graphql', {
       method: 'post',
       headers: {
         'Content-Type': 'application/json',

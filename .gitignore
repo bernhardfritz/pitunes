@@ -9,3 +9,5 @@ pitunes.toml
 !/**/.gitkeep
 dist
 node_modules
+*.crt
+*.key

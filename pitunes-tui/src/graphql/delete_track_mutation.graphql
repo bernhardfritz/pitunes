@@ -1,0 +1,3 @@
+mutation DeleteTrackMutation($id: Int!) {
+  deleteTrack(id: $id)
+}
