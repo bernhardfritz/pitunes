@@ -3,6 +3,7 @@ mod constants;
 mod models;
 mod renderer;
 mod requests;
+mod retry;
 mod state_machine;
 mod states;
 #[allow(dead_code)]
@@ -28,6 +29,7 @@ use dotenv::dotenv;
 use failure::Error;
 // use http_stream_reader::HttpStreamReader;
 use models::{RootItem, Track};
+use retry::{Payload, retry};
 use state_machine::StateMachine;
 use states::{Root, State};
 use tui::{
@@ -99,12 +101,12 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
                 //     .unwrap();
                 // download full track until issue with partial downloads is resolved
                 let cursor = {
-                    let res = context
+                    let req = context
                         .agent
                         .get(&url[..])
-                        .set("Authorization", &format!("Bearer {}", context.api_key)[..])
-                        .call()
-                        .unwrap();
+                        .set("Authorization", &format!("Bearer {}", context.api_key)[..]);
+                    let payload = Payload::Empty;
+                    let res = retry(req, payload).unwrap();
                     let len = res
                         .header("Content-Length")
                         .and_then(|s| s.parse::<usize>().ok())
@@ -247,7 +249,7 @@ fn main() -> Result<(), Error> {
     let events = Events::new();
 
     let agent = {
-        let mut agent_builder = ureq::AgentBuilder::new().timeout(Duration::from_secs(3));
+        let mut agent_builder = ureq::AgentBuilder::new().timeout_connect(Duration::from_secs(3));
         if let Some(tls_config) = tls_config {
             agent_builder = agent_builder.tls_config(tls_config);
         }

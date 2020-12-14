@@ -1,11 +1,11 @@
-use std::{convert::TryFrom, sync::Arc, thread, time::Duration};
+use std::{convert::TryFrom, sync::Arc};
 
-use exponential_backoff::Backoff;
-use graphql_client::{GraphQLQuery, QueryBody, Response};
+use graphql_client::{GraphQLQuery, QueryBody, Response as GraphQLResponse};
 use serde::de::DeserializeOwned;
 
 use crate::{
     constants::GRAPHQL,
+    Context,
     models::{
         exports::{
             album_query, album_tracks_query, albums_query, artist_albums_query, artist_query,
@@ -27,40 +27,26 @@ use crate::{
         UpdateAlbumMutation, UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
         UpdatePlaylistTrackMutation, UpdateTrackMutation,
     },
-    Context,
+    retry::{Payload, retry},
 };
 
 fn graphql_query<Variables: serde::Serialize, T: DeserializeOwned>(
     context: &Arc<Context>,
     query_body: QueryBody<Variables>,
-) -> Result<Response<T>, ureq::Error> {
+) -> Result<GraphQLResponse<T>, ureq::Error> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
-    let retries = 8;
-    let backoff = Backoff::new(retries)
-        .timeout_range(Duration::from_millis(100), Duration::from_secs(10))
-        .jitter(0.3)
-        .factor(2);
-    for duration in &backoff {
-        let res = context
-            .agent
-            .post(&url[..])
-            .set("Content-Type", "application/json")
-            .set("Authorization", &format!("Bearer {}", context.api_key)[..])
-            .send_json(ureq::json!(query_body));
-        match res {
-            Ok(res) => return Result::Ok(res.into_json().unwrap()),
-            Err(err) => match duration {
-                Some(duration) => thread::sleep(duration),
-                None => return Result::Err(err),
-            },
-        }
-    }
-    panic!()
+    let req = context
+        .agent
+        .post(&url[..])
+        .set("Content-Type", "application/json")
+        .set("Authorization", &format!("Bearer {}", context.api_key)[..]);
+    let payload = Payload::JSON(ureq::json!(query_body));
+    retry(req, payload).map(|res| res.into_json().unwrap())
 }
 
 pub fn read_album(context: &Arc<Context>, id: i64) -> Album {
     let request_body = AlbumQuery::build_query(album_query::Variables { id });
-    let response_body: Response<album_query::ResponseData> =
+    let response_body: GraphQLResponse<album_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -72,7 +58,7 @@ pub fn read_album(context: &Arc<Context>, id: i64) -> Album {
 
 pub fn read_albums(context: &Arc<Context>) -> Vec<Album> {
     let request_body = AlbumsQuery::build_query(albums_query::Variables {});
-    let response_body: Response<albums_query::ResponseData> =
+    let response_body: GraphQLResponse<albums_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let albums = response_body.data.map(|data| data.albums).unwrap();
 
@@ -81,7 +67,7 @@ pub fn read_albums(context: &Arc<Context>) -> Vec<Album> {
 
 pub fn update_album(context: &Arc<Context>, variables: update_album_mutation::Variables) -> Album {
     let request_body = UpdateAlbumMutation::build_query(variables);
-    let response_body: Response<update_album_mutation::ResponseData> =
+    let response_body: GraphQLResponse<update_album_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -94,7 +80,7 @@ pub fn update_album(context: &Arc<Context>, variables: update_album_mutation::Va
 pub fn delete_album(context: &Arc<Context>, album: &Album) -> bool {
     let request_body =
         DeleteAlbumMutation::build_query(delete_album_mutation::Variables { id: album.id });
-    let response_body: Response<delete_album_mutation::ResponseData> =
+    let response_body: GraphQLResponse<delete_album_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body.data.map(|data| data.delete_album).unwrap()
@@ -102,7 +88,7 @@ pub fn delete_album(context: &Arc<Context>, album: &Album) -> bool {
 
 pub fn read_artist(context: &Arc<Context>, id: i64) -> Artist {
     let request_body = ArtistQuery::build_query(artist_query::Variables { id });
-    let response_body: Response<artist_query::ResponseData> =
+    let response_body: GraphQLResponse<artist_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -114,7 +100,7 @@ pub fn read_artist(context: &Arc<Context>, id: i64) -> Artist {
 
 pub fn read_artists(context: &Arc<Context>) -> Vec<Artist> {
     let request_body = ArtistsQuery::build_query(artists_query::Variables {});
-    let response_body: Response<artists_query::ResponseData> =
+    let response_body: GraphQLResponse<artists_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let artists = response_body.data.map(|data| data.artists).unwrap();
 
@@ -126,7 +112,7 @@ pub fn update_artist(
     variables: update_artist_mutation::Variables,
 ) -> Artist {
     let request_body = UpdateArtistMutation::build_query(variables);
-    let response_body: Response<update_artist_mutation::ResponseData> =
+    let response_body: GraphQLResponse<update_artist_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -139,7 +125,7 @@ pub fn update_artist(
 pub fn delete_artist(context: &Arc<Context>, artist: &Artist) -> bool {
     let request_body =
         DeleteArtistMutation::build_query(delete_artist_mutation::Variables { id: artist.id });
-    let response_body: Response<delete_artist_mutation::ResponseData> =
+    let response_body: GraphQLResponse<delete_artist_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body.data.map(|data| data.delete_artist).unwrap()
@@ -147,7 +133,7 @@ pub fn delete_artist(context: &Arc<Context>, artist: &Artist) -> bool {
 
 pub fn read_genre(context: &Arc<Context>, id: i64) -> Genre {
     let request_body = GenreQuery::build_query(genre_query::Variables { id });
-    let response_body: Response<genre_query::ResponseData> =
+    let response_body: GraphQLResponse<genre_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -159,7 +145,7 @@ pub fn read_genre(context: &Arc<Context>, id: i64) -> Genre {
 
 pub fn read_genres(context: &Arc<Context>) -> Vec<Genre> {
     let request_body = GenresQuery::build_query(genres_query::Variables {});
-    let response_body: Response<genres_query::ResponseData> =
+    let response_body: GraphQLResponse<genres_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let genres = response_body.data.map(|data| data.genres).unwrap();
 
@@ -168,7 +154,7 @@ pub fn read_genres(context: &Arc<Context>) -> Vec<Genre> {
 
 pub fn update_genre(context: &Arc<Context>, variables: update_genre_mutation::Variables) -> Genre {
     let request_body = UpdateGenreMutation::build_query(variables);
-    let response_body: Response<update_genre_mutation::ResponseData> =
+    let response_body: GraphQLResponse<update_genre_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -181,7 +167,7 @@ pub fn update_genre(context: &Arc<Context>, variables: update_genre_mutation::Va
 pub fn delete_genre(context: &Arc<Context>, genre: &Genre) -> bool {
     let request_body =
         DeleteGenreMutation::build_query(delete_genre_mutation::Variables { id: genre.id });
-    let response_body: Response<delete_genre_mutation::ResponseData> =
+    let response_body: GraphQLResponse<delete_genre_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body.data.map(|data| data.delete_genre).unwrap()
@@ -193,7 +179,7 @@ pub fn create_album(context: &Arc<Context>, name: &str) -> Album {
             name: String::from(name),
         },
     });
-    let response_body: Response<create_album_mutation::ResponseData> =
+    let response_body: GraphQLResponse<create_album_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -209,7 +195,7 @@ pub fn create_artist(context: &Arc<Context>, name: &str) -> Artist {
             name: String::from(name),
         },
     });
-    let response_body: Response<create_artist_mutation::ResponseData> =
+    let response_body: GraphQLResponse<create_artist_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -225,7 +211,7 @@ pub fn create_genre(context: &Arc<Context>, name: &str) -> Genre {
             name: String::from(name),
         },
     });
-    let response_body: Response<create_genre_mutation::ResponseData> =
+    let response_body: GraphQLResponse<create_genre_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -241,7 +227,7 @@ pub fn create_playlist(context: &Arc<Context>, name: &str) -> Playlist {
             name: String::from(name),
         },
     });
-    let response_body: Response<create_playlist_mutation::ResponseData> =
+    let response_body: GraphQLResponse<create_playlist_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -255,7 +241,7 @@ pub fn delete_playlist(context: &Arc<Context>, playlist: &Playlist) -> bool {
     let request_body = DeletePlaylistMutation::build_query(delete_playlist_mutation::Variables {
         id: playlist.id,
     });
-    let response_body: Response<delete_playlist_mutation::ResponseData> =
+    let response_body: GraphQLResponse<delete_playlist_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body.data.map(|data| data.delete_playlist).unwrap()
@@ -263,7 +249,7 @@ pub fn delete_playlist(context: &Arc<Context>, playlist: &Playlist) -> bool {
 
 pub fn read_playlists(context: &Arc<Context>) -> Vec<Playlist> {
     let request_body = PlaylistsQuery::build_query(playlists_query::Variables {});
-    let response_body: Response<playlists_query::ResponseData> =
+    let response_body: GraphQLResponse<playlists_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let playlists = response_body.data.map(|data| data.playlists).unwrap();
 
@@ -278,7 +264,7 @@ pub fn update_playlist(
     variables: update_playlist_mutation::Variables,
 ) -> Playlist {
     let request_body = UpdatePlaylistMutation::build_query(variables);
-    let response_body: Response<update_playlist_mutation::ResponseData> =
+    let response_body: GraphQLResponse<update_playlist_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -290,7 +276,7 @@ pub fn update_playlist(
 
 pub fn read_track(context: &Arc<Context>, id: i64) -> Track {
     let request_body = TrackQuery::build_query(track_query::Variables { id });
-    let response_body: Response<track_query::ResponseData> =
+    let response_body: GraphQLResponse<track_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -302,7 +288,7 @@ pub fn read_track(context: &Arc<Context>, id: i64) -> Track {
 
 pub fn read_tracks(context: &Arc<Context>) -> Vec<Track> {
     let request_body = TracksQuery::build_query(tracks_query::Variables {});
-    let response_body: Response<tracks_query::ResponseData> =
+    let response_body: GraphQLResponse<tracks_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body.data.map(|data| data.tracks).unwrap();
 
@@ -311,7 +297,7 @@ pub fn read_tracks(context: &Arc<Context>) -> Vec<Track> {
 
 pub fn update_track(context: &Arc<Context>, variables: update_track_mutation::Variables) -> Track {
     let request_body = UpdateTrackMutation::build_query(variables);
-    let response_body: Response<update_track_mutation::ResponseData> =
+    let response_body: GraphQLResponse<update_track_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body
@@ -324,7 +310,7 @@ pub fn update_track(context: &Arc<Context>, variables: update_track_mutation::Va
 pub fn delete_track(context: &Arc<Context>, track: &Track) -> bool {
     let request_body =
         DeleteTrackMutation::build_query(delete_track_mutation::Variables { id: track.id });
-    let response_body: Response<delete_track_mutation::ResponseData> =
+    let response_body: GraphQLResponse<delete_track_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body.data.map(|data| data.delete_track).unwrap()
@@ -333,7 +319,7 @@ pub fn delete_track(context: &Arc<Context>, track: &Track) -> bool {
 pub fn read_tracks_of_album(context: &Arc<Context>, album: &Album) -> Vec<Track> {
     let request_body =
         AlbumTracksQuery::build_query(album_tracks_query::Variables { id: album.id });
-    let response_body: Response<album_tracks_query::ResponseData> =
+    let response_body: GraphQLResponse<album_tracks_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
         .data
@@ -347,7 +333,7 @@ pub fn read_tracks_of_album(context: &Arc<Context>, album: &Album) -> Vec<Track>
 pub fn read_tracks_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Track> {
     let request_body =
         ArtistTracksQuery::build_query(artist_tracks_query::Variables { id: artist.id });
-    let response_body: Response<artist_tracks_query::ResponseData> =
+    let response_body: GraphQLResponse<artist_tracks_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
         .data
@@ -361,7 +347,7 @@ pub fn read_tracks_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Tra
 pub fn read_albums_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Album> {
     let request_body =
         ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
-    let response_body: Response<artist_albums_query::ResponseData> =
+    let response_body: GraphQLResponse<artist_albums_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let albums = response_body
         .data
@@ -375,7 +361,7 @@ pub fn read_albums_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Alb
 pub fn read_tracks_of_genre(context: &Arc<Context>, genre: &Genre) -> Vec<Track> {
     let request_body =
         GenreTracksQuery::build_query(genre_tracks_query::Variables { id: genre.id });
-    let response_body: Response<genre_tracks_query::ResponseData> =
+    let response_body: GraphQLResponse<genre_tracks_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
         .data
@@ -389,7 +375,7 @@ pub fn read_tracks_of_genre(context: &Arc<Context>, genre: &Genre) -> Vec<Track>
 pub fn read_tracks_of_playlist(context: &Arc<Context>, playlist: &Playlist) -> Vec<Track> {
     let request_body =
         PlaylistTracksQuery::build_query(playlist_tracks_query::Variables { id: playlist.id });
-    let response_body: Response<playlist_tracks_query::ResponseData> =
+    let response_body: GraphQLResponse<playlist_tracks_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
         .data
@@ -413,7 +399,7 @@ pub fn create_playlist_track(
                 position: None,
             },
         });
-    let response_body: Response<create_playlist_track_mutation::ResponseData> =
+    let response_body: GraphQLResponse<create_playlist_track_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
         .data
@@ -439,7 +425,7 @@ pub fn update_playlist_track(
                 insert_before: i64::try_from(insert_before).unwrap(),
             },
         });
-    let response_body: Response<update_playlist_track_mutation::ResponseData> =
+    let response_body: GraphQLResponse<update_playlist_track_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
         .data
@@ -464,7 +450,7 @@ pub fn delete_playlist_track(
                 position: position.map(|p| p as i64),
             },
         });
-    let response_body: Response<delete_playlist_track_mutation::ResponseData> =
+    let response_body: GraphQLResponse<delete_playlist_track_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
         .data

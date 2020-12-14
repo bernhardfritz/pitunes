@@ -1,5 +1,7 @@
 use std::io::{self, Read, Seek, SeekFrom};
 
+use crate::retry::{Payload, retry};
+
 const OK: u16 = 200;
 const PARTIAL_CONTENT: u16 = 206;
 
@@ -13,10 +15,10 @@ pub struct HttpStreamReader {
 
 impl HttpStreamReader {
     pub fn new(url: String, api_key: String, agent: ureq::Agent) -> Self {
-        let res = agent.head(&url[..])
-            .set("Authorization", &format!("Bearer {}", api_key)[..])
-            .call()
-            .unwrap();
+        let req = agent.head(&url[..])
+            .set("Authorization", &format!("Bearer {}", api_key)[..]);
+        let payload = Payload::Empty;
+        let res = retry(req, payload).unwrap();
         let len = res.header("Content-Length")
                         .and_then(|s| s.parse::<usize>().ok()).unwrap();
         HttpStreamReader {
@@ -36,17 +38,15 @@ impl Read for HttpStreamReader {
         } else {
             let prev_start = self.start;
             self.start += std::cmp::min(buf.len() as u64, self.end - self.start + 1);
-            let res = self.agent.get(&self.url)
+            let req = self.agent.get(&self.url)
                 .set("Authorization", &format!("Bearer {}", self.api_key)[..])
-                .set("Range", &format!("bytes={}-{}", prev_start, self.start - 1))
-                .call()
-                .unwrap();
-
+                .set("Range", &format!("bytes={}-{}", prev_start, self.start - 1));
+            let payload = Payload::Empty;
+            let res = retry(req, payload).unwrap();
             let status = res.status();
             if status == OK || status == PARTIAL_CONTENT {
                 res.into_reader()
-                    .read_exact(buf)
-                    .map(|_| buf.len())
+                    .read(buf)
             } else {
                 Err(io::Error::new(
                     io::ErrorKind::Other,

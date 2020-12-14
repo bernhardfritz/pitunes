@@ -17,7 +17,7 @@ use std::{fs, sync::Arc};
 
 use actix_cors::Cors;
 use actix_files::Files;
-use actix_web::{dev::ServiceRequest, error, http::header, web, App, Error, HttpServer};
+use actix_web::{dev::ServiceRequest, error, web, App, Error, HttpServer};
 use actix_web_httpauth::{extractors::bearer::BearerAuth, middleware::HttpAuthentication};
 use base64;
 use clap::{self, value_t};
