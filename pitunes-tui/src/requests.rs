@@ -1,11 +1,11 @@
 use std::{convert::TryFrom, sync::Arc};
 
+use base64;
 use graphql_client::{GraphQLQuery, QueryBody, Response as GraphQLResponse};
 use serde::de::DeserializeOwned;
 
 use crate::{
     constants::GRAPHQL,
-    Context,
     models::{
         exports::{
             album_query, album_tracks_query, albums_query, artist_albums_query, artist_query,
@@ -27,7 +27,7 @@ use crate::{
         UpdateAlbumMutation, UpdateArtistMutation, UpdateGenreMutation, UpdatePlaylistMutation,
         UpdatePlaylistTrackMutation, UpdateTrackMutation,
     },
-    retry::{Payload, retry},
+    Context,
 };
 
 fn graphql_query<Variables: serde::Serialize, T: DeserializeOwned>(
@@ -35,13 +35,25 @@ fn graphql_query<Variables: serde::Serialize, T: DeserializeOwned>(
     query_body: QueryBody<Variables>,
 ) -> Result<GraphQLResponse<T>, ureq::Error> {
     let url = format!("{}/{}", context.server_url, GRAPHQL);
-    let req = context
+    let res = context
         .agent
         .post(&url[..])
         .set("Content-Type", "application/json")
-        .set("Authorization", &format!("Bearer {}", context.api_key)[..]);
-    let payload = Payload::JSON(ureq::json!(query_body));
-    retry(req, payload).map(|res| res.into_json().unwrap())
+        .set(
+            "Authorization",
+            &format!(
+                "Basic {}",
+                base64::encode(
+                    &format!(
+                        "{}:{}",
+                        context.username,
+                        context.password.clone().unwrap_or_default()
+                    )[..]
+                )
+            )[..],
+        )
+        .send_json(ureq::json!(query_body));
+    res.map(|res| res.into_json().unwrap())
 }
 
 pub fn read_album(context: &Arc<Context>, id: i64) -> Album {

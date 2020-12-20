@@ -13,58 +13,55 @@ mod models;
 mod schema;
 mod upload_service;
 
-use std::{fs, sync::Arc};
+use std::sync::Arc;
 
 use actix_cors::Cors;
 use actix_files::Files;
-use actix_web::{dev::ServiceRequest, error, web, App, Error, HttpServer};
-use actix_web_httpauth::{extractors::bearer::BearerAuth, middleware::HttpAuthentication};
-use base64;
-use clap::{self, value_t};
-use graphql_schema::{create_schema, RequestContext};
-use lazy_static::lazy_static;
-use openssl::{
-    rand,
-    ssl::{SslAcceptor, SslFiletype, SslMethod},
+use actix_web::{
+    dev::ServiceRequest,
+    error,
+    web::{self, Data},
+    App, Error, HttpServer,
 };
-use serde::{Deserialize, Serialize};
+use actix_web_httpauth::{extractors::basic::BasicAuth, middleware::HttpAuthentication};
+use clap::{self, value_t};
+use diesel::prelude::*;
+use graphql_schema::{create_schema, RequestContext};
+use models::User;
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+use schema::users;
 use sha2::{Digest, Sha256};
 
-const PITUNES_TOML: &str = "pitunes.toml";
-
-#[derive(Serialize, Deserialize)]
-struct Config {
-    hashed_api_key: String,
-}
-
-lazy_static! {
-    static ref CONFIG: Config = fs::read_to_string(PITUNES_TOML)
-        .map(|config_string| toml::from_str(&config_string[..]))
-        .map(|config| match config {
-            Ok(config) => config,
-            Err(_) => {
-                let mut buf = [0; 32];
-                rand::rand_bytes(&mut buf).unwrap();
-                let api_key = base64::encode(&buf);
-                println!("API_KEY={}", api_key);
-                let mut hasher = Sha256::new();
-                hasher.input(api_key.as_bytes());
-                let hashed_api_key = format!("{:x}", hasher.result());
-                let config = Config { hashed_api_key };
-                let config_string = toml::to_string(&config).unwrap();
-                fs::write(PITUNES_TOML, &config_string[..]).unwrap();
-                config
+async fn validator(req: ServiceRequest, credentials: BasicAuth) -> Result<ServiceRequest, Error> {
+    if let Some(context) = req.app_data::<Data<RequestContext>>() {
+        let conn = context.pool.get().unwrap();
+        if let Ok(user) = users::table
+            .filter(users::username.eq(credentials.user_id()))
+            .first::<User>(&conn)
+        {
+            if let Some(user_password) = user.password {
+                if let Some(credentials_password) = credentials.password() {
+                    let mut hasher = Sha256::new();
+                    hasher.input(credentials_password.as_bytes());
+                    let hashed_credentials_password = format!("{:x}", hasher.result());
+                    if user_password == hashed_credentials_password {
+                        Ok(req)
+                    } else {
+                        Err(error::ErrorUnauthorized(""))
+                    }
+                } else {
+                    Err(error::ErrorUnauthorized(""))
+                }
+            } else {
+                if credentials.password().is_none() {
+                    Ok(req)
+                } else {
+                    Err(error::ErrorUnauthorized(""))
+                }
             }
-        })
-        .unwrap();
-}
-
-async fn validator(req: ServiceRequest, bearer: BearerAuth) -> Result<ServiceRequest, Error> {
-    let mut hasher = Sha256::new();
-    hasher.input(bearer.token().as_bytes());
-    let hashed_token = format!("{:x}", hasher.result());
-    if hashed_token == *CONFIG.hashed_api_key {
-        Ok(req)
+        } else {
+            Err(error::ErrorUnauthorized(""))
+        }
     } else {
         Err(error::ErrorUnauthorized(""))
     }
@@ -86,8 +83,6 @@ async fn main() -> std::io::Result<()> {
         )
         .get_matches();
     let port = value_t!(matches, "port", u16).unwrap_or(8443);
-
-    lazy_static::initialize(&CONFIG);
 
     // r2d2 pool
     let pool = db::establish_connection();
@@ -112,7 +107,7 @@ async fn main() -> std::io::Result<()> {
             .supports_credentials()
             // .max_age(3600)
             .finish();
-        let auth = HttpAuthentication::bearer(validator);
+        let auth = HttpAuthentication::basic(validator);
         App::new()
             .wrap(auth)
             .wrap(cors)

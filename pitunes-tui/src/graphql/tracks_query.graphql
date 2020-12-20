@@ -1,6 +1,7 @@
 query TracksQuery {
   tracks {
     id
+    uuid
     name
     duration
     album {

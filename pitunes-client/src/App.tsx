@@ -11,8 +11,9 @@ import GraphiQL from 'graphiql';
 import 'graphiql/graphiql.min.css';
 
 type AppState = {
-  apiKey: string,
-  responseText: string
+  username: string,
+  password: string,
+  responseText: string,
 }
 
 class App extends React.Component<{}, AppState> {
@@ -20,13 +21,18 @@ class App extends React.Component<{}, AppState> {
   constructor(props: {}) {
     super(props);
     this.state = {
-      apiKey: '',
+      username: '',
+      password: '',
       responseText: '',
     };
   }
 
-  handleChange = (event: any) => {
-    this.setState({apiKey: event.target.value});
+  handleUsernameChange = (event: any) => {
+    this.setState({username: event.target.value});
+  }
+
+  handlePasswordChange = (event: any) => {
+    this.setState({password: event.target.value});
   }
 
   handleFiles = async (event: any) => {
@@ -34,10 +40,10 @@ class App extends React.Component<{}, AppState> {
     for (const file of event.target.files) {
       formData.append("file", file);
     }
-    const responseText = await fetch('https://localhost:8443/api/upload', {
+    const responseText = await fetch('https://localhost:8443/api/tracks', {
       method: 'post',
       headers: {
-        'Authorization': `Bearer ${this.state.apiKey}`,
+        'Authorization': `Basic ${btoa(this.state.username + ':' + this.state.password)}`,
       },
       body: formData
     }).then(response => response.text());
@@ -49,7 +55,7 @@ class App extends React.Component<{}, AppState> {
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.state.apiKey}`
+        'Authorization': `Basic ${btoa(this.state.username + ':' + this.state.password)}`
       },
       body: JSON.stringify(graphQLParams)
     }).then(response => response.json());
@@ -71,8 +77,11 @@ class App extends React.Component<{}, AppState> {
                 <Link to="/upload">upload</Link>
               </li>
             </ul>
-            <label>API_KEY=
-              <input type="password" value={this.state.apiKey} onChange={this.handleChange}></input>
+            <label>USERNAME=
+              <input type="text" value={this.state.username} onChange={this.handleUsernameChange}></input>
+            </label>
+            <label>PASSWORD=
+              <input type="password" value={this.state.password} onChange={this.handlePasswordChange}></input>
             </label>
           </div>
           <div className="App-content">

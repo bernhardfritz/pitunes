@@ -1,6 +1,7 @@
 mutation UpdateTrackMutation($id: Int!, $trackInput: TrackInput!) {
   updateTrack(id: $id, trackInput: $trackInput) {
     id
+    uuid
     name
     duration
     album {

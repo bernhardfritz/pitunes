@@ -10,7 +10,7 @@ use serde::Serialize;
 use crate::{
     db::SqlitePool,
     graphql_schema::RequestContext,
-    schema::{albums, artists, genres, playlists, playlists_tracks, tracks},
+    schema::{albums, artists, genres, playlists, playlists_tracks, tracks, users},
 };
 
 #[derive(Clone)]
@@ -211,6 +211,7 @@ pub struct GenreInput {
 #[belongs_to(Genre)]
 pub struct Track {
     pub id: i32,
+    pub uuid: String,
     pub created_at: NaiveDateTime,
     pub name: String,
     pub duration: i32,
@@ -224,6 +225,10 @@ pub struct Track {
 impl Track {
     pub fn id(&self) -> i32 {
         self.id
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid[..]
     }
 
     pub fn created_at(&self) -> NaiveDateTime {
@@ -271,6 +276,7 @@ impl Track {
 #[derive(Insertable)]
 #[table_name = "tracks"]
 pub struct TrackInputInternal {
+    pub uuid: String,
     pub name: String,
     pub duration: i32,
     pub album_id: Option<i32>,
@@ -353,4 +359,12 @@ pub struct PlaylistTrackOrderInput {
     pub range_start: i32,
     pub range_length: Option<i32>,
     pub insert_before: i32,
+}
+
+#[derive(Identifiable, Queryable)]
+pub struct User {
+    pub id: i32,
+    pub created_at: NaiveDateTime,
+    pub username: String,
+    pub password: Option<String>,
 }

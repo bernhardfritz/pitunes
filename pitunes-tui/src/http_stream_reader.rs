@@ -1,29 +1,31 @@
 use std::io::{self, Read, Seek, SeekFrom};
 
-use crate::retry::{Payload, retry};
+use base64;
 
 const OK: u16 = 200;
 const PARTIAL_CONTENT: u16 = 206;
 
 pub struct HttpStreamReader {
     url: String,
-    api_key: String,
+    username: String,
+    password: Option<String>,
     agent: ureq::Agent,
     start: u64,
     end: u64,
 }
 
 impl HttpStreamReader {
-    pub fn new(url: String, api_key: String, agent: ureq::Agent) -> Self {
-        let req = agent.head(&url[..])
-            .set("Authorization", &format!("Bearer {}", api_key)[..]);
-        let payload = Payload::Empty;
-        let res = retry(req, payload).unwrap();
+    pub fn new(url: String, username: String, password: Option<String>, agent: ureq::Agent) -> Self {
+        let res = agent.head(&url[..])
+            .set("Authorization", &format!("Basic {}", base64::encode(&format!("{}:{}", username, password.clone().unwrap_or_default())[..]))[..])
+            .call()
+            .unwrap();
         let len = res.header("Content-Length")
                         .and_then(|s| s.parse::<usize>().ok()).unwrap();
         HttpStreamReader {
             url,
-            api_key,
+            username,
+            password,
             agent,
             start: 0,
             end: len as u64 - 1,
@@ -38,11 +40,11 @@ impl Read for HttpStreamReader {
         } else {
             let prev_start = self.start;
             self.start += std::cmp::min(buf.len() as u64, self.end - self.start + 1);
-            let req = self.agent.get(&self.url)
-                .set("Authorization", &format!("Bearer {}", self.api_key)[..])
-                .set("Range", &format!("bytes={}-{}", prev_start, self.start - 1));
-            let payload = Payload::Empty;
-            let res = retry(req, payload).unwrap();
+            let res = self.agent.get(&self.url)
+                .set("Authorization", &format!("Basic {}", base64::encode(&format!("{}:{}", self.username, self.password.clone().unwrap_or_default())[..]))[..])
+                .set("Range", &format!("bytes={}-{}", prev_start, self.start - 1))
+                .call()
+                .unwrap();
             let status = res.status();
             if status == OK || status == PARTIAL_CONTENT {
                 res.into_reader()

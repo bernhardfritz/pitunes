@@ -546,12 +546,6 @@ checksum = "a4521f3e3d031370679b3b140beb36dfe4801b09ac77e30c61941f97df3ef28b"
 
 [[package]]
 name = "base64"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b41b7ea54a0c9d92199de89e20e58d49f02f8e699814ef3fdf266f6f748d15c7"
-
-[[package]]
-name = "base64"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3441f0f7b02788e948e47f457ca01f1d7e6d92c693bc132c22b087d3141c03ff"
@@ -1709,7 +1703,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "url",
- "uuid",
+ "uuid 0.7.4",
 ]
 
 [[package]]
@@ -2324,7 +2318,6 @@ dependencies = [
  "actix-web",
  "actix-web-httpauth",
  "async-trait",
- "base64 0.11.0",
  "chrono",
  "clap",
  "dataloader",
@@ -2333,7 +2326,6 @@ dependencies = [
  "futures",
  "id3",
  "juniper",
- "lazy_static",
  "libsqlite3-sys",
  "mp3-duration",
  "openssl",
@@ -2341,13 +2333,14 @@ dependencies = [
  "serde_json",
  "sha2",
  "tempfile",
- "toml",
+ "uuid 0.8.1",
 ]
 
 [[package]]
 name = "pitunes-tui"
 version = "0.1.0"
 dependencies = [
+ "base64 0.13.0",
  "clap",
  "crossterm 0.18.2",
  "dotenv",
@@ -3108,15 +3101,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml"
-version = "0.5.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffc92d160b1eef40665be3a05630d003936a3bc7da7421277846c2613e92c71a"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "tracing"
 version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3323,6 +3307,15 @@ name = "uuid"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90dbc611eb48397705a6b0f6e917da23ae517e4d127123d2cf7674206627d32a"
+
+[[package]]
+name = "uuid"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9fde2f6a4bea1d6e007c4ad38c6839fa71cbb63b6dbf5b595aa38dc9b1093c11"
+dependencies = [
+ "rand 0.7.3",
+]
 
 [[package]]
 name = "v_escape"

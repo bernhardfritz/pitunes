@@ -4,6 +4,7 @@ query PlaylistTracksQuery($id: Int!) {
     name
     tracks {
       id
+      uuid
       name
       duration
       album {

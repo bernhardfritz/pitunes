@@ -3,7 +3,6 @@ mod constants;
 mod models;
 mod renderer;
 mod requests;
-mod retry;
 mod state_machine;
 mod states;
 #[allow(dead_code)]
@@ -29,7 +28,6 @@ use dotenv::dotenv;
 use failure::Error;
 // use http_stream_reader::HttpStreamReader;
 use models::{RootItem, Track};
-use retry::{Payload, retry};
 use state_machine::StateMachine;
 use states::{Root, State};
 use tui::{
@@ -46,7 +44,8 @@ use util::{
 
 pub struct Context {
     server_url: String,
-    api_key: String,
+    username: String,
+    password: Option<String>,
     agent: ureq::Agent,
     handle: rodio::OutputStreamHandle,
     sink_lock: RwLock<rodio::Sink>,
@@ -90,23 +89,35 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
                 queue_guard.first().map(|track| {
                     format!(
                         "{}/{}/{}.mp3",
-                        context.server_url, TRACKS_RESOURCE, track.id
+                        context.server_url, TRACKS_RESOURCE, track.uuid
                     )
                 })
             };
             if let Some(url) = url {
                 // TODO: HttpStreamReader should not be passed directly to the Decoder as this results in audible delays while chunks are downloaded
                 // let source =
-                // rodio::Decoder::new(HttpStreamReader::new(url, context.api_key.to_string(), context.agent.clone()))
+                // rodio::Decoder::new(HttpStreamReader::new(url, context.username.clone(), context.password.clone(), context.agent.clone()))
                 //     .unwrap();
                 // download full track until issue with partial downloads is resolved
                 let cursor = {
-                    let req = context
+                    let res = context
                         .agent
                         .get(&url[..])
-                        .set("Authorization", &format!("Bearer {}", context.api_key)[..]);
-                    let payload = Payload::Empty;
-                    let res = retry(req, payload).unwrap();
+                        .set(
+                            "Authorization",
+                            &format!(
+                                "Basic {}",
+                                base64::encode(
+                                    &format!(
+                                        "{}:{}",
+                                        context.username,
+                                        context.password.clone().unwrap_or_default()
+                                    )[..]
+                                )
+                            )[..],
+                        )
+                        .call()
+                        .unwrap();
                     let len = res
                         .header("Content-Length")
                         .and_then(|s| s.parse::<usize>().ok())
@@ -228,7 +239,8 @@ fn main() -> Result<(), Error> {
         .get_matches();
     let server_url = value_t!(matches, "server-url", String).unwrap();
     dotenv().ok();
-    let api_key = env::var("API_KEY").expect("Environment variable API_KEY is not present");
+    let username = env::var("USERNAME").expect("Environment variable USERNAME is not present");
+    let password = env::var("PASSWORD").ok();
     let cert = env::var("CERT").ok(); // only needed for self-signed certificates, e.g. during development
     let tls_config = if let Some(cert) = cert {
         let pem_file = File::open(cert)?;
@@ -249,7 +261,7 @@ fn main() -> Result<(), Error> {
     let events = Events::new();
 
     let agent = {
-        let mut agent_builder = ureq::AgentBuilder::new().timeout_connect(Duration::from_secs(3));
+        let mut agent_builder = ureq::AgentBuilder::new();
         if let Some(tls_config) = tls_config {
             agent_builder = agent_builder.tls_config(tls_config);
         }
@@ -263,7 +275,8 @@ fn main() -> Result<(), Error> {
 
     let context = Arc::new(Context {
         server_url,
-        api_key,
+        username,
+        password,
         agent,
         handle,
         sink_lock,

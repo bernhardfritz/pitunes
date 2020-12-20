@@ -334,6 +334,7 @@ impl IdName for RootItem {
 #[derive(Clone)]
 pub struct Track {
     pub id: i64,
+    pub uuid: String,
     pub name: String,
     pub duration: i64,
     pub album: Option<Album>,
@@ -760,6 +761,7 @@ impl From<album_tracks_query::AlbumTracksQueryAlbumTracks> for Track {
     fn from(
         album_tracks_query::AlbumTracksQueryAlbumTracks {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -770,6 +772,7 @@ impl From<album_tracks_query::AlbumTracksQueryAlbumTracks> for Track {
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -784,6 +787,7 @@ impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for Track {
     fn from(
         artist_tracks_query::ArtistTracksQueryArtistTracks {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -794,6 +798,7 @@ impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for Track {
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -810,6 +815,7 @@ impl From<create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlayl
     fn from(
         create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlaylistTrackTracks {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -820,6 +826,7 @@ impl From<create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlayl
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -834,6 +841,7 @@ impl From<genre_tracks_query::GenreTracksQueryGenreTracks> for Track {
     fn from(
         genre_tracks_query::GenreTracksQueryGenreTracks {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -844,6 +852,7 @@ impl From<genre_tracks_query::GenreTracksQueryGenreTracks> for Track {
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -858,6 +867,7 @@ impl From<playlist_tracks_query::PlaylistTracksQueryPlaylistTracks> for Track {
     fn from(
         playlist_tracks_query::PlaylistTracksQueryPlaylistTracks {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -868,6 +878,7 @@ impl From<playlist_tracks_query::PlaylistTracksQueryPlaylistTracks> for Track {
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -882,6 +893,7 @@ impl From<track_query::TrackQueryTrack> for Track {
     fn from(
         track_query::TrackQueryTrack {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -892,6 +904,7 @@ impl From<track_query::TrackQueryTrack> for Track {
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -906,6 +919,7 @@ impl From<tracks_query::TracksQueryTracks> for Track {
     fn from(
         tracks_query::TracksQueryTracks {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -916,6 +930,7 @@ impl From<tracks_query::TracksQueryTracks> for Track {
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -932,6 +947,7 @@ impl From<delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlayl
     fn from(
         delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracks {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -942,6 +958,7 @@ impl From<delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlayl
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -958,6 +975,7 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
     fn from(
         update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -968,6 +986,7 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -982,6 +1001,7 @@ impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
     fn from(
         update_track_mutation::UpdateTrackMutationUpdateTrack {
             id,
+            uuid,
             name,
             duration,
             album,
@@ -992,6 +1012,7 @@ impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
     ) -> Track {
         Track {
             id,
+            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
