@@ -10,8 +10,10 @@ mod db;
 mod graphql_schema;
 mod graphql_service;
 mod models;
+mod playlists_service;
 mod schema;
-mod upload_service;
+mod tracks_service;
+mod uuid;
 
 use std::sync::Arc;
 
@@ -21,7 +23,7 @@ use actix_web::{
     dev::ServiceRequest,
     error,
     web::{self, Data},
-    App, Error, HttpServer,
+    App, Error, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::{extractors::basic::BasicAuth, middleware::HttpAuthentication};
 use clap::{self, value_t};
@@ -116,8 +118,14 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/api")
                     .service(graphql_service::graphql)
-                    .service(upload_service::upload)
-                    .service(Files::new("/tracks", "tracks")),
+                    .service(tracks_service::post_tracks)
+                    .service(playlists_service::get_playlist)
+                    .service(Files::new("/tracks", "tracks"))
+                    .service(
+                        web::resource("/tracks/{uuid}.mp3")
+                            .name("get_track")
+                            .to(|| HttpResponse::NotFound()),
+                    ), // only used for resource url generation
             )
     })
     .bind_openssl(format!("0.0.0.0:{}", port), builder)?;

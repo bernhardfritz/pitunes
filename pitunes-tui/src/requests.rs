@@ -1,10 +1,10 @@
 use std::{convert::TryFrom, sync::Arc};
 
-use base64;
 use graphql_client::{GraphQLQuery, QueryBody, Response as GraphQLResponse};
 use serde::de::DeserializeOwned;
 
 use crate::{
+    basic_auth,
     constants::GRAPHQL,
     models::{
         exports::{
@@ -41,16 +41,7 @@ fn graphql_query<Variables: serde::Serialize, T: DeserializeOwned>(
         .set("Content-Type", "application/json")
         .set(
             "Authorization",
-            &format!(
-                "Basic {}",
-                base64::encode(
-                    &format!(
-                        "{}:{}",
-                        context.username,
-                        context.password.clone().unwrap_or_default()
-                    )[..]
-                )
-            )[..],
+            &basic_auth::encode(&context.username[..], context.password.clone())[..],
         )
         .send_json(ureq::json!(query_body));
     res.map(|res| res.into_json().unwrap())

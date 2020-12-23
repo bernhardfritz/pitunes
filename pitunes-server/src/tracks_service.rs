@@ -7,7 +7,6 @@ use actix_multipart::Multipart;
 use actix_web::{web, Error, HttpResponse};
 use diesel::prelude::*;
 use futures::{StreamExt, TryStreamExt};
-use uuid::Uuid;
 
 use crate::{
     chunker::Chunker,
@@ -16,10 +15,11 @@ use crate::{
         Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Track, TrackInputInternal,
     },
     schema::{albums, artists, genres, tracks},
+    uuid::uuidv4,
 };
 
 #[post("/tracks")]
-async fn upload(
+async fn post_tracks(
     context: web::Data<RequestContext>,
     mut payload: Multipart,
 ) -> Result<HttpResponse, Error> {
@@ -125,11 +125,7 @@ async fn upload(
                 };
                 let track_track_number = tag.track();
                 TrackInputInternal {
-                    uuid: String::from(
-                        Uuid::new_v4()
-                            .to_hyphenated()
-                            .encode_lower(&mut Uuid::encode_buffer()),
-                    ),
+                    uuid: uuidv4(),
                     name: track_name,
                     duration: track_duration,
                     album_id: track_album_id,
@@ -145,11 +141,7 @@ async fn upload(
                 let track_name = String::from(file_stem.to_str().unwrap());
                 let track_duration = duration.unwrap().as_millis() as i32;
                 TrackInputInternal {
-                    uuid: String::from(
-                        Uuid::new_v4()
-                            .to_hyphenated()
-                            .encode_lower(&mut Uuid::encode_buffer()),
-                    ),
+                    uuid: uuidv4(),
                     name: track_name,
                     duration: track_duration,
                     album_id: None,

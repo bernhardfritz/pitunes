@@ -8,9 +8,11 @@ use crate::{
     models::{
         Album, AlbumBatcher, AlbumInput, AlbumLoader, Artist, ArtistBatcher, ArtistInput,
         ArtistLoader, Genre, GenreBatcher, GenreInput, GenreLoader, Playlist, PlaylistInput,
-        PlaylistTrack, PlaylistTrackInput, PlaylistTrackOrderInput, Track, TrackInput,
+        PlaylistInputInternal, PlaylistTrack, PlaylistTrackInput, PlaylistTrackOrderInput, Track,
+        TrackInput,
     },
     schema::{albums, artists, genres, playlists, playlists_tracks, tracks},
+    uuid::uuidv4,
 };
 
 #[derive(Clone)]
@@ -231,6 +233,10 @@ impl Mutation {
     ) -> juniper::FieldResult<Playlist> {
         let conn = context.pool.get()?;
         Ok(conn.transaction::<_, diesel::result::Error, _>(|| {
+            let playlist_input = PlaylistInputInternal {
+                uuid: uuidv4(),
+                name: playlist_input.name,
+            };
             diesel::insert_into(playlists::table)
                 .values(&playlist_input)
                 .execute(&conn)?;

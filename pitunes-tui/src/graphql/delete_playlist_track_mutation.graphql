@@ -1,6 +1,7 @@
 mutation DeletePlaylistTrackMutation($id: Int!, $playlistTrackInput: PlaylistTrackInput!) {
   deletePlaylistTrack(id: $id, playlistTrackInput: $playlistTrackInput) {
     id
+    uuid
     name
     tracks {
       id

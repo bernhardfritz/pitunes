@@ -25,6 +25,7 @@ table! {
 table! {
     playlists (id) {
         id -> Integer,
+        uuid -> Text,
         created_at -> Timestamp,
         name -> Text,
     }

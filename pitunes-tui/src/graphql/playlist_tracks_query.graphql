@@ -1,6 +1,7 @@
 query PlaylistTracksQuery($id: Int!) {
   playlist(id: $id) {
     id
+    uuid
     name
     tracks {
       id

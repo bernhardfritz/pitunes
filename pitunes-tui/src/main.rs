@@ -1,3 +1,4 @@
+mod basic_auth;
 mod constants;
 // mod http_stream_reader;
 mod models;
@@ -100,24 +101,19 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
                 //     .unwrap();
                 // download full track until issue with partial downloads is resolved
                 let cursor = {
-                    let res = context
-                        .agent
-                        .get(&url[..])
-                        .set(
-                            "Authorization",
-                            &format!(
-                                "Basic {}",
-                                base64::encode(
-                                    &format!(
-                                        "{}:{}",
-                                        context.username,
-                                        context.password.clone().unwrap_or_default()
-                                    )[..]
-                                )
-                            )[..],
-                        )
-                        .call()
-                        .unwrap();
+                    let res =
+                        context
+                            .agent
+                            .get(&url[..])
+                            .set(
+                                "Authorization",
+                                &basic_auth::encode(
+                                    &context.username[..],
+                                    context.password.clone(),
+                                )[..],
+                            )
+                            .call()
+                            .unwrap();
                     let len = res
                         .header("Content-Length")
                         .and_then(|s| s.parse::<usize>().ok())

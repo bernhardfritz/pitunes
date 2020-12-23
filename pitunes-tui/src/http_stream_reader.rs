@@ -1,6 +1,6 @@
 use std::io::{self, Read, Seek, SeekFrom};
 
-use base64;
+use crate::basic_auth;
 
 const OK: u16 = 200;
 const PARTIAL_CONTENT: u16 = 206;
@@ -17,7 +17,7 @@ pub struct HttpStreamReader {
 impl HttpStreamReader {
     pub fn new(url: String, username: String, password: Option<String>, agent: ureq::Agent) -> Self {
         let res = agent.head(&url[..])
-            .set("Authorization", &format!("Basic {}", base64::encode(&format!("{}:{}", username, password.clone().unwrap_or_default())[..]))[..])
+            .set("Authorization", &basic_auth::encode(&username[..], password.clone())[..])
             .call()
             .unwrap();
         let len = res.header("Content-Length")
@@ -41,7 +41,7 @@ impl Read for HttpStreamReader {
             let prev_start = self.start;
             self.start += std::cmp::min(buf.len() as u64, self.end - self.start + 1);
             let res = self.agent.get(&self.url)
-                .set("Authorization", &format!("Basic {}", base64::encode(&format!("{}:{}", self.username, self.password.clone().unwrap_or_default())[..]))[..])
+                .set("Authorization", &basic_auth::encode(&self.username[..], self.password.clone())[..])
                 .set("Range", &format!("bytes={}-{}", prev_start, self.start - 1))
                 .call()
                 .unwrap();

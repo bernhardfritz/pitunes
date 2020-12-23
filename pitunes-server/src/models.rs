@@ -299,6 +299,7 @@ pub struct TrackInput {
 #[derive(Identifiable, Queryable)]
 pub struct Playlist {
     pub id: i32,
+    pub uuid: String,
     pub created_at: NaiveDateTime,
     pub name: String,
 }
@@ -307,6 +308,10 @@ pub struct Playlist {
 impl Playlist {
     pub fn id(&self) -> i32 {
         self.id
+    }
+
+    pub fn uuid(&self) -> &str {
+        &self.uuid[..]
     }
 
     pub fn created_at(&self) -> NaiveDateTime {
@@ -326,8 +331,14 @@ impl Playlist {
             .load::<Track>(&conn)?)
     }
 }
+#[derive(Insertable)]
+#[table_name = "playlists"]
+pub struct PlaylistInputInternal {
+    pub uuid: String,
+    pub name: String,
+}
 
-#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
+#[derive(AsChangeset, juniper::GraphQLInputObject)]
 #[changeset_options(treat_none_as_null = "true")]
 #[table_name = "playlists"]
 pub struct PlaylistInput {

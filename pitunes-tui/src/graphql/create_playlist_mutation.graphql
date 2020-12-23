@@ -1,6 +1,7 @@
 mutation CreatePlaylistMutation($playlistInput: PlaylistInput!) {
   createPlaylist(playlistInput: $playlistInput) {
     id
+    uuid
     name
   }
 }

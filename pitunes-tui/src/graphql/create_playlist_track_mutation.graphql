@@ -1,6 +1,7 @@
 mutation CreatePlaylistTrackMutation($id: Int!, $playlistTrackInput: PlaylistTrackInput!) {
   createPlaylistTrack(id: $id, playlistTrackInput: $playlistTrackInput) {
     id
+    uuid
     name
     tracks {
       id

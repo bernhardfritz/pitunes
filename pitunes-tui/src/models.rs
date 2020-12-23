@@ -304,6 +304,7 @@ impl IdName for Genre {
 #[derive(Clone)]
 pub struct Playlist {
     pub id: i64,
+    pub uuid: String,
     pub name: String,
 }
 
@@ -747,13 +748,21 @@ impl_from!(
     create_playlist_mutation::CreatePlaylistMutationCreatePlaylist,
     Playlist,
     id,
+    uuid,
     name
 );
-impl_from!(playlists_query::PlaylistsQueryPlaylists, Playlist, id, name);
+impl_from!(
+    playlists_query::PlaylistsQueryPlaylists,
+    Playlist,
+    id,
+    uuid,
+    name
+);
 impl_from!(
     update_playlist_mutation::UpdatePlaylistMutationUpdatePlaylist,
     Playlist,
     id,
+    uuid,
     name
 );
 
