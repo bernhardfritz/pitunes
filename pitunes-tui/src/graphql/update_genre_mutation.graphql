@@ -1,5 +1,5 @@
-mutation UpdateGenreMutation($id: Int!, $genreInput: GenreInput!) {
-  updateGenre(id: $id, genreInput: $genreInput) {
+mutation UpdateGenreMutation($id: ID!, $input: GenreInput!) {
+  updateGenre(id: $id, input: $input) {
     id
     name
   }

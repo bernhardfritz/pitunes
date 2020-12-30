@@ -18,6 +18,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use anyhow::Result;
 use clap::{self, value_t};
 use constants::{ALBUMS, ARTISTS, GENRES, PLAYLISTS, TRACKS, TRACKS_RESOURCE};
 use crossterm::{
@@ -26,7 +27,6 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use dotenv::dotenv;
-use failure::Error;
 // use http_stream_reader::HttpStreamReader;
 use models::{RootItem, Track};
 use state_machine::StateMachine;
@@ -90,7 +90,7 @@ pub fn play_queue(context: Arc<Context>, queue: Vec<Track>) {
                 queue_guard.first().map(|track| {
                     format!(
                         "{}/{}/{}.mp3",
-                        context.server_url, TRACKS_RESOURCE, track.uuid
+                        context.server_url, TRACKS_RESOURCE, track.id
                     )
                 })
             };
@@ -221,7 +221,7 @@ fn create_layout(
     }
 }
 
-fn main() -> Result<(), Error> {
+fn main() -> Result<()> {
     let matches = clap::App::new("piTunes client")
         .version("0.1.0")
         .about("A client that allows you to browse and play songs from your personal music collection hosted by a piTunes server")

@@ -1,7 +1,6 @@
-mutation UpdatePlaylistMutation($id: Int!, $playlistInput: PlaylistInput!) {
-  updatePlaylist(id: $id, playlistInput: $playlistInput) {
+mutation UpdatePlaylistMutation($id: ID!, $input: PlaylistInput!) {
+  updatePlaylist(id: $id, input: $input) {
     id
-    uuid
     name
   }
 }

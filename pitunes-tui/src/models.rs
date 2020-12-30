@@ -249,19 +249,19 @@ pub struct UpdatePlaylistTrackMutation;
 pub struct UpdateTrackMutation;
 
 pub trait IdName {
-    fn id(&self) -> i64;
+    fn id(&self) -> &str;
     fn name(&self) -> &str;
 }
 
 #[derive(Clone)]
 pub struct Album {
-    pub id: i64,
+    pub id: String,
     pub name: String,
 }
 
 impl IdName for Album {
-    fn id(&self) -> i64 {
-        self.id
+    fn id(&self) -> &str {
+        &self.id[..]
     }
 
     fn name(&self) -> &str {
@@ -271,13 +271,13 @@ impl IdName for Album {
 
 #[derive(Clone)]
 pub struct Artist {
-    pub id: i64,
+    pub id: String,
     pub name: String,
 }
 
 impl IdName for Artist {
-    fn id(&self) -> i64 {
-        self.id
+    fn id(&self) -> &str {
+        &self.id[..]
     }
 
     fn name(&self) -> &str {
@@ -287,13 +287,13 @@ impl IdName for Artist {
 
 #[derive(Clone)]
 pub struct Genre {
-    pub id: i64,
+    pub id: String,
     pub name: String,
 }
 
 impl IdName for Genre {
-    fn id(&self) -> i64 {
-        self.id
+    fn id(&self) -> &str {
+        &self.id[..]
     }
 
     fn name(&self) -> &str {
@@ -303,14 +303,13 @@ impl IdName for Genre {
 
 #[derive(Clone)]
 pub struct Playlist {
-    pub id: i64,
-    pub uuid: String,
+    pub id: String,
     pub name: String,
 }
 
 impl IdName for Playlist {
-    fn id(&self) -> i64 {
-        self.id
+    fn id(&self) -> &str {
+        &self.id[..]
     }
 
     fn name(&self) -> &str {
@@ -323,8 +322,8 @@ pub struct RootItem {
 }
 
 impl IdName for RootItem {
-    fn id(&self) -> i64 {
-        0
+    fn id(&self) -> &str {
+        ""
     }
 
     fn name(&self) -> &str {
@@ -334,8 +333,7 @@ impl IdName for RootItem {
 
 #[derive(Clone)]
 pub struct Track {
-    pub id: i64,
-    pub uuid: String,
+    pub id: String,
     pub name: String,
     pub duration: i64,
     pub album: Option<Album>,
@@ -345,8 +343,8 @@ pub struct Track {
 }
 
 impl IdName for Track {
-    fn id(&self) -> i64 {
-        self.id
+    fn id(&self) -> &str {
+        &self.id[..]
     }
 
     fn name(&self) -> &str {
@@ -356,14 +354,14 @@ impl IdName for Track {
 
 #[derive(Clone)]
 pub struct AlbumInputBuilder {
-    id: i64,
+    id: String,
     name: String,
 }
 
 impl AlbumInputBuilder {
     pub fn new(album: &Album) -> AlbumInputBuilder {
         AlbumInputBuilder {
-            id: album.id,
+            id: album.id.clone(),
             name: album.name.clone(),
         }
     }
@@ -375,8 +373,8 @@ impl AlbumInputBuilder {
 
     pub fn build(&self) -> update_album_mutation::Variables {
         update_album_mutation::Variables {
-            id: self.id,
-            album_input: update_album_mutation::AlbumInput {
+            id: self.id.clone(),
+            input: update_album_mutation::AlbumInput {
                 name: self.name.clone(),
             },
         }
@@ -385,14 +383,14 @@ impl AlbumInputBuilder {
 
 #[derive(Clone)]
 pub struct ArtistInputBuilder {
-    id: i64,
+    id: String,
     name: String,
 }
 
 impl ArtistInputBuilder {
     pub fn new(artist: &Artist) -> ArtistInputBuilder {
         ArtistInputBuilder {
-            id: artist.id,
+            id: artist.id.clone(),
             name: artist.name.clone(),
         }
     }
@@ -404,8 +402,8 @@ impl ArtistInputBuilder {
 
     pub fn build(&self) -> update_artist_mutation::Variables {
         update_artist_mutation::Variables {
-            id: self.id,
-            artist_input: update_artist_mutation::ArtistInput {
+            id: self.id.clone(),
+            input: update_artist_mutation::ArtistInput {
                 name: self.name.clone(),
             },
         }
@@ -414,14 +412,14 @@ impl ArtistInputBuilder {
 
 #[derive(Clone)]
 pub struct GenreInputBuilder {
-    id: i64,
+    id: String,
     name: String,
 }
 
 impl GenreInputBuilder {
     pub fn new(genre: &Genre) -> GenreInputBuilder {
         GenreInputBuilder {
-            id: genre.id,
+            id: genre.id.clone(),
             name: genre.name.clone(),
         }
     }
@@ -433,8 +431,8 @@ impl GenreInputBuilder {
 
     pub fn build(&self) -> update_genre_mutation::Variables {
         update_genre_mutation::Variables {
-            id: self.id,
-            genre_input: update_genre_mutation::GenreInput {
+            id: self.id.clone(),
+            input: update_genre_mutation::GenreInput {
                 name: self.name.clone(),
             },
         }
@@ -443,14 +441,14 @@ impl GenreInputBuilder {
 
 #[derive(Clone)]
 pub struct PlaylistInputBuilder {
-    id: i64,
+    id: String,
     name: String,
 }
 
 impl PlaylistInputBuilder {
     pub fn new(playlist: &Playlist) -> PlaylistInputBuilder {
         PlaylistInputBuilder {
-            id: playlist.id,
+            id: playlist.id.clone(),
             name: playlist.name.clone(),
         }
     }
@@ -462,8 +460,8 @@ impl PlaylistInputBuilder {
 
     pub fn build(&self) -> update_playlist_mutation::Variables {
         update_playlist_mutation::Variables {
-            id: self.id,
-            playlist_input: update_playlist_mutation::PlaylistInput {
+            id: self.id.clone(),
+            input: update_playlist_mutation::PlaylistInput {
                 name: self.name.clone(),
             },
         }
@@ -472,22 +470,22 @@ impl PlaylistInputBuilder {
 
 #[derive(Clone)]
 pub struct TrackInputBuilder {
-    id: i64,
+    id: String,
     name: String,
-    album_id: Option<i64>,
-    artist_id: Option<i64>,
-    genre_id: Option<i64>,
+    album_id: Option<String>,
+    artist_id: Option<String>,
+    genre_id: Option<String>,
     track_number: Option<i64>,
 }
 
 impl TrackInputBuilder {
     pub fn new(track: &Track) -> TrackInputBuilder {
         TrackInputBuilder {
-            id: track.id,
+            id: track.id.clone(),
             name: track.name.clone(),
-            album_id: track.album.as_ref().map(|album| album.id),
-            artist_id: track.artist.as_ref().map(|artist| artist.id),
-            genre_id: track.genre.as_ref().map(|genre| genre.id),
+            album_id: track.album.as_ref().map(|album| album.id.clone()),
+            artist_id: track.artist.as_ref().map(|artist| artist.id.clone()),
+            genre_id: track.genre.as_ref().map(|genre| genre.id.clone()),
             track_number: track.track_number,
         }
     }
@@ -497,17 +495,17 @@ impl TrackInputBuilder {
         self
     }
 
-    pub fn album_id(&mut self, album_id: Option<i64>) -> &mut TrackInputBuilder {
+    pub fn album_id(&mut self, album_id: Option<String>) -> &mut TrackInputBuilder {
         self.album_id = album_id;
         self
     }
 
-    pub fn artist_id(&mut self, artist_id: Option<i64>) -> &mut TrackInputBuilder {
+    pub fn artist_id(&mut self, artist_id: Option<String>) -> &mut TrackInputBuilder {
         self.artist_id = artist_id;
         self
     }
 
-    pub fn genre_id(&mut self, genre_id: Option<i64>) -> &mut TrackInputBuilder {
+    pub fn genre_id(&mut self, genre_id: Option<String>) -> &mut TrackInputBuilder {
         self.genre_id = genre_id;
         self
     }
@@ -519,12 +517,12 @@ impl TrackInputBuilder {
 
     pub fn build(&self) -> update_track_mutation::Variables {
         update_track_mutation::Variables {
-            id: self.id,
-            track_input: update_track_mutation::TrackInput {
+            id: self.id.clone(),
+            input: update_track_mutation::TrackInput {
                 name: self.name.clone(),
-                album_id: self.album_id,
-                artist_id: self.artist_id,
-                genre_id: self.genre_id,
+                album_id: self.album_id.clone(),
+                artist_id: self.artist_id.clone(),
+                genre_id: self.genre_id.clone(),
                 track_number: self.track_number,
             },
         }
@@ -748,21 +746,13 @@ impl_from!(
     create_playlist_mutation::CreatePlaylistMutationCreatePlaylist,
     Playlist,
     id,
-    uuid,
     name
 );
-impl_from!(
-    playlists_query::PlaylistsQueryPlaylists,
-    Playlist,
-    id,
-    uuid,
-    name
-);
+impl_from!(playlists_query::PlaylistsQueryPlaylists, Playlist, id, name);
 impl_from!(
     update_playlist_mutation::UpdatePlaylistMutationUpdatePlaylist,
     Playlist,
     id,
-    uuid,
     name
 );
 
@@ -770,7 +760,6 @@ impl From<album_tracks_query::AlbumTracksQueryAlbumTracks> for Track {
     fn from(
         album_tracks_query::AlbumTracksQueryAlbumTracks {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -781,7 +770,6 @@ impl From<album_tracks_query::AlbumTracksQueryAlbumTracks> for Track {
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -796,7 +784,6 @@ impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for Track {
     fn from(
         artist_tracks_query::ArtistTracksQueryArtistTracks {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -807,7 +794,6 @@ impl From<artist_tracks_query::ArtistTracksQueryArtistTracks> for Track {
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -824,7 +810,6 @@ impl From<create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlayl
     fn from(
         create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlaylistTrackTracks {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -835,7 +820,6 @@ impl From<create_playlist_track_mutation::CreatePlaylistTrackMutationCreatePlayl
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -850,7 +834,6 @@ impl From<genre_tracks_query::GenreTracksQueryGenreTracks> for Track {
     fn from(
         genre_tracks_query::GenreTracksQueryGenreTracks {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -861,7 +844,6 @@ impl From<genre_tracks_query::GenreTracksQueryGenreTracks> for Track {
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -876,7 +858,6 @@ impl From<playlist_tracks_query::PlaylistTracksQueryPlaylistTracks> for Track {
     fn from(
         playlist_tracks_query::PlaylistTracksQueryPlaylistTracks {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -887,7 +868,6 @@ impl From<playlist_tracks_query::PlaylistTracksQueryPlaylistTracks> for Track {
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -902,7 +882,6 @@ impl From<track_query::TrackQueryTrack> for Track {
     fn from(
         track_query::TrackQueryTrack {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -913,7 +892,6 @@ impl From<track_query::TrackQueryTrack> for Track {
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -928,7 +906,6 @@ impl From<tracks_query::TracksQueryTracks> for Track {
     fn from(
         tracks_query::TracksQueryTracks {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -939,7 +916,6 @@ impl From<tracks_query::TracksQueryTracks> for Track {
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -956,7 +932,6 @@ impl From<delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlayl
     fn from(
         delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlaylistTrackTracks {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -967,7 +942,6 @@ impl From<delete_playlist_track_mutation::DeletePlaylistTrackMutationDeletePlayl
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -984,7 +958,6 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
     fn from(
         update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlaylistTrackTracks {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -995,7 +968,6 @@ impl From<update_playlist_track_mutation::UpdatePlaylistTrackMutationUpdatePlayl
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),
@@ -1010,7 +982,6 @@ impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
     fn from(
         update_track_mutation::UpdateTrackMutationUpdateTrack {
             id,
-            uuid,
             name,
             duration,
             album,
@@ -1021,7 +992,6 @@ impl From<update_track_mutation::UpdateTrackMutationUpdateTrack> for Track {
     ) -> Track {
         Track {
             id,
-            uuid,
             name,
             duration,
             album: album.map(|album| album.into()),

@@ -7,13 +7,14 @@ extern crate diesel_migrations;
 
 mod chunker;
 mod db;
+mod external_id;
 mod graphql_schema;
 mod graphql_service;
 mod models;
 mod playlists_service;
+mod prng;
 mod schema;
 mod tracks_service;
-mod uuid;
 
 use std::sync::Arc;
 
@@ -122,7 +123,7 @@ async fn main() -> std::io::Result<()> {
                     .service(playlists_service::get_playlist)
                     .service(Files::new("/tracks", "tracks"))
                     .service(
-                        web::resource("/tracks/{uuid}.mp3")
+                        web::resource("/tracks/{id}.mp3")
                             .name("get_track")
                             .to(|| HttpResponse::NotFound()),
                     ), // only used for resource url generation

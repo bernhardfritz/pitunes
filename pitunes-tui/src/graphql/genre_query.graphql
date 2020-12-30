@@ -1,4 +1,4 @@
-query GenreQuery($id: Int!) {
+query GenreQuery($id: ID!) {
   genre(id: $id) {
     id
     name

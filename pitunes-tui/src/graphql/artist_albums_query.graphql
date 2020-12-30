@@ -1,4 +1,4 @@
-query ArtistAlbumsQuery($id: Int!) {
+query ArtistAlbumsQuery($id: ID!) {
   artist(id: $id) {
     id
     name

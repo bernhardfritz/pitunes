@@ -1,7 +1,6 @@
 query PlaylistsQuery {
   playlists {
     id
-    uuid
     name
   }
 }

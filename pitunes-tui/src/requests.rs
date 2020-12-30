@@ -1,7 +1,7 @@
 use std::{convert::TryFrom, sync::Arc};
 
 use graphql_client::{GraphQLQuery, QueryBody, Response as GraphQLResponse};
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
     basic_auth,
@@ -30,7 +30,7 @@ use crate::{
     Context,
 };
 
-fn graphql_query<Variables: serde::Serialize, T: DeserializeOwned>(
+fn graphql_query<Variables: Serialize, T: DeserializeOwned>(
     context: &Arc<Context>,
     query_body: QueryBody<Variables>,
 ) -> Result<GraphQLResponse<T>, ureq::Error> {
@@ -47,8 +47,10 @@ fn graphql_query<Variables: serde::Serialize, T: DeserializeOwned>(
     res.map(|res| res.into_json().unwrap())
 }
 
-pub fn read_album(context: &Arc<Context>, id: i64) -> Album {
-    let request_body = AlbumQuery::build_query(album_query::Variables { id });
+pub fn read_album(context: &Arc<Context>, id: &str) -> Album {
+    let request_body = AlbumQuery::build_query(album_query::Variables {
+        id: String::from(id),
+    });
     let response_body: GraphQLResponse<album_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
@@ -81,16 +83,19 @@ pub fn update_album(context: &Arc<Context>, variables: update_album_mutation::Va
 }
 
 pub fn delete_album(context: &Arc<Context>, album: &Album) -> bool {
-    let request_body =
-        DeleteAlbumMutation::build_query(delete_album_mutation::Variables { id: album.id });
+    let request_body = DeleteAlbumMutation::build_query(delete_album_mutation::Variables {
+        id: album.id.clone(),
+    });
     let response_body: GraphQLResponse<delete_album_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body.data.map(|data| data.delete_album).unwrap()
 }
 
-pub fn read_artist(context: &Arc<Context>, id: i64) -> Artist {
-    let request_body = ArtistQuery::build_query(artist_query::Variables { id });
+pub fn read_artist(context: &Arc<Context>, id: &str) -> Artist {
+    let request_body = ArtistQuery::build_query(artist_query::Variables {
+        id: String::from(id),
+    });
     let response_body: GraphQLResponse<artist_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
@@ -126,16 +131,19 @@ pub fn update_artist(
 }
 
 pub fn delete_artist(context: &Arc<Context>, artist: &Artist) -> bool {
-    let request_body =
-        DeleteArtistMutation::build_query(delete_artist_mutation::Variables { id: artist.id });
+    let request_body = DeleteArtistMutation::build_query(delete_artist_mutation::Variables {
+        id: artist.id.clone(),
+    });
     let response_body: GraphQLResponse<delete_artist_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
     response_body.data.map(|data| data.delete_artist).unwrap()
 }
 
-pub fn read_genre(context: &Arc<Context>, id: i64) -> Genre {
-    let request_body = GenreQuery::build_query(genre_query::Variables { id });
+pub fn read_genre(context: &Arc<Context>, id: &str) -> Genre {
+    let request_body = GenreQuery::build_query(genre_query::Variables {
+        id: String::from(id),
+    });
     let response_body: GraphQLResponse<genre_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
@@ -168,8 +176,9 @@ pub fn update_genre(context: &Arc<Context>, variables: update_genre_mutation::Va
 }
 
 pub fn delete_genre(context: &Arc<Context>, genre: &Genre) -> bool {
-    let request_body =
-        DeleteGenreMutation::build_query(delete_genre_mutation::Variables { id: genre.id });
+    let request_body = DeleteGenreMutation::build_query(delete_genre_mutation::Variables {
+        id: genre.id.clone(),
+    });
     let response_body: GraphQLResponse<delete_genre_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
@@ -178,7 +187,7 @@ pub fn delete_genre(context: &Arc<Context>, genre: &Genre) -> bool {
 
 pub fn create_album(context: &Arc<Context>, name: &str) -> Album {
     let request_body = CreateAlbumMutation::build_query(create_album_mutation::Variables {
-        album_input: create_album_mutation::AlbumInput {
+        input: create_album_mutation::AlbumInput {
             name: String::from(name),
         },
     });
@@ -194,7 +203,7 @@ pub fn create_album(context: &Arc<Context>, name: &str) -> Album {
 
 pub fn create_artist(context: &Arc<Context>, name: &str) -> Artist {
     let request_body = CreateArtistMutation::build_query(create_artist_mutation::Variables {
-        artist_input: create_artist_mutation::ArtistInput {
+        input: create_artist_mutation::ArtistInput {
             name: String::from(name),
         },
     });
@@ -210,7 +219,7 @@ pub fn create_artist(context: &Arc<Context>, name: &str) -> Artist {
 
 pub fn create_genre(context: &Arc<Context>, name: &str) -> Genre {
     let request_body = CreateGenreMutation::build_query(create_genre_mutation::Variables {
-        genre_input: create_genre_mutation::GenreInput {
+        input: create_genre_mutation::GenreInput {
             name: String::from(name),
         },
     });
@@ -226,7 +235,7 @@ pub fn create_genre(context: &Arc<Context>, name: &str) -> Genre {
 
 pub fn create_playlist(context: &Arc<Context>, name: &str) -> Playlist {
     let request_body = CreatePlaylistMutation::build_query(create_playlist_mutation::Variables {
-        playlist_input: create_playlist_mutation::PlaylistInput {
+        input: create_playlist_mutation::PlaylistInput {
             name: String::from(name),
         },
     });
@@ -242,7 +251,7 @@ pub fn create_playlist(context: &Arc<Context>, name: &str) -> Playlist {
 
 pub fn delete_playlist(context: &Arc<Context>, playlist: &Playlist) -> bool {
     let request_body = DeletePlaylistMutation::build_query(delete_playlist_mutation::Variables {
-        id: playlist.id,
+        id: playlist.id.clone(),
     });
     let response_body: GraphQLResponse<delete_playlist_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
@@ -277,8 +286,10 @@ pub fn update_playlist(
         .unwrap()
 }
 
-pub fn read_track(context: &Arc<Context>, id: i64) -> Track {
-    let request_body = TrackQuery::build_query(track_query::Variables { id });
+pub fn read_track(context: &Arc<Context>, id: &str) -> Track {
+    let request_body = TrackQuery::build_query(track_query::Variables {
+        id: String::from(id),
+    });
     let response_body: GraphQLResponse<track_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
@@ -311,8 +322,9 @@ pub fn update_track(context: &Arc<Context>, variables: update_track_mutation::Va
 }
 
 pub fn delete_track(context: &Arc<Context>, track: &Track) -> bool {
-    let request_body =
-        DeleteTrackMutation::build_query(delete_track_mutation::Variables { id: track.id });
+    let request_body = DeleteTrackMutation::build_query(delete_track_mutation::Variables {
+        id: track.id.clone(),
+    });
     let response_body: GraphQLResponse<delete_track_mutation::ResponseData> =
         graphql_query(context, request_body).unwrap();
 
@@ -320,8 +332,9 @@ pub fn delete_track(context: &Arc<Context>, track: &Track) -> bool {
 }
 
 pub fn read_tracks_of_album(context: &Arc<Context>, album: &Album) -> Vec<Track> {
-    let request_body =
-        AlbumTracksQuery::build_query(album_tracks_query::Variables { id: album.id });
+    let request_body = AlbumTracksQuery::build_query(album_tracks_query::Variables {
+        id: album.id.clone(),
+    });
     let response_body: GraphQLResponse<album_tracks_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
@@ -334,8 +347,9 @@ pub fn read_tracks_of_album(context: &Arc<Context>, album: &Album) -> Vec<Track>
 }
 
 pub fn read_tracks_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Track> {
-    let request_body =
-        ArtistTracksQuery::build_query(artist_tracks_query::Variables { id: artist.id });
+    let request_body = ArtistTracksQuery::build_query(artist_tracks_query::Variables {
+        id: artist.id.clone(),
+    });
     let response_body: GraphQLResponse<artist_tracks_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
@@ -348,8 +362,9 @@ pub fn read_tracks_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Tra
 }
 
 pub fn read_albums_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Album> {
-    let request_body =
-        ArtistAlbumsQuery::build_query(artist_albums_query::Variables { id: artist.id });
+    let request_body = ArtistAlbumsQuery::build_query(artist_albums_query::Variables {
+        id: artist.id.clone(),
+    });
     let response_body: GraphQLResponse<artist_albums_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let albums = response_body
@@ -362,8 +377,9 @@ pub fn read_albums_of_artist(context: &Arc<Context>, artist: &Artist) -> Vec<Alb
 }
 
 pub fn read_tracks_of_genre(context: &Arc<Context>, genre: &Genre) -> Vec<Track> {
-    let request_body =
-        GenreTracksQuery::build_query(genre_tracks_query::Variables { id: genre.id });
+    let request_body = GenreTracksQuery::build_query(genre_tracks_query::Variables {
+        id: genre.id.clone(),
+    });
     let response_body: GraphQLResponse<genre_tracks_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
@@ -376,8 +392,9 @@ pub fn read_tracks_of_genre(context: &Arc<Context>, genre: &Genre) -> Vec<Track>
 }
 
 pub fn read_tracks_of_playlist(context: &Arc<Context>, playlist: &Playlist) -> Vec<Track> {
-    let request_body =
-        PlaylistTracksQuery::build_query(playlist_tracks_query::Variables { id: playlist.id });
+    let request_body = PlaylistTracksQuery::build_query(playlist_tracks_query::Variables {
+        id: playlist.id.clone(),
+    });
     let response_body: GraphQLResponse<playlist_tracks_query::ResponseData> =
         graphql_query(context, request_body).unwrap();
     let tracks = response_body
@@ -396,9 +413,9 @@ pub fn create_playlist_track(
 ) -> Vec<Track> {
     let request_body =
         CreatePlaylistTrackMutation::build_query(create_playlist_track_mutation::Variables {
-            id: playlist.id,
-            playlist_track_input: create_playlist_track_mutation::PlaylistTrackInput {
-                id: track.id,
+            id: playlist.id.clone(),
+            input: create_playlist_track_mutation::PlaylistTrackInput {
+                id: track.id.clone(),
                 position: None,
             },
         });
@@ -421,8 +438,8 @@ pub fn update_playlist_track(
 ) -> Vec<Track> {
     let request_body =
         UpdatePlaylistTrackMutation::build_query(update_playlist_track_mutation::Variables {
-            id: playlist.id,
-            playlist_track_order_input: update_playlist_track_mutation::PlaylistTrackOrderInput {
+            id: playlist.id.clone(),
+            input: update_playlist_track_mutation::PlaylistTrackOrderInput {
                 range_start: i64::try_from(range_start).unwrap(),
                 range_length: None,
                 insert_before: i64::try_from(insert_before).unwrap(),
@@ -447,9 +464,9 @@ pub fn delete_playlist_track(
 ) -> Vec<Track> {
     let request_body =
         DeletePlaylistTrackMutation::build_query(delete_playlist_track_mutation::Variables {
-            id: playlist.id,
-            playlist_track_input: delete_playlist_track_mutation::PlaylistTrackInput {
-                id: track.id,
+            id: playlist.id.clone(),
+            input: delete_playlist_track_mutation::PlaylistTrackInput {
+                id: track.id.clone(),
                 position: position.map(|p| p as i64),
             },
         });

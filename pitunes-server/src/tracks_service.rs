@@ -4,26 +4,26 @@ use std::{
 };
 
 use actix_multipart::Multipart;
-use actix_web::{web, Error, HttpResponse};
+use actix_web::{web, Error, HttpRequest, HttpResponse};
 use diesel::prelude::*;
 use futures::{StreamExt, TryStreamExt};
 
 use crate::{
     chunker::Chunker,
+    external_id::ExternalId,
     graphql_schema::RequestContext,
-    models::{
-        Album, AlbumInput, Artist, ArtistInput, Genre, GenreInput, Track, TrackInputInternal,
-    },
+    models::{Album, Artist, Genre, NewAlbum, NewArtist, NewGenre, NewTrack},
+    prng,
     schema::{albums, artists, genres, tracks},
-    uuid::uuidv4,
 };
 
 #[post("/tracks")]
 async fn post_tracks(
     context: web::Data<RequestContext>,
+    req: HttpRequest,
     mut payload: Multipart,
 ) -> Result<HttpResponse, Error> {
-    let mut vec = Vec::new();
+    let mut tracks = Vec::new();
     let conn = context.pool.get().unwrap();
     // iterate over multipart stream
     while let Ok(Some(mut field)) = payload.try_next().await {
@@ -39,8 +39,8 @@ async fn post_tracks(
         let duration = mp3_duration::from_file(&tf);
         tf.seek(SeekFrom::Start(0))?;
         let tf2 = tf.try_clone()?;
-        if let Ok(track) = conn.transaction::<_, diesel::result::Error, _>(|| {
-            let track_input = if let Ok(tag) = id3::Tag::read_from(tf2) {
+        if let Ok(external_id) = conn.transaction::<_, anyhow::Error, _>(|| {
+            let new_track = if let Ok(tag) = id3::Tag::read_from(tf2) {
                 let track_name = tag.title().map(|t| String::from(t)).unwrap_or_else(|| {
                     let content_type = field.content_disposition().unwrap();
                     let filename = content_type.get_filename().unwrap();
@@ -60,18 +60,14 @@ async fn post_tracks(
                     {
                         Some(album.id)
                     } else {
+                        let new_album = NewAlbum {
+                            id: prng::rand_i32(&conn)?,
+                            name: String::from(album_name),
+                        };
                         diesel::insert_into(albums::table)
-                            .values(AlbumInput {
-                                name: String::from(album_name),
-                            })
+                            .values(&new_album)
                             .execute(&conn)?;
-                        if let Ok(album) =
-                            albums::table.order(albums::id.desc()).first::<Album>(&conn)
-                        {
-                            Some(album.id)
-                        } else {
-                            None
-                        }
+                        Some(new_album.id)
                     }
                 } else {
                     None
@@ -83,19 +79,14 @@ async fn post_tracks(
                     {
                         Some(artist.id)
                     } else {
+                        let new_artist = NewArtist {
+                            id: prng::rand_i32(&conn)?,
+                            name: String::from(artist_name),
+                        };
                         diesel::insert_into(artists::table)
-                            .values(ArtistInput {
-                                name: String::from(artist_name),
-                            })
+                            .values(&new_artist)
                             .execute(&conn)?;
-                        if let Ok(artist) = artists::table
-                            .order(artists::id.desc())
-                            .first::<Artist>(&conn)
-                        {
-                            Some(artist.id)
-                        } else {
-                            None
-                        }
+                        Some(new_artist.id)
                     }
                 } else {
                     None
@@ -107,31 +98,27 @@ async fn post_tracks(
                     {
                         Some(genre.id)
                     } else {
+                        let new_genre = NewGenre {
+                            id: prng::rand_i32(&conn)?,
+                            name: String::from(genre_name),
+                        };
                         diesel::insert_into(genres::table)
-                            .values(GenreInput {
-                                name: String::from(genre_name),
-                            })
+                            .values(&new_genre)
                             .execute(&conn)?;
-                        if let Ok(genre) =
-                            genres::table.order(genres::id.desc()).first::<Genre>(&conn)
-                        {
-                            Some(genre.id)
-                        } else {
-                            None
-                        }
+                        Some(new_genre.id)
                     }
                 } else {
                     None
                 };
-                let track_track_number = tag.track();
-                TrackInputInternal {
-                    uuid: uuidv4(),
+                let track_track_number = tag.track().map(|t| t as i32);
+                NewTrack {
+                    id: prng::rand_i32(&conn)?,
                     name: track_name,
                     duration: track_duration,
                     album_id: track_album_id,
                     artist_id: track_artist_id,
                     genre_id: track_genre_id,
-                    track_number: track_track_number.map(|ttn| ttn as i32),
+                    track_number: track_track_number,
                 }
             } else {
                 let content_type = field.content_disposition().unwrap();
@@ -140,8 +127,8 @@ async fn post_tracks(
                 let file_stem = path.file_stem().unwrap();
                 let track_name = String::from(file_stem.to_str().unwrap());
                 let track_duration = duration.unwrap().as_millis() as i32;
-                TrackInputInternal {
-                    uuid: uuidv4(),
+                NewTrack {
+                    id: prng::rand_i32(&conn)?,
                     name: track_name,
                     duration: track_duration,
                     album_id: None,
@@ -151,13 +138,13 @@ async fn post_tracks(
                 }
             };
             diesel::insert_into(tracks::table)
-                .values(track_input)
+                .values(&new_track)
                 .execute(&conn)?;
-            tracks::table.order(tracks::id.desc()).first::<Track>(&conn)
+            Ok(ExternalId::from(new_track.id))
         }) {
             let reader = BufReader::new(tf);
             let mut chunker = Chunker::new(reader);
-            let filepath = format!("./tracks/{}.mp3", track.uuid);
+            let filepath = format!("./tracks/{}.mp3", &external_id.0[..]);
             // File::create is blocking operation, use threadpool
             let f = web::block(|| std::fs::File::create(filepath)).await?;
             let mut writer = BufWriter::new(f);
@@ -165,8 +152,8 @@ async fn post_tracks(
                 // filesystem operations are blocking, we have to use threadpool
                 writer = web::block(move || writer.write_all(&chunk).map(|_| writer)).await?;
             }
-            vec.push(track);
+            tracks.push(req.url_for("get_track", &[&external_id.0[..]])?.to_string());
         }
     }
-    Ok(HttpResponse::Ok().json(vec))
+    Ok(HttpResponse::Created().json(tracks))
 }

@@ -1,5 +1,5 @@
-mutation UpdateAlbumMutation($id: Int!, $albumInput: AlbumInput!) {
-  updateAlbum(id: $id, albumInput: $albumInput) {
+mutation UpdateAlbumMutation($id: ID!, $input: AlbumInput!) {
+  updateAlbum(id: $id, input: $input) {
     id
     name
   }

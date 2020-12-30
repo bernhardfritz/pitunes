@@ -518,17 +518,17 @@ impl StateMachine {
         match key.code {
             KeyCode::Enter => self.to_album_tracks(album),
             KeyCode::F(2) => {
-                if album.id > 0 {
-                    self.to_album_name_prompt(album)
-                } else {
+                if album.id.is_empty() {
                     None
+                } else {
+                    self.to_album_name_prompt(album)
                 }
             }
             KeyCode::Delete => {
-                if album.id > 0 {
-                    self.to_delete_prompt(album)
-                } else {
+                if album.id.is_empty() {
                     None
+                } else {
+                    self.to_delete_prompt(album)
                 }
             }
             _ => None,
@@ -696,12 +696,12 @@ impl StateMachine {
             let mut track_input_builder = track_album_prompt.track_input_builder.clone();
             let stateful_list = track_album_prompt.stateful_list();
             if let Some(album) = stateful_list.selected_item() {
-                track_input_builder.album_id(Some(album.id));
+                track_input_builder.album_id(Some(album.id.clone()));
             } else {
                 let name = stateful_list.pattern.trim();
                 if name.is_empty() {
                     let album = track.album.as_ref();
-                    track_input_builder.album_id(album.map(|album| album.id));
+                    track_input_builder.album_id(album.map(|album| album.id.clone()));
                 } else {
                     let album = create_album(&self.context, name);
                     track_input_builder.album_id(Some(album.id));
@@ -725,12 +725,12 @@ impl StateMachine {
             let mut track_input_builder = track_artist_prompt.track_input_builder.clone();
             let stateful_list = track_artist_prompt.stateful_list();
             if let Some(artist) = stateful_list.selected_item() {
-                track_input_builder.artist_id(Some(artist.id));
+                track_input_builder.artist_id(Some(artist.id.clone()));
             } else {
                 let name = stateful_list.pattern.trim();
                 if name.is_empty() {
                     let artist = track.artist.as_ref();
-                    track_input_builder.artist_id(artist.map(|artist| artist.id));
+                    track_input_builder.artist_id(artist.map(|artist| artist.id.clone()));
                 } else {
                     let artist = create_artist(&self.context, name);
                     track_input_builder.artist_id(Some(artist.id));
@@ -754,12 +754,12 @@ impl StateMachine {
             let mut track_input_builder = track_genre_prompt.track_input_builder.clone();
             let stateful_list = track_genre_prompt.stateful_list();
             if let Some(genre) = stateful_list.selected_item() {
-                track_input_builder.genre_id(Some(genre.id));
+                track_input_builder.genre_id(Some(genre.id.clone()));
             } else {
                 let name = stateful_list.pattern.trim();
                 if name.is_empty() {
                     let genre = track.genre.as_ref();
-                    track_input_builder.genre_id(genre.map(|genre| genre.id));
+                    track_input_builder.genre_id(genre.map(|genre| genre.id.clone()));
                 } else {
                     let genre = create_genre(&self.context, name);
                     track_input_builder.genre_id(Some(genre.id));
@@ -929,18 +929,22 @@ impl StateMachine {
     }
 
     fn to_album_tracks(&self, album: &Album) -> Option<State> {
-        if album.id > 0 {
+        if album.id.is_empty() {
+            if let State::ArtistAlbums(ArtistAlbums {
+                artist,
+                stateful_list: _,
+            }) = &self.state
+            {
+                self.to_artist_tracks(artist)
+            } else {
+                None
+            }
+        } else {
             let tracks = read_tracks_of_album(&self.context, album);
             Some(State::AlbumTracks(AlbumTracks {
                 album: album.clone(),
                 stateful_list: StatefulList::builder().items(tracks).build(),
             }))
-        } else {
-            let artist = Artist {
-                id: -album.id,
-                name: album.name.clone(),
-            };
-            self.to_artist_tracks(&artist)
         }
     }
 
@@ -957,7 +961,7 @@ impl StateMachine {
             albums.insert(
                 0,
                 Album {
-                    id: -artist.id,
+                    id: String::new(),
                     name: String::from(ALL_TRACKS),
                 },
             );

@@ -1,11 +1,9 @@
-mutation UpdatePlaylistTrackMutation($id: Int!, $playlistTrackOrderInput: PlaylistTrackOrderInput!) {
-  updatePlaylistTrack(id: $id, playlistTrackOrderInput: $playlistTrackOrderInput) {
+mutation UpdatePlaylistTrackMutation($id: ID!, $input: PlaylistTrackOrderInput!) {
+  updatePlaylistTrack(id: $id, input: $input) {
     id
-    uuid
     name
     tracks {
       id
-      uuid
       name
       duration
       album {

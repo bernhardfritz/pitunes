@@ -1,7 +1,6 @@
-mutation UpdateTrackMutation($id: Int!, $trackInput: TrackInput!) {
-  updateTrack(id: $id, trackInput: $trackInput) {
+mutation UpdateTrackMutation($id: ID!, $input: TrackInput!) {
+  updateTrack(id: $id, input: $input) {
     id
-    uuid
     name
     duration
     album {

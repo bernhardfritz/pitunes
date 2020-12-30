@@ -25,7 +25,6 @@ table! {
 table! {
     playlists (id) {
         id -> Integer,
-        uuid -> Text,
         created_at -> Timestamp,
         name -> Text,
     }
@@ -42,9 +41,16 @@ table! {
 }
 
 table! {
+    prngs (id) {
+        id -> Integer,
+        state -> BigInt,
+        inc -> BigInt,
+    }
+}
+
+table! {
     tracks (id) {
         id -> Integer,
-        uuid -> Text,
         created_at -> Timestamp,
         name -> Text,
         duration -> Integer,
@@ -76,6 +82,7 @@ allow_tables_to_appear_in_same_query!(
     genres,
     playlists,
     playlists_tracks,
+    prngs,
     tracks,
     users,
 );

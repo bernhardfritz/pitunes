@@ -5,12 +5,13 @@ use chrono::NaiveDateTime;
 use dataloader::{cached::Loader, BatchFn};
 use diesel::prelude::*;
 use futures::executor::block_on;
-use serde::Serialize;
+use oorandom::Rand32;
 
 use crate::{
     db::SqlitePool,
+    external_id::ExternalId,
     graphql_schema::RequestContext,
-    schema::{albums, artists, genres, playlists, playlists_tracks, tracks, users},
+    schema::{albums, artists, genres, playlists, playlists_tracks, prngs, tracks, users},
 };
 
 #[derive(Clone)]
@@ -97,8 +98,8 @@ pub struct Album {
 
 #[juniper::object(Context = RequestContext)]
 impl Album {
-    pub fn id(&self) -> i32 {
-        self.id
+    pub fn id(&self) -> juniper::ID {
+        ExternalId::from(self.id).0
     }
 
     pub fn created_at(&self) -> NaiveDateTime {
@@ -115,7 +116,14 @@ impl Album {
     }
 }
 
-#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
+#[derive(Insertable)]
+#[table_name = "albums"]
+pub struct NewAlbum {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(AsChangeset, juniper::GraphQLInputObject)]
 #[changeset_options(treat_none_as_null = "true")]
 #[table_name = "albums"]
 pub struct AlbumInput {
@@ -131,8 +139,8 @@ pub struct Artist {
 
 #[juniper::object(Context = RequestContext)]
 impl Artist {
-    pub fn id(&self) -> i32 {
-        self.id
+    pub fn id(&self) -> juniper::ID {
+        ExternalId::from(self.id).0
     }
 
     pub fn created_at(&self) -> NaiveDateTime {
@@ -164,7 +172,14 @@ impl Artist {
     }
 }
 
-#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
+#[derive(Insertable)]
+#[table_name = "artists"]
+pub struct NewArtist {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(AsChangeset, juniper::GraphQLInputObject)]
 #[changeset_options(treat_none_as_null = "true")]
 #[table_name = "artists"]
 pub struct ArtistInput {
@@ -180,8 +195,8 @@ pub struct Genre {
 
 #[juniper::object(Context = RequestContext)]
 impl Genre {
-    pub fn id(&self) -> i32 {
-        self.id
+    pub fn id(&self) -> juniper::ID {
+        ExternalId::from(self.id).0
     }
 
     pub fn created_at(&self) -> NaiveDateTime {
@@ -198,20 +213,26 @@ impl Genre {
     }
 }
 
-#[derive(Insertable, AsChangeset, juniper::GraphQLInputObject)]
+#[derive(Insertable)]
+#[table_name = "genres"]
+pub struct NewGenre {
+    pub id: i32,
+    pub name: String,
+}
+
+#[derive(AsChangeset, juniper::GraphQLInputObject)]
 #[changeset_options(treat_none_as_null = "true")]
 #[table_name = "genres"]
 pub struct GenreInput {
     pub name: String,
 }
 
-#[derive(Identifiable, Associations, Queryable, Serialize)]
+#[derive(Identifiable, Associations, Queryable)]
 #[belongs_to(Album)]
 #[belongs_to(Artist)]
 #[belongs_to(Genre)]
 pub struct Track {
     pub id: i32,
-    pub uuid: String,
     pub created_at: NaiveDateTime,
     pub name: String,
     pub duration: i32,
@@ -223,12 +244,8 @@ pub struct Track {
 
 #[juniper::object(Context = RequestContext)]
 impl Track {
-    pub fn id(&self) -> i32 {
-        self.id
-    }
-
-    pub fn uuid(&self) -> &str {
-        &self.uuid[..]
+    pub fn id(&self) -> juniper::ID {
+        ExternalId::from(self.id).0
     }
 
     pub fn created_at(&self) -> NaiveDateTime {
@@ -262,7 +279,7 @@ impl Track {
     pub fn genre(&self, context: &RequestContext) -> juniper::FieldResult<Option<Genre>> {
         let conn = context.pool.get()?;
         if let Some(genre_id) = self.genre_id {
-            Ok(Some(genres::table.find(genre_id).get_result(&conn)?))
+            Ok(Some(block_on(context.genre_loader.load(genre_id))))
         } else {
             Ok(None)
         }
@@ -275,8 +292,8 @@ impl Track {
 
 #[derive(Insertable)]
 #[table_name = "tracks"]
-pub struct TrackInputInternal {
-    pub uuid: String,
+pub struct NewTrack {
+    pub id: i32,
     pub name: String,
     pub duration: i32,
     pub album_id: Option<i32>,
@@ -285,10 +302,19 @@ pub struct TrackInputInternal {
     pub track_number: Option<i32>,
 }
 
-#[derive(AsChangeset, juniper::GraphQLInputObject)]
+#[derive(juniper::GraphQLInputObject)]
+pub struct TrackInput {
+    pub name: String,
+    pub album_id: Option<juniper::ID>,
+    pub artist_id: Option<juniper::ID>,
+    pub genre_id: Option<juniper::ID>,
+    pub track_number: Option<i32>,
+}
+
+#[derive(AsChangeset)]
 #[changeset_options(treat_none_as_null = "true")]
 #[table_name = "tracks"]
-pub struct TrackInput {
+pub struct TrackChangeset {
     pub name: String,
     pub album_id: Option<i32>,
     pub artist_id: Option<i32>,
@@ -299,19 +325,14 @@ pub struct TrackInput {
 #[derive(Identifiable, Queryable)]
 pub struct Playlist {
     pub id: i32,
-    pub uuid: String,
     pub created_at: NaiveDateTime,
     pub name: String,
 }
 
 #[juniper::object(Context = RequestContext)]
 impl Playlist {
-    pub fn id(&self) -> i32 {
-        self.id
-    }
-
-    pub fn uuid(&self) -> &str {
-        &self.uuid[..]
+    pub fn id(&self) -> juniper::ID {
+        ExternalId::from(self.id).0
     }
 
     pub fn created_at(&self) -> NaiveDateTime {
@@ -331,10 +352,11 @@ impl Playlist {
             .load::<Track>(&conn)?)
     }
 }
+
 #[derive(Insertable)]
 #[table_name = "playlists"]
-pub struct PlaylistInputInternal {
-    pub uuid: String,
+pub struct NewPlaylist {
+    pub id: i32,
     pub name: String,
 }
 
@@ -357,11 +379,17 @@ pub struct PlaylistTrack {
     pub position: i32,
 }
 
-#[derive(Insertable, juniper::GraphQLInputObject)]
+#[derive(Insertable)]
 #[table_name = "playlists_tracks"]
+pub struct NewPlaylistTrack {
+    pub track_id: i32,
+    pub position: Option<i32>,
+}
+
+#[derive(juniper::GraphQLInputObject)]
 pub struct PlaylistTrackInput {
     #[graphql(name = "id")]
-    pub track_id: i32,
+    pub track_id: juniper::ID,
     pub position: Option<i32>,
 }
 
@@ -378,4 +406,31 @@ pub struct User {
     pub created_at: NaiveDateTime,
     pub username: String,
     pub password: Option<String>,
+}
+
+#[derive(AsChangeset, Identifiable, Insertable, Queryable)]
+pub struct Prng {
+    pub id: i32,
+    pub state: i64,
+    pub inc: i64,
+}
+
+impl From<Rand32> for Prng {
+    fn from(rand32: Rand32) -> Self {
+        let (state, inc) = rand32.state();
+        Prng {
+            id: 1,
+            state: i64::from_le_bytes(state.to_le_bytes()),
+            inc: i64::from_le_bytes(inc.to_le_bytes()),
+        }
+    }
+}
+
+impl From<Prng> for Rand32 {
+    fn from(prng: Prng) -> Self {
+        let state = u64::from_le_bytes(prng.state.to_le_bytes());
+        let inc = u64::from_le_bytes(prng.inc.to_le_bytes());
+        let state = (state, inc);
+        Rand32::from_state(state)
+    }
 }

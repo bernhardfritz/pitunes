@@ -4,6 +4,8 @@ use diesel::{
     sqlite::SqliteConnection,
 };
 
+use crate::prng;
+
 embed_migrations!();
 
 pub type SqlitePool = Pool<ConnectionManager<SqliteConnection>>;
@@ -17,5 +19,6 @@ pub fn establish_connection() -> SqlitePool {
     let database_url = "pitunes.db";
     let conn = SqliteConnection::establish(&database_url).unwrap();
     embedded_migrations::run(&conn).unwrap();
+    prng::insert_prng_if_not_exists(&conn).unwrap();
     init_pool(database_url).unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }

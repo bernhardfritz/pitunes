@@ -1,11 +1,9 @@
-mutation CreatePlaylistTrackMutation($id: Int!, $playlistTrackInput: PlaylistTrackInput!) {
-  createPlaylistTrack(id: $id, playlistTrackInput: $playlistTrackInput) {
+mutation CreatePlaylistTrackMutation($id: ID!, $input: PlaylistTrackInput!) {
+  createPlaylistTrack(id: $id, input: $input) {
     id
-    uuid
     name
     tracks {
       id
-      uuid
       name
       duration
       album {

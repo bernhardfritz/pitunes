@@ -1,10 +1,9 @@
-query ArtistTracksQuery($id: Int!) {
+query ArtistTracksQuery($id: ID!) {
   artist(id: $id) {
     id
     name
     tracks {
       id
-      uuid
       name
       duration
       album {
