@@ -401,10 +401,9 @@ pub struct PlaylistTrackOrderInput {
 }
 
 #[derive(Identifiable, Queryable)]
+#[primary_key(email)]
 pub struct User {
-    pub id: i32,
-    pub created_at: NaiveDateTime,
-    pub username: String,
+    pub email: String,
     pub password: Option<String>,
 }
 

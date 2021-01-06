@@ -1,0 +1,23 @@
+.logo-link {
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 0.25rem;
+  color: unset;
+  text-decoration: unset;
+}
+
+.logo {
+  height: 3rem;
+}
+
+.logo-text {
+  font-size: 1.5rem;
+}
+
+.logo-container {
+  height: 64px;
+}

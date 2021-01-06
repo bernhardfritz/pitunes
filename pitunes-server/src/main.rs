@@ -18,7 +18,6 @@ mod tracks_service;
 
 use std::sync::Arc;
 
-use actix_cors::Cors;
 use actix_files::Files;
 use actix_web::{
     dev::ServiceRequest,
@@ -36,35 +35,27 @@ use schema::users;
 use sha2::{Digest, Sha256};
 
 async fn validator(req: ServiceRequest, credentials: BasicAuth) -> Result<ServiceRequest, Error> {
-    if let Some(context) = req.app_data::<Data<RequestContext>>() {
-        let conn = context.pool.get().unwrap();
-        if let Ok(user) = users::table
-            .filter(users::username.eq(credentials.user_id()))
-            .first::<User>(&conn)
-        {
-            if let Some(user_password) = user.password {
-                if let Some(credentials_password) = credentials.password() {
-                    let mut hasher = Sha256::new();
-                    hasher.input(credentials_password.as_bytes());
-                    let hashed_credentials_password = format!("{:x}", hasher.result());
-                    if user_password == hashed_credentials_password {
-                        Ok(req)
-                    } else {
-                        Err(error::ErrorUnauthorized(""))
+    let valid = {
+        let mut valid = false;
+        if let Some(context) = req.app_data::<Data<RequestContext>>() {
+            let conn = context.pool.get().unwrap();
+            if let Ok(user) = users::table.find(credentials.user_id()).get_result::<User>(&conn) {
+                if let Some(user_password) = user.password {
+                    if let Some(credentials_password) = credentials.password() {
+                        let mut hasher = Sha256::new();
+                        hasher.input(credentials_password.as_bytes());
+                        let hashed_credentials_password = format!("{:x}", hasher.result());
+                        valid = user_password == hashed_credentials_password;
                     }
                 } else {
-                    Err(error::ErrorUnauthorized(""))
-                }
-            } else {
-                if credentials.password().is_none() {
-                    Ok(req)
-                } else {
-                    Err(error::ErrorUnauthorized(""))
+                    valid = credentials.password().is_none();
                 }
             }
-        } else {
-            Err(error::ErrorUnauthorized(""))
         }
+        valid
+    };
+    if valid {
+        Ok(req)
     } else {
         Err(error::ErrorUnauthorized(""))
     }
@@ -102,18 +93,9 @@ async fn main() -> std::io::Result<()> {
 
     let http_server = HttpServer::new(move || {
         let ctx = RequestContext::new(pool.clone());
-        let cors = Cors::new()
-            // .allowed_origin("http://localhost:3000")
-            // .allowed_methods(vec!["GET", "POST"])
-            // .allowed_headers(vec![header::AUTHORIZATION, header::ACCEPT])
-            // .allowed_header(header::CONTENT_TYPE)
-            .supports_credentials()
-            // .max_age(3600)
-            .finish();
         let auth = HttpAuthentication::basic(validator);
         App::new()
             .wrap(auth)
-            .wrap(cors)
             .data(st.clone())
             .data(ctx)
             .service(

@@ -1,90 +1,76 @@
 import React from 'react';
-import './App.css';
-import {
-  BrowserRouter as Router,
-  Switch,
-  Route,
-  Link
-} from 'react-router-dom';
+import { BrowserRouter as Router, Switch, Route } from 'react-router-dom';
 import GraphiQL from 'graphiql';
 
 import 'graphiql/graphiql.min.css';
+import ResponsiveDrawer, { drawerWidth } from './ResponsiveDrawer';
+import AlbumsComponent from './AlbumsComponent';
+import AlbumComponent from './AlbumComponent';
+import ArtistsComponent from './ArtistsComponent';
+import ArtistComponent from './ArtistComponent';
+import GenresComponent from './GenresComponent';
+import PlaylistsComponent from './PlaylistsComponent';
+import GenreComponent from './GenreComponent';
+import PlaylistComponent from './PlaylistComponent';
+import TracksComponent from './TracksComponent';
+import {
+  createMuiTheme,
+  createStyles,
+  Theme,
+  ThemeProvider,
+  WithStyles,
+  withStyles,
+} from '@material-ui/core/styles';
+import TrackComponent from './TrackComponent';
+import { RootComponent } from './RootComponent';
+import { UploadComponent } from './UploadComponent';
 
-type AppState = {
-  username: string,
-  password: string,
-  responseText: string,
-}
+const theme = createMuiTheme({
+  palette: {
+    type:
+      window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')
+        ? 'dark'
+        : 'light',
+  },
+});
 
-class App extends React.Component<{}, AppState> {
-
-  constructor(props: {}) {
-    super(props);
-    this.state = {
-      username: '',
-      password: '',
-      responseText: '',
-    };
-  }
-
-  handleUsernameChange = (event: any) => {
-    this.setState({username: event.target.value});
-  }
-
-  handlePasswordChange = (event: any) => {
-    this.setState({password: event.target.value});
-  }
-
-  handleFiles = async (event: any) => {
-    const formData = new FormData();
-    for (const file of event.target.files) {
-      formData.append("file", file);
-    }
-    const responseText = await fetch('https://localhost:8443/api/tracks', {
-      method: 'post',
-      headers: {
-        'Authorization': `Basic ${btoa(this.state.username + ':' + this.state.password)}`,
+const styles = (theme: Theme) =>
+  createStyles({
+    graphiql: {
+      boxSizing: 'unset',
+      position: 'absolute',
+      top: theme.mixins.toolbar.minHeight,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      [theme.breakpoints.up('sm')]: {
+        top: (theme.mixins.toolbar[theme.breakpoints.up('sm')] as any)
+          .minHeight,
+        left: drawerWidth,
       },
-      body: formData
-    }).then(response => response.text());
-    this.setState({responseText});
-  }
+    },
+  });
 
+type AppProps = {} & WithStyles<typeof styles, true>;
+
+type AppState = {};
+
+class App extends React.Component<AppProps, AppState> {
   graphQLFetcher = (graphQLParams: any) => {
-    return fetch('https://localhost:8443/api/graphql', {
+    return fetch('/api/graphql', {
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Basic ${btoa(this.state.username + ':' + this.state.password)}`
       },
-      body: JSON.stringify(graphQLParams)
-    }).then(response => response.json());
-  }
+      body: JSON.stringify(graphQLParams),
+    }).then((response) => response.json());
+  };
 
   render() {
     return (
-      <Router>
-        <div className="App">
-          <div className="App-header">
-            <ul>
-              <li>
-                <Link to="/">Home</Link>
-              </li>
-              <li>
-                <Link to="/graphiql">graphiql</Link>
-              </li>
-              <li>
-                <Link to="/upload">upload</Link>
-              </li>
-            </ul>
-            <label>USERNAME=
-              <input type="text" value={this.state.username} onChange={this.handleUsernameChange}></input>
-            </label>
-            <label>PASSWORD=
-              <input type="password" value={this.state.password} onChange={this.handlePasswordChange}></input>
-            </label>
-          </div>
-          <div className="App-content">
+      <ThemeProvider theme={theme}>
+        <Router>
+          <ResponsiveDrawer>
             {/*
               A <Switch> looks through all its children <Route>
               elements and renders the first one whose path
@@ -94,30 +80,92 @@ class App extends React.Component<{}, AppState> {
             */}
             <Switch>
               <Route exact path="/">
-                <Home />
+                <RootComponent />
+              </Route>
+              <Route exact path="/albums">
+                <AlbumsComponent
+                  fetcher={this.graphQLFetcher}
+                ></AlbumsComponent>
+              </Route>
+              <Route
+                path="/albums/:id"
+                render={(props) => (
+                  <AlbumComponent
+                    {...props}
+                    fetcher={this.graphQLFetcher}
+                  ></AlbumComponent>
+                )}
+              />
+              <Route exact path="/artists">
+                <ArtistsComponent
+                  fetcher={this.graphQLFetcher}
+                ></ArtistsComponent>
+              </Route>
+              <Route
+                path="/artists/:id"
+                render={(props) => (
+                  <ArtistComponent
+                    {...props}
+                    fetcher={this.graphQLFetcher}
+                  ></ArtistComponent>
+                )}
+              />
+              <Route exact path="/genres">
+                <GenresComponent
+                  fetcher={this.graphQLFetcher}
+                ></GenresComponent>
+              </Route>
+              <Route
+                path="/genres/:id"
+                render={(props) => (
+                  <GenreComponent
+                    {...props}
+                    fetcher={this.graphQLFetcher}
+                  ></GenreComponent>
+                )}
+              />
+              <Route exact path="/playlists">
+                <PlaylistsComponent
+                  fetcher={this.graphQLFetcher}
+                ></PlaylistsComponent>
+              </Route>
+              <Route
+                path="/genres/:id"
+                render={(props) => (
+                  <PlaylistComponent
+                    {...props}
+                    fetcher={this.graphQLFetcher}
+                  ></PlaylistComponent>
+                )}
+              />
+              <Route exact path="/tracks">
+                <TracksComponent
+                  fetcher={this.graphQLFetcher}
+                ></TracksComponent>
+              </Route>
+              <Route
+                path="/tracks/:id"
+                render={(props) => (
+                  <TrackComponent
+                    {...props}
+                    fetcher={this.graphQLFetcher}
+                  ></TrackComponent>
+                )}
+              />
+              <Route path="/upload">
+                <UploadComponent />
               </Route>
               <Route path="/graphiql">
-                <GraphiQL fetcher={this.graphQLFetcher} />
-              </Route>
-              <Route path="/upload">
-                <input type="file" onChange={this.handleFiles} multiple></input>
-                <textarea value={this.state.responseText} readOnly></textarea>
+                <div className={this.props.classes.graphiql}>
+                  <GraphiQL fetcher={this.graphQLFetcher} />
+                </div>
               </Route>
             </Switch>
-          </div>
-        </div>
-      </Router>
+          </ResponsiveDrawer>
+        </Router>
+      </ThemeProvider>
     );
   }
-
 }
 
-function Home() {
-  return(
-    <div>
-      <h2>Home</h2>
-    </div>
-  );
-}
-
-export default App;
+export default withStyles(styles, { withTheme: true })(App);

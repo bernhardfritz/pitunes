@@ -62,10 +62,8 @@ table! {
 }
 
 table! {
-    users (id) {
-        id -> Integer,
-        created_at -> Timestamp,
-        username -> Text,
+    users (email) {
+        email -> Text,
         password -> Nullable<Text>,
     }
 }
