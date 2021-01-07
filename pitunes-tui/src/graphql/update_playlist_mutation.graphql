@@ -1,6 +1,0 @@
-mutation UpdatePlaylistMutation($id: ID!, $input: PlaylistInput!) {
-  updatePlaylist(id: $id, input: $input) {
-    id
-    name
-  }
-}

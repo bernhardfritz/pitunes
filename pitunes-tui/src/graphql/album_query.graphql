@@ -1,6 +1,0 @@
-query AlbumQuery($id: ID!) {
-  album(id: $id) {
-    id
-    name
-  }
-}

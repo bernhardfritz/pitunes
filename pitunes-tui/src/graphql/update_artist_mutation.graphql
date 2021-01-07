@@ -1,6 +1,0 @@
-mutation UpdateArtistMutation($id: ID!, $input: ArtistInput!) {
-  updateArtist(id: $id, input: $input) {
-    id
-    name
-  }
-}

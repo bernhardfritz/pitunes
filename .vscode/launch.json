@@ -41,42 +41,5 @@
             "args": [],
             "cwd": "${workspaceFolder}/pitunes-server"
         },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'pitunes-tui'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=pitunes-tui",
-                    "--package=pitunes-tui"
-                ],
-                "filter": {
-                    "name": "pitunes-tui",
-                    "kind": "bin"
-                }
-            },
-            "args": ["https://localhost:8080"],
-            "cwd": "${workspaceFolder}/pitunes-tui"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug unit tests in executable 'pitunes-tui'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=pitunes-tui",
-                    "--package=pitunes-tui"
-                ],
-                "filter": {
-                    "name": "pitunes-tui",
-                    "kind": "bin"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}/pitunes-tui"
-        }
     ]
 }
