@@ -3,9 +3,12 @@ import React from 'react';
 import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Artist } from './models';
-import { AppContext } from './ResponsiveDrawer';
+import { AppAction, AppActionType } from './App';
 
-type ArtistsComponentProps = { fetcher: Fetcher };
+type ArtistsComponentProps = {
+  dispatch: React.Dispatch<AppAction>;
+  fetcher: Fetcher;
+};
 
 type ArtistsComponentState = { artists: Artist[] };
 
@@ -21,7 +24,7 @@ export default class ArtistsComponent extends React.Component<
   }
 
   componentDidMount() {
-    this.context.setTitle('Artists');
+    this.props.dispatch({ type: AppActionType.UPDATE_TITLE, title: 'Artists' });
     this.props
       .fetcher({
         query: `query ArtistsQuery {
@@ -55,5 +58,3 @@ export default class ArtistsComponent extends React.Component<
     );
   }
 }
-
-ArtistsComponent.contextType = AppContext;

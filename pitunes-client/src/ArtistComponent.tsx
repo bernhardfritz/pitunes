@@ -11,7 +11,8 @@ import { RouteComponentProps } from 'react-router-dom';
 import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Album, Track } from './models';
-import { AppContext } from './ResponsiveDrawer';
+import { AppAction, AppActionType } from './App';
+import { rotateRight } from './rotateRight';
 
 const styles = (theme: Theme) =>
   createStyles({
@@ -21,7 +22,10 @@ const styles = (theme: Theme) =>
     },
   });
 
-type ArtistComponentProps = { fetcher: Fetcher } & RouteComponentProps<{
+type ArtistComponentProps = {
+  dispatch: React.Dispatch<AppAction>;
+  fetcher: Fetcher;
+} & RouteComponentProps<{
   id: string;
 }> &
   WithStyles<typeof styles, true>;
@@ -78,7 +82,10 @@ class ArtistComponent extends React.Component<
       })
       .then((res) => {
         const { artist } = res.data;
-        this.context.setTitle(artist.name);
+        this.props.dispatch({
+          type: AppActionType.UPDATE_TITLE,
+          title: artist.name,
+        });
         this.setState({
           albums: artist.albums,
           tracks: artist.tracks,
@@ -105,11 +112,17 @@ class ArtistComponent extends React.Component<
         <li>
           <ul className={this.props.classes.ul}>
             <ListSubheader>Tracks</ListSubheader>
-            {tracks.map((track) => (
+            {tracks.map((track, index) => (
               <ListItemLink
                 key={track.id}
                 to={`/tracks/${track.id}`}
                 primary={track.name}
+                onClick={(_) =>
+                  this.props.dispatch({
+                    type: AppActionType.UPDATE_QUEUE,
+                    queue: rotateRight([...tracks], index),
+                  })
+                }
               ></ListItemLink>
             ))}
           </ul>
@@ -118,7 +131,5 @@ class ArtistComponent extends React.Component<
     );
   }
 }
-
-ArtistComponent.contextType = AppContext;
 
 export default withStyles(styles, { withTheme: true })(ArtistComponent);

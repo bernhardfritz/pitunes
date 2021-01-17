@@ -1,6 +1,5 @@
 import React from 'react';
 import AppBar from '@material-ui/core/AppBar';
-import CssBaseline from '@material-ui/core/CssBaseline';
 import Divider from '@material-ui/core/Divider';
 import Drawer from '@material-ui/core/Drawer';
 import Hidden from '@material-ui/core/Hidden';
@@ -26,7 +25,6 @@ import ListItemLink from './ListItemLink';
 import './ResponsiveDrawer.css';
 import { Link } from 'react-router-dom';
 import { Slide, useScrollTrigger } from '@material-ui/core';
-import { Track } from './models';
 
 function HideOnScroll(props: any) {
   const { children } = props;
@@ -84,22 +82,14 @@ const styles = (theme: Theme) =>
     },
   });
 
-type ResponsiveDrawerProps = {} & WithStyles<typeof styles, true>;
+type ResponsiveDrawerProps = { title: string } & WithStyles<
+  typeof styles,
+  true
+>;
 
 type ResponsiveDrawerState = {
   mobileOpen: boolean;
-  title: string;
-  setTitle: (title: string) => void;
-  track?: Track;
-  setTrack: (track: Track) => void;
 };
-
-export const AppContext = React.createContext({
-  mobileOpen: false,
-  title: '',
-  setTitle: (title: string) => {},
-  setTrack: (track: Track) => {},
-});
 
 class ResponsiveDrawer extends React.Component<
   ResponsiveDrawerProps,
@@ -109,19 +99,8 @@ class ResponsiveDrawer extends React.Component<
     super(props);
     this.state = {
       mobileOpen: false,
-      title: '',
-      setTitle: this.setTitle,
-      setTrack: this.setTrack,
     };
   }
-
-  readonly setTitle = (title: string) => {
-    this.setState({ title });
-  };
-
-  readonly setTrack = (track: Track) => {
-    this.setState({ track });
-  };
 
   readonly handleDrawerToggle = () => {
     this.setState((state) => ({ mobileOpen: !state.mobileOpen }));
@@ -200,7 +179,6 @@ class ResponsiveDrawer extends React.Component<
   render() {
     return (
       <div className={this.props.classes.root}>
-        <CssBaseline />
         <HideOnScroll>
           <AppBar position="fixed" className={this.props.classes.appBar}>
             <Toolbar>
@@ -214,7 +192,7 @@ class ResponsiveDrawer extends React.Component<
                 <MenuIcon />
               </IconButton>
               <Typography variant="h6" noWrap>
-                {this.state.title}
+                {this.props.title}
               </Typography>
             </Toolbar>
           </AppBar>
@@ -252,19 +230,7 @@ class ResponsiveDrawer extends React.Component<
         </nav>
         <main className={this.props.classes.content}>
           <div className={this.props.classes.toolbar} />
-          <AppContext.Provider value={this.state}>
-            {this.props.children}
-          </AppContext.Provider>
-          <audio
-            src={
-              this.state.track !== undefined
-                ? `/api/tracks/${this.state.track?.id}.mp3`
-                : undefined
-            }
-            className={this.props.classes.audio}
-            controls
-            autoPlay
-          />
+          {this.props.children}
         </main>
       </div>
     );

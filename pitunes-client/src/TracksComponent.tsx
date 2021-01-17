@@ -3,9 +3,13 @@ import React from 'react';
 import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Track } from './models';
-import { AppContext } from './ResponsiveDrawer';
+import { AppAction, AppActionType } from './App';
+import { rotateRight } from './rotateRight';
 
-type TracksComponentProps = { fetcher: Fetcher };
+type TracksComponentProps = {
+  dispatch: React.Dispatch<AppAction>;
+  fetcher: Fetcher;
+};
 
 type TracksComponentState = { tracks: Track[] };
 
@@ -21,7 +25,7 @@ export default class TracksComponent extends React.Component<
   }
 
   componentDidMount() {
-    this.context.setTitle('Tracks');
+    this.props.dispatch({ type: AppActionType.UPDATE_TITLE, title: 'Tracks' });
     this.props
       .fetcher({
         query: `query TracksQuery {
@@ -57,16 +61,20 @@ export default class TracksComponent extends React.Component<
     const { tracks } = this.state;
     return (
       <List>
-        {tracks.map((track) => (
+        {tracks.map((track, index) => (
           <ListItemLink
             key={track.id}
             to={`/tracks/${track.id}`}
             primary={track.name}
+            onClick={(_) =>
+              this.props.dispatch({
+                type: AppActionType.UPDATE_QUEUE,
+                queue: rotateRight([...tracks], index),
+              })
+            }
           ></ListItemLink>
         ))}
       </List>
     );
   }
 }
-
-TracksComponent.contextType = AppContext;

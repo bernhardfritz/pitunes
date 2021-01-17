@@ -3,9 +3,12 @@ import React from 'react';
 import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Genre } from './models';
-import { AppContext } from './ResponsiveDrawer';
+import { AppAction, AppActionType } from './App';
 
-type GenresComponentProps = { fetcher: Fetcher };
+type GenresComponentProps = {
+  dispatch: React.Dispatch<AppAction>;
+  fetcher: Fetcher;
+};
 
 type GenresComponentState = { genres: Genre[] };
 
@@ -21,7 +24,7 @@ export default class GenresComponent extends React.Component<
   }
 
   componentDidMount() {
-    this.context.setTitle('Genres');
+    this.props.dispatch({ type: AppActionType.UPDATE_TITLE, title: 'Genres' });
     this.props
       .fetcher({
         query: `query GenresQuery {
@@ -55,5 +58,3 @@ export default class GenresComponent extends React.Component<
     );
   }
 }
-
-GenresComponent.contextType = AppContext;

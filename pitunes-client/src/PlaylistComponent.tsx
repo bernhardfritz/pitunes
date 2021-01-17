@@ -1,12 +1,16 @@
 import { List } from '@material-ui/core';
 import React from 'react';
 import { RouteComponentProps } from 'react-router-dom';
+import { AppAction, AppActionType } from './App';
 import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Track } from './models';
-import { AppContext } from './ResponsiveDrawer';
+import { rotateRight } from './rotateRight';
 
-type PlaylistComponentProps = { fetcher: Fetcher } & RouteComponentProps<{
+type PlaylistComponentProps = {
+  dispatch: React.Dispatch<AppAction>;
+  fetcher: Fetcher;
+} & RouteComponentProps<{
   id: string;
 }>;
 
@@ -57,7 +61,10 @@ export default class PlaylistComponent extends React.Component<
       })
       .then((res) => {
         const { playlist } = res.data;
-        this.context.setTitle(playlist.name);
+        this.props.dispatch({
+          type: AppActionType.UPDATE_TITLE,
+          title: playlist.name,
+        });
         this.setState({
           tracks: playlist.tracks,
         });
@@ -68,16 +75,20 @@ export default class PlaylistComponent extends React.Component<
     const { tracks } = this.state;
     return (
       <List>
-        {tracks.map((track) => (
+        {tracks.map((track, index) => (
           <ListItemLink
             key={track.id}
             to={`/tracks/${track.id}`}
             primary={track.name}
+            onClick={(_) =>
+              this.props.dispatch({
+                type: AppActionType.UPDATE_QUEUE,
+                queue: rotateRight([...tracks], index),
+              })
+            }
           ></ListItemLink>
         ))}
       </List>
     );
   }
 }
-
-PlaylistComponent.contextType = AppContext;

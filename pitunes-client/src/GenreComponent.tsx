@@ -4,9 +4,13 @@ import { RouteComponentProps } from 'react-router-dom';
 import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Track } from './models';
-import { AppContext } from './ResponsiveDrawer';
+import { AppAction, AppActionType } from './App';
+import { rotateRight } from './rotateRight';
 
-type GenreComponentProps = { fetcher: Fetcher } & RouteComponentProps<{
+type GenreComponentProps = {
+  dispatch: React.Dispatch<AppAction>;
+  fetcher: Fetcher;
+} & RouteComponentProps<{
   id: string;
 }>;
 
@@ -57,7 +61,10 @@ export default class GenreComponent extends React.Component<
       })
       .then((res) => {
         const { genre } = res.data;
-        this.context.setTitle(genre.name);
+        this.props.dispatch({
+          type: AppActionType.UPDATE_TITLE,
+          title: genre.name,
+        });
         this.setState({
           tracks: genre.tracks,
         });
@@ -68,16 +75,20 @@ export default class GenreComponent extends React.Component<
     const { tracks } = this.state;
     return (
       <List>
-        {tracks.map((track) => (
+        {tracks.map((track, index) => (
           <ListItemLink
             key={track.id}
             to={`/tracks/${track.id}`}
             primary={track.name}
+            onClick={(_) =>
+              this.props.dispatch({
+                type: AppActionType.UPDATE_QUEUE,
+                queue: rotateRight([...tracks], index),
+              })
+            }
           ></ListItemLink>
         ))}
       </List>
     );
   }
 }
-
-GenreComponent.contextType = AppContext;

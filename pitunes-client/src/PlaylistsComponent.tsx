@@ -3,9 +3,12 @@ import React from 'react';
 import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Playlist } from './models';
-import { AppContext } from './ResponsiveDrawer';
+import { AppAction, AppActionType } from './App';
 
-type PlaylistsComponentProps = { fetcher: Fetcher };
+type PlaylistsComponentProps = {
+  dispatch: React.Dispatch<AppAction>;
+  fetcher: Fetcher;
+};
 
 type PlaylistsComponentState = { playlists: Playlist[] };
 
@@ -21,7 +24,10 @@ export default class PlaylistsComponent extends React.Component<
   }
 
   componentDidMount() {
-    this.context.setTitle('Playlists');
+    this.props.dispatch({
+      type: AppActionType.UPDATE_TITLE,
+      title: 'Playlists',
+    });
     this.props
       .fetcher({
         query: `query PlaylistsQuery {
@@ -54,5 +60,3 @@ export default class PlaylistsComponent extends React.Component<
     );
   }
 }
-
-PlaylistsComponent.contextType = AppContext;

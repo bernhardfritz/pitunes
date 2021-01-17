@@ -1,12 +1,16 @@
 import React from 'react';
 import { RouteComponentProps } from 'react-router-dom';
+import { AppAction, AppActionType } from './App';
 import { Fetcher } from './fetcher';
 import { Track } from './models';
-import { AppContext } from './ResponsiveDrawer';
 
-type TrackComponentProps = { fetcher: Fetcher } & RouteComponentProps<{
+type TrackComponentProps = {
+  dispatch: React.Dispatch<AppAction>;
+  fetcher: Fetcher;
+} & RouteComponentProps<{
   id: string;
 }>;
+
 type TrackComponentState = { track?: Track };
 
 export default class TrackComponent extends React.Component<
@@ -15,7 +19,7 @@ export default class TrackComponent extends React.Component<
 > {
   constructor(props: TrackComponentProps) {
     super(props);
-    this.setState({});
+    this.state = {};
   }
 
   componentDidMount() {
@@ -48,15 +52,15 @@ export default class TrackComponent extends React.Component<
       })
       .then((res) => {
         const { track } = res.data;
-        this.context.setTitle(track.name);
-        this.context.setTrack(track);
+        this.props.dispatch({
+          type: AppActionType.UPDATE_TITLE,
+          title: track.name,
+        });
         this.setState({ track });
       });
   }
 
   render() {
-    return <div></div>;
+    return null; // TODO
   }
 }
-
-TrackComponent.contextType = AppContext;

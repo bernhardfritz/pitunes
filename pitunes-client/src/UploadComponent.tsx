@@ -1,11 +1,11 @@
 import React from 'react';
-import { AppContext } from './ResponsiveDrawer';
+import { AppAction, AppActionType } from './App';
+
+type UploadComponentProps = { dispatch: React.Dispatch<AppAction> };
 
 type UploadComponentState = { responseText: string };
 
-type UploadComponentProps = {};
-
-export class UploadComponent extends React.Component<
+export default class UploadComponent extends React.Component<
   UploadComponentProps,
   UploadComponentState
 > {
@@ -17,7 +17,7 @@ export class UploadComponent extends React.Component<
   }
 
   componentDidMount() {
-    this.context.setTitle('Upload');
+    this.props.dispatch({ type: AppActionType.UPDATE_TITLE, title: 'Upload' });
   }
 
   handleUpload = async (event: any) => {
@@ -41,5 +41,3 @@ export class UploadComponent extends React.Component<
     );
   }
 }
-
-UploadComponent.contextType = AppContext;

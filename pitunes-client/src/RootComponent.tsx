@@ -1,18 +1,24 @@
-import React from "react";
-import { AppContext } from "./ResponsiveDrawer";
+import React from 'react';
+import { AppAction, AppActionType } from './App';
 
-export class RootComponent extends React.Component {
+type RootComponentProps = { dispatch: React.Dispatch<AppAction> };
 
-    componentDidMount() {
-        this.context.setTitle('piTunes');
-    }
-    
-    render() {
-        return (
-            <div>{/* TODO */}</div>
-        );
-    }
+type RootComponentState = {};
 
+export default class RootComponent extends React.Component<
+  RootComponentProps,
+  RootComponentState
+> {
+  constructor(props: RootComponentProps) {
+    super(props);
+    this.state = {};
+  }
+
+  componentDidMount() {
+    this.props.dispatch({ type: AppActionType.UPDATE_TITLE, title: 'piTunes' });
+  }
+
+  render() {
+    return null; // TODO
+  }
 }
-
-RootComponent.contextType = AppContext;

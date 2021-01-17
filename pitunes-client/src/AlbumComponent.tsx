@@ -4,9 +4,13 @@ import { RouteComponentProps } from 'react-router-dom';
 import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Track } from './models';
-import { AppContext } from './ResponsiveDrawer';
+import { AppAction, AppActionType } from './App';
+import { rotateRight } from './rotateRight';
 
-type AlbumComponentProps = { fetcher: Fetcher } & RouteComponentProps<{
+type AlbumComponentProps = {
+  dispatch: React.Dispatch<AppAction>;
+  fetcher: Fetcher;
+} & RouteComponentProps<{
   id: string;
 }>;
 
@@ -57,7 +61,10 @@ export default class AlbumComponent extends React.Component<
       })
       .then((res) => {
         const { album } = res.data;
-        this.context.setTitle(album.name);
+        this.props.dispatch({
+          type: AppActionType.UPDATE_TITLE,
+          title: album.name,
+        });
         this.setState({
           tracks: album.tracks,
         });
@@ -68,16 +75,20 @@ export default class AlbumComponent extends React.Component<
     const { tracks } = this.state;
     return (
       <List>
-        {tracks.map((track) => (
+        {tracks.map((track, index) => (
           <ListItemLink
             key={track.id}
             to={`/tracks/${track.id}`}
             primary={track.name}
+            onClick={(_) =>
+              this.props.dispatch({
+                type: AppActionType.UPDATE_QUEUE,
+                queue: rotateRight([...tracks], index),
+              })
+            }
           ></ListItemLink>
         ))}
       </List>
     );
   }
 }
-
-AlbumComponent.contextType = AppContext;
