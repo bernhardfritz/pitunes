@@ -1,9 +1,8 @@
-import { List } from '@material-ui/core';
+import { List, ListItem, ListItemText } from '@material-ui/core';
 import React from 'react';
 import { RouteComponentProps } from 'react-router-dom';
 import { AppAction, AppActionType } from './App';
 import { Fetcher } from './fetcher';
-import ListItemLink from './ListItemLink';
 import { Track } from './models';
 import { rotateRight } from './rotateRight';
 
@@ -76,17 +75,18 @@ export default class PlaylistComponent extends React.Component<
     return (
       <List>
         {tracks.map((track, index) => (
-          <ListItemLink
+          <ListItem
+            button
             key={track.id}
-            to={`/tracks/${track.id}`}
-            primary={track.name}
             onClick={(_) =>
               this.props.dispatch({
                 type: AppActionType.UPDATE_QUEUE,
                 queue: rotateRight([...tracks], index),
               })
             }
-          ></ListItemLink>
+          >
+            <ListItemText primary={track.name} />
+          </ListItem>
         ))}
       </List>
     );

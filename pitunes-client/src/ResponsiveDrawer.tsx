@@ -23,14 +23,29 @@ import {
 } from '@material-ui/core/styles';
 import ListItemLink from './ListItemLink';
 import './ResponsiveDrawer.css';
-import { Link } from 'react-router-dom';
-import { Slide, useScrollTrigger } from '@material-ui/core';
+import { Link, RouteComponentProps, withRouter } from 'react-router-dom';
+import { Collapse, Slide, Tab, Tabs, useScrollTrigger } from '@material-ui/core';
 
-function HideOnScroll(props: any) {
-  const { children } = props;
+function CollapseOnScroll(props: any) {
+  const { children, passthrough } = props;
   const trigger = useScrollTrigger();
 
-  return (
+  return passthrough ? (
+    children
+  ) : (
+    <Collapse in={!trigger}>
+      {children}
+    </Collapse>
+  );
+}
+
+function SlideOnScroll(props: any) {
+  const { children, passthrough } = props;
+  const trigger = useScrollTrigger();
+
+  return passthrough ? (
+    children
+  ) : (
     <Slide appear={false} direction="down" in={!trigger}>
       {children}
     </Slide>
@@ -64,6 +79,9 @@ const styles = (theme: Theme) =>
     },
     // necessary for content to be below app bar
     toolbar: theme.mixins.toolbar,
+    tabs: {
+      minHeight: 48,
+    },
     drawerPaper: {
       width: drawerWidth,
     },
@@ -82,7 +100,7 @@ const styles = (theme: Theme) =>
     },
   });
 
-type ResponsiveDrawerProps = { title: string } & WithStyles<
+type ResponsiveDrawerProps = { title: string } & RouteComponentProps & WithStyles<
   typeof styles,
   true
 >;
@@ -95,6 +113,22 @@ class ResponsiveDrawer extends React.Component<
   ResponsiveDrawerProps,
   ResponsiveDrawerState
 > {
+
+  readonly tabs = [
+    {
+      label: "Playlists",
+      value: "/playlists",
+    },
+    {
+      label: "Artists",
+      value: "/artists",
+    },
+    {
+      label: "Albums",
+      value: "/albums",
+    }
+  ];
+
   constructor(props: ResponsiveDrawerProps) {
     super(props);
     this.state = {
@@ -109,6 +143,10 @@ class ResponsiveDrawer extends React.Component<
   readonly handleClick = () => {
     this.setState({ mobileOpen: false });
   };
+
+  readonly handleTabChange = (event: React.ChangeEvent<{}>, newValue: string) => {
+    this.props.history.push(newValue);
+  }
 
   readonly drawer = (
     <div>
@@ -177,26 +215,39 @@ class ResponsiveDrawer extends React.Component<
   readonly container = window !== undefined ? window.document.body : undefined;
 
   render() {
+    const index = this.props.location.pathname.indexOf('/', 1);
+    let selectedTab: string | boolean = index > -1 ? this.props.location.pathname.substring(0, index) : this.props.location.pathname;
+    const renderTabs = selectedTab !== '/upload' && selectedTab !== '/graphiql';
+    if (!this.tabs.some(tab => tab.value === selectedTab)) {
+      selectedTab = false;
+    }
     return (
       <div className={this.props.classes.root}>
-        <HideOnScroll>
+        <SlideOnScroll passthrough={renderTabs}>
           <AppBar position="fixed" className={this.props.classes.appBar}>
-            <Toolbar>
-              <IconButton
-                color="inherit"
-                aria-label="open drawer"
-                edge="start"
-                onClick={this.handleDrawerToggle}
-                className={this.props.classes.menuButton}
-              >
-                <MenuIcon />
-              </IconButton>
-              <Typography variant="h6" noWrap>
-                {this.props.title}
-              </Typography>
-            </Toolbar>
+            <CollapseOnScroll passthrough={!renderTabs}>
+              <Toolbar>
+                <IconButton
+                  color="inherit"
+                  aria-label="open drawer"
+                  edge="start"
+                  onClick={this.handleDrawerToggle}
+                  className={this.props.classes.menuButton}
+                >
+                  <MenuIcon />
+                </IconButton>
+                <Typography variant="h6" noWrap>
+                  {this.props.title}
+                </Typography>
+              </Toolbar>
+            </CollapseOnScroll>
+            {renderTabs && (
+              <Tabs value={selectedTab} onChange={this.handleTabChange} indicatorColor="secondary" textColor="secondary" variant="fullWidth">
+                { this.tabs.map((tab, index) => <Tab key={index} label={tab.label} value={tab.value} />) }
+              </Tabs>
+            )}
           </AppBar>
-        </HideOnScroll>
+        </SlideOnScroll>
         <nav className={this.props.classes.drawer} aria-label="mailbox folders">
           {/* The implementation can be swapped with js to avoid SEO duplication of links. */}
           <Hidden smUp implementation="css">
@@ -230,6 +281,7 @@ class ResponsiveDrawer extends React.Component<
         </nav>
         <main className={this.props.classes.content}>
           <div className={this.props.classes.toolbar} />
+          {renderTabs && (<div className={this.props.classes.tabs} />)}
           {this.props.children}
         </main>
       </div>
@@ -237,4 +289,4 @@ class ResponsiveDrawer extends React.Component<
   }
 }
 
-export default withStyles(styles, { withTheme: true })(ResponsiveDrawer);
+export default withStyles(styles, { withTheme: true })(withRouter(ResponsiveDrawer));

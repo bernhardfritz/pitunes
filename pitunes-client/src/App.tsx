@@ -10,7 +10,7 @@ import PlaylistsComponent from './PlaylistsComponent';
 import GenreComponent from './GenreComponent';
 import PlaylistComponent from './PlaylistComponent';
 import TracksComponent from './TracksComponent';
-import { createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
+import { unstable_createMuiStrictModeTheme as createMuiTheme, ThemeProvider } from '@material-ui/core/styles';
 import TrackComponent from './TrackComponent';
 import RootComponent from './RootComponent';
 import UploadComponent from './UploadComponent';
@@ -178,7 +178,7 @@ export default function App() {
                 fetcher={graphQLFetcher}
               ></TracksComponent>
             </Route>
-            <Route
+            {/* <Route
               path="/tracks/:id"
               render={(props) => (
                 <TrackComponent
@@ -187,7 +187,7 @@ export default function App() {
                   fetcher={graphQLFetcher}
                 ></TrackComponent>
               )}
-            />
+            /> */}
             <Route path="/upload">
               <UploadComponent dispatch={dispatch} />
             </Route>

@@ -6,7 +6,7 @@ import {
 } from '@material-ui/core/styles';
 import React from 'react';
 import grey from '@material-ui/core/colors/grey';
-import { AppBar, IconButton, Slide, Slider, Toolbar } from '@material-ui/core';
+import { AppBar, Dialog, IconButton, Link, Slide, Slider, Toolbar } from '@material-ui/core';
 import AlbumIcon from '@material-ui/icons/Album';
 import SkipPreviousIcon from '@material-ui/icons/SkipPrevious';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
@@ -19,9 +19,15 @@ import ShuffleIcon from '@material-ui/icons/Shuffle';
 import RepeatIcon from '@material-ui/icons/Repeat';
 import RepeatOneIcon from '@material-ui/icons/RepeatOne';
 import { Track } from './models';
-import Dialog from '@material-ui/core/Dialog';
 import { TransitionProps } from '@material-ui/core/transitions';
 import { AppAction, AppActionType } from './App';
+import {
+  Link as RouterLink,
+  LinkProps as RouterLinkProps,
+  Route,
+  withRouter,
+  RouteComponentProps,
+} from 'react-router-dom';
 
 const styles = (theme: Theme) =>
   createStyles({
@@ -80,10 +86,9 @@ type PlayerComponentProps = {
   dispatch: React.Dispatch<AppAction>;
   track?: Track;
   queueUpdatedAt: number;
-} & WithStyles<typeof styles, true>;
+} & RouteComponentProps & WithStyles<typeof styles, true>;
 
 type PlayerComponentState = {
-  open: boolean;
   paused: boolean;
   currentTime: number;
 };
@@ -96,7 +101,6 @@ class PlayerComponent extends React.Component<
   constructor(props: PlayerComponentProps) {
     super(props);
     this.state = {
-      open: false,
       paused: true,
       currentTime: 0.0,
     };
@@ -113,7 +117,7 @@ class PlayerComponent extends React.Component<
     }
   }
 
-  readonly handleClick = (event: any) => {
+  readonly handlePauseClick = (event: any) => {
     const audio = this.audio.current;
     if (audio === null) {
       return;
@@ -124,10 +128,6 @@ class PlayerComponent extends React.Component<
       audio.pause();
     }
     event.stopPropagation();
-  };
-
-  readonly handleClose = () => {
-    this.setState({ open: false });
   };
 
   render() {
@@ -157,9 +157,7 @@ class PlayerComponent extends React.Component<
         <AppBar
           position="fixed"
           className={this.props.classes.appBar}
-          onClick={() =>
-            this.setState((prevState) => ({ open: !prevState.open }))
-          }
+          onClick={() => this.props.history.push(`/tracks/${this.props.track?.id}`)}
         >
           <Toolbar>
             <AlbumIcon className={this.props.classes.coverArtPreview} />
@@ -169,74 +167,76 @@ class PlayerComponent extends React.Component<
               </div>
               <div>{this.props.track?.artist?.name}</div>
             </div>
-            <IconButton edge="end" color="inherit" onClick={this.handleClick}>
+            <IconButton edge="end" color="inherit" onClick={this.handlePauseClick}>
               {this.state.paused ? <PlayArrowIcon /> : <PauseIcon />}
             </IconButton>
           </Toolbar>
         </AppBar>
-        <Dialog
-          fullScreen
-          open={this.state.open}
-          onClose={this.handleClose}
-          TransitionComponent={Transition}
-          className={this.props.classes.dialog}
-        >
-          <AppBar>
-            <Toolbar>
-              <IconButton
-                edge="start"
-                color="inherit"
-                onClick={this.handleClose}
-                aria-label="close"
-              >
-                <CloseIcon />
+        <Route path="/tracks/:id">
+          <Dialog
+            fullScreen
+            open={this.props.match != null}
+            onClose={this.props.history.goBack}
+            TransitionComponent={Transition}
+            className={this.props.classes.dialog}
+          >
+            <AppBar>
+              <Toolbar>
+                <IconButton
+                  edge="start"
+                  color="inherit"
+                  onClick={this.props.history.goBack}
+                  aria-label="close"
+                >
+                  <CloseIcon />
+                </IconButton>
+              </Toolbar>
+            </AppBar>
+            <div className={this.props.classes.toolbar} />
+            <AlbumIcon className={this.props.classes.coverArt} />
+            <Slider
+              value={this.state.currentTime}
+              max={this.audio.current?.duration}
+              onChange={(event, value) => {
+                const audio = this.audio.current;
+                if (audio === null) {
+                  return;
+                }
+                audio.currentTime = value as number;
+              }}
+            ></Slider>
+            <div className={this.props.classes.controls}>
+              <IconButton>
+                <ShuffleIcon />
               </IconButton>
-            </Toolbar>
-          </AppBar>
-          <div className={this.props.classes.toolbar} />
-          <AlbumIcon className={this.props.classes.coverArt} />
-          <Slider
-            value={this.state.currentTime}
-            max={this.audio.current?.duration}
-            onChange={(event, value) => {
-              const audio = this.audio.current;
-              if (audio === null) {
-                return;
-              }
-              audio.currentTime = value as number;
-            }}
-          ></Slider>
-          <div className={this.props.classes.controls}>
-            <IconButton>
-              <ShuffleIcon />
-            </IconButton>
-            <IconButton
-              onClick={() => this.props.dispatch({ type: AppActionType.PREV })}
-            >
-              <SkipPreviousIcon />
-            </IconButton>
-            <IconButton onClick={this.handleClick}>
-              {this.state.paused ? (
-                <PlayCircleFilledIcon className={this.props.classes.playIcon} />
-              ) : (
-                <PauseCircleFilledIcon
-                  className={this.props.classes.playIcon}
-                />
-              )}
-            </IconButton>
-            <IconButton
-              onClick={() => this.props.dispatch({ type: AppActionType.NEXT })}
-            >
-              <SkipNextIcon />
-            </IconButton>
-            <IconButton>
-              <RepeatIcon />
-            </IconButton>
-          </div>
-        </Dialog>
+              <IconButton
+                onClick={() => this.props.dispatch({ type: AppActionType.PREV })}
+              >
+                <SkipPreviousIcon />
+              </IconButton>
+              <IconButton onClick={this.handlePauseClick}>
+                {this.state.paused ? (
+                  <PlayCircleFilledIcon className={this.props.classes.playIcon} />
+                ) : (
+                  <PauseCircleFilledIcon
+                    className={this.props.classes.playIcon}
+                  />
+                )}
+              </IconButton>
+              <IconButton
+                onClick={() => this.props.dispatch({ type: AppActionType.NEXT })}
+              >
+                <SkipNextIcon />
+              </IconButton>
+              <IconButton>
+                <RepeatIcon />
+              </IconButton>
+            </div>
+          </Dialog>
+        </Route>
       </>
     );
   }
 }
 
-export default withStyles(styles, { withTheme: true })(PlayerComponent);
+export default withStyles(styles, { withTheme: true })(withRouter(PlayerComponent));

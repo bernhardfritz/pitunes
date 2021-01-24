@@ -1,6 +1,8 @@
 import {
   createStyles,
   List,
+  ListItem,
+  ListItemText,
   ListSubheader,
   Theme,
   WithStyles,
@@ -113,17 +115,18 @@ class ArtistComponent extends React.Component<
           <ul className={this.props.classes.ul}>
             <ListSubheader>Tracks</ListSubheader>
             {tracks.map((track, index) => (
-              <ListItemLink
+              <ListItem
+                button
                 key={track.id}
-                to={`/tracks/${track.id}`}
-                primary={track.name}
                 onClick={(_) =>
                   this.props.dispatch({
                     type: AppActionType.UPDATE_QUEUE,
                     queue: rotateRight([...tracks], index),
                   })
                 }
-              ></ListItemLink>
+              >
+                <ListItemText primary={track.name} />
+              </ListItem>
             ))}
           </ul>
         </li>
