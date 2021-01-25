@@ -5,6 +5,8 @@ import { AppAction, AppActionType } from './App';
 import { Fetcher } from './fetcher';
 import { Track } from './models';
 import { rotateRight } from './rotateRight';
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import PlaylistTracksQuery from '!!raw-loader!./graphql/PlaylistTracksQuery.graphql';
 
 type PlaylistComponentProps = {
   dispatch: React.Dispatch<AppAction>;
@@ -29,30 +31,7 @@ export default class PlaylistComponent extends React.Component<
   componentDidMount() {
     this.props
       .fetcher({
-        query: `query PlaylistTracksQuery($id: ID!) {
-  playlist(id: $id) {
-    id
-    name
-    tracks {
-      id
-      name
-      duration
-      album {
-        id
-        name
-      }
-      artist {
-        id
-        name
-      }
-      genre {
-        id
-        name
-      }
-      trackNumber
-    }
-  }
-}`,
+        query: PlaylistTracksQuery,
         operationName: 'PlaylistTracksQuery',
         variables: {
           id: this.props.match.params.id,

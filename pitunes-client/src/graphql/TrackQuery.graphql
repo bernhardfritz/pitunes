@@ -1,0 +1,20 @@
+query TrackQuery($id: ID!) {
+  track(id: $id) {
+    id
+    name
+    duration
+    album {
+      id
+      name
+    }
+    artist {
+      id
+      name
+    }
+    genre {
+      id
+      name
+    }
+    trackNumber
+  }
+}

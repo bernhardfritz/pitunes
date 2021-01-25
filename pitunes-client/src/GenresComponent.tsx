@@ -4,6 +4,8 @@ import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Genre } from './models';
 import { AppAction, AppActionType } from './App';
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import GenresQuery from '!!raw-loader!./graphql/GenresQuery.graphql';
 
 type GenresComponentProps = {
   dispatch: React.Dispatch<AppAction>;
@@ -27,13 +29,7 @@ export default class GenresComponent extends React.Component<
     this.props.dispatch({ type: AppActionType.UPDATE_TITLE, title: 'Genres' });
     this.props
       .fetcher({
-        query: `query GenresQuery {
-  genres {
-    id
-    name
-  }
-}
-`,
+        query: GenresQuery,
         operationName: 'GenresQuery',
       })
       .then((res) => {

@@ -4,6 +4,8 @@ import { Fetcher } from './fetcher';
 import { Track } from './models';
 import { AppAction, AppActionType } from './App';
 import { rotateRight } from './rotateRight';
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import TracksQuery from '!!raw-loader!./graphql/TracksQuery.graphql';
 
 type TracksComponentProps = {
   dispatch: React.Dispatch<AppAction>;
@@ -27,26 +29,7 @@ export default class TracksComponent extends React.Component<
     this.props.dispatch({ type: AppActionType.UPDATE_TITLE, title: 'Tracks' });
     this.props
       .fetcher({
-        query: `query TracksQuery {
-  tracks {
-    id
-    name
-    duration
-    album {
-      id
-      name
-    }
-    artist {
-      id
-      name
-    }
-    genre {
-      id
-      name
-    }
-    trackNumber
-  }
-}`,
+        query: TracksQuery,
         operationName: 'TracksQuery',
       })
       .then((res) => {

@@ -5,6 +5,8 @@ import { Fetcher } from './fetcher';
 import { Track } from './models';
 import { AppAction, AppActionType } from './App';
 import { rotateRight } from './rotateRight';
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import AlbumTracksQuery from '!!raw-loader!./graphql/AlbumTracksQuery.graphql';
 
 type AlbumComponentProps = {
   dispatch: React.Dispatch<AppAction>;
@@ -29,30 +31,7 @@ export default class AlbumComponent extends React.Component<
   componentDidMount() {
     this.props
       .fetcher({
-        query: `query AlbumTracksQuery($id: ID!) {
-  album(id: $id) {
-    id
-    name
-    tracks {
-      id
-      name
-      duration
-      album {
-        id
-        name
-      }
-      artist {
-        id
-        name
-      }
-      genre {
-        id
-        name
-      }
-      trackNumber
-    }
-  }
-}`,
+        query: AlbumTracksQuery,
         operationName: 'AlbumTracksQuery',
         variables: {
           id: this.props.match.params.id,

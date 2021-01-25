@@ -1,0 +1,6 @@
+query AlbumsQuery {
+  albums {
+    id
+    name
+  }
+}

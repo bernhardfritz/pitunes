@@ -4,6 +4,8 @@ import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Artist } from './models';
 import { AppAction, AppActionType } from './App';
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import ArtistsQuery from '!!raw-loader!./graphql/ArtistsQuery.graphql';
 
 type ArtistsComponentProps = {
   dispatch: React.Dispatch<AppAction>;
@@ -27,13 +29,7 @@ export default class ArtistsComponent extends React.Component<
     this.props.dispatch({ type: AppActionType.UPDATE_TITLE, title: 'Artists' });
     this.props
       .fetcher({
-        query: `query ArtistsQuery {
-  artists {
-    id
-    name
-  }
-}
-`,
+        query: ArtistsQuery,
         operationName: 'ArtistsQuery',
       })
       .then((res) => {

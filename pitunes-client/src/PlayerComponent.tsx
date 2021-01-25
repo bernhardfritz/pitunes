@@ -91,6 +91,7 @@ type PlayerComponentProps = {
 type PlayerComponentState = {
   paused: boolean;
   currentTime: number;
+  shouldClose: boolean;
 };
 
 class PlayerComponent extends React.Component<
@@ -103,6 +104,7 @@ class PlayerComponent extends React.Component<
     this.state = {
       paused: true,
       currentTime: 0.0,
+      shouldClose: false,
     };
     this.audio = React.createRef();
   }
@@ -172,11 +174,12 @@ class PlayerComponent extends React.Component<
             </IconButton>
           </Toolbar>
         </AppBar>
-        <Route path="/tracks/:id">
+        <Route path="/tracks/:id" render={(props) => (
           <Dialog
             fullScreen
-            open={this.props.match != null}
-            onClose={this.props.history.goBack}
+            open={!this.state.shouldClose && props.match != null}
+            onClose={() => this.setState({shouldClose: true})}
+            onExited={() => { this.props.history.goBack(); setTimeout(() => this.setState({shouldClose: false}), 0); }}
             TransitionComponent={Transition}
             className={this.props.classes.dialog}
           >
@@ -185,7 +188,7 @@ class PlayerComponent extends React.Component<
                 <IconButton
                   edge="start"
                   color="inherit"
-                  onClick={this.props.history.goBack}
+                  onClick={() => this.setState({shouldClose: true})}
                   aria-label="close"
                 >
                   <CloseIcon />
@@ -233,7 +236,7 @@ class PlayerComponent extends React.Component<
               </IconButton>
             </div>
           </Dialog>
-        </Route>
+          )} />
       </>
     );
   }

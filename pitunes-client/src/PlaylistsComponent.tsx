@@ -4,6 +4,8 @@ import { Fetcher } from './fetcher';
 import ListItemLink from './ListItemLink';
 import { Playlist } from './models';
 import { AppAction, AppActionType } from './App';
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import PlaylistsQuery from '!!raw-loader!./graphql/PlaylistsQuery.graphql';
 
 type PlaylistsComponentProps = {
   dispatch: React.Dispatch<AppAction>;
@@ -30,12 +32,7 @@ export default class PlaylistsComponent extends React.Component<
     });
     this.props
       .fetcher({
-        query: `query PlaylistsQuery {
-  playlists {
-    id
-    name
-  }
-}`,
+        query: PlaylistsQuery,
         operationName: 'PlaylistsQuery',
       })
       .then((res) => {

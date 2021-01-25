@@ -1,0 +1,20 @@
+query TracksQuery {
+  tracks {
+    id
+    name
+    duration
+    album {
+      id
+      name
+    }
+    artist {
+      id
+      name
+    }
+    genre {
+      id
+      name
+    }
+    trackNumber
+  }
+}

@@ -5,6 +5,8 @@ import { Fetcher } from './fetcher';
 import { Track } from './models';
 import { AppAction, AppActionType } from './App';
 import { rotateRight } from './rotateRight';
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import GenreTracksQuery from '!!raw-loader!./graphql/GenreTracksQuery.graphql';
 
 type GenreComponentProps = {
   dispatch: React.Dispatch<AppAction>;
@@ -29,30 +31,7 @@ export default class GenreComponent extends React.Component<
   componentDidMount() {
     this.props
       .fetcher({
-        query: `query GenreTracksQuery($id: ID!) {
-  genre(id: $id) {
-    id
-    name
-    tracks {
-      id
-      name
-      duration
-      album {
-        id
-        name
-      }
-      artist {
-        id
-        name
-      }
-      genre {
-        id
-        name
-      }
-      trackNumber
-    }
-  }
-}`,
+        query: GenreTracksQuery,
         operationName: 'GenreTracksQuery',
         variables: {
           id: this.props.match.params.id,

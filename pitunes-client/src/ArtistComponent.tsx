@@ -15,12 +15,17 @@ import ListItemLink from './ListItemLink';
 import { Album, Track } from './models';
 import { AppAction, AppActionType } from './App';
 import { rotateRight } from './rotateRight';
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import ArtistQuery from '!!raw-loader!./graphql/ArtistQuery.graphql';
 
 const styles = (theme: Theme) =>
   createStyles({
     ul: {
       backgroundColor: theme.palette.background.default,
       padding: 0,
+    },
+    listSubheader: {
+      top: 48,
     },
   });
 
@@ -49,34 +54,7 @@ class ArtistComponent extends React.Component<
   componentDidMount() {
     this.props
       .fetcher({
-        query: `query ArtistQuery($id: ID!) {
-  artist(id: $id) {
-    id
-    name
-    albums {
-      id
-      name
-    }
-    tracks {
-      id
-      name
-      duration
-      album {
-        id
-        name
-      }
-      artist {
-        id
-        name
-      }
-      genre {
-        id
-        name
-      }
-      trackNumber
-    }
-  }
-}`,
+        query: ArtistQuery,
         operationName: 'ArtistQuery',
         variables: {
           id: this.props.match.params.id,
@@ -101,7 +79,7 @@ class ArtistComponent extends React.Component<
       <List subheader={<li />}>
         <li>
           <ul className={this.props.classes.ul}>
-            <ListSubheader>Albums</ListSubheader>
+            <ListSubheader className={this.props.classes.listSubheader}>Albums</ListSubheader>
             {albums.map((album) => (
               <ListItemLink
                 key={album.id}
@@ -113,7 +91,7 @@ class ArtistComponent extends React.Component<
         </li>
         <li>
           <ul className={this.props.classes.ul}>
-            <ListSubheader>Tracks</ListSubheader>
+            <ListSubheader className={this.props.classes.listSubheader}>Tracks</ListSubheader>
             {tracks.map((track, index) => (
               <ListItem
                 button

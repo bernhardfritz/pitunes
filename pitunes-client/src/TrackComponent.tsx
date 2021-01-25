@@ -3,6 +3,8 @@ import { RouteComponentProps } from 'react-router-dom';
 import { AppAction, AppActionType } from './App';
 import { Fetcher } from './fetcher';
 import { Track } from './models';
+// eslint-disable-next-line import/no-webpack-loader-syntax
+import TrackQuery from '!!raw-loader!./graphql/TrackQuery.graphql';
 
 type TrackComponentProps = {
   dispatch: React.Dispatch<AppAction>;
@@ -25,26 +27,7 @@ export default class TrackComponent extends React.Component<
   componentDidMount() {
     this.props
       .fetcher({
-        query: `query TrackQuery($id: ID!) {
-  track(id: $id) {
-    id
-    name
-    duration
-    album {
-      id
-      name
-    }
-    artist {
-      id
-      name
-    }
-    genre {
-      id
-      name
-    }
-    trackNumber
-  }
-}`,
+        query: TrackQuery,
         operationName: 'TrackQuery',
         variables: {
           id: this.props.match.params.id,

@@ -1,0 +1,28 @@
+query ArtistQuery($id: ID!) {
+  artist(id: $id) {
+    id
+    name
+    albums {
+      id
+      name
+    }
+    tracks {
+      id
+      name
+      duration
+      album {
+        id
+        name
+      }
+      artist {
+        id
+        name
+      }
+      genre {
+        id
+        name
+      }
+      trackNumber
+    }
+  }
+}
