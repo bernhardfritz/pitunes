@@ -1,42 +1,43 @@
-import React from 'react';
+import {
+  Collapse,
+  Slide,
+  Tab,
+  Tabs,
+  useScrollTrigger,
+} from '@material-ui/core';
 import AppBar from '@material-ui/core/AppBar';
 import Divider from '@material-ui/core/Divider';
 import Drawer from '@material-ui/core/Drawer';
 import Hidden from '@material-ui/core/Hidden';
 import IconButton from '@material-ui/core/IconButton';
-import AlbumIcon from '@material-ui/icons/Album';
-import MicIcon from '@material-ui/icons/Mic';
-import CategoryIcon from '@material-ui/icons/Category';
-import QueueMusicIcon from '@material-ui/icons/QueueMusic';
-import MusicNoteIcon from '@material-ui/icons/MusicNote';
 import List from '@material-ui/core/List';
-import MenuIcon from '@material-ui/icons/Menu';
-import StorageIcon from '@material-ui/icons/Storage';
-import PublishIcon from '@material-ui/icons/Publish';
-import Toolbar from '@material-ui/core/Toolbar';
-import Typography from '@material-ui/core/Typography';
 import {
-  Theme,
   createStyles,
+  Theme,
   WithStyles,
   withStyles,
 } from '@material-ui/core/styles';
-import ListItemLink from './ListItemLink';
-import './ResponsiveDrawer.css';
+import Toolbar from '@material-ui/core/Toolbar';
+import Typography from '@material-ui/core/Typography';
+import AlbumIcon from '@material-ui/icons/Album';
+import CategoryIcon from '@material-ui/icons/Category';
+import LibraryMusicIcon from '@material-ui/icons/LibraryMusic';
+import MenuIcon from '@material-ui/icons/Menu';
+import MicIcon from '@material-ui/icons/Mic';
+import MusicNoteIcon from '@material-ui/icons/MusicNote';
+import PublishIcon from '@material-ui/icons/Publish';
+import QueueMusicIcon from '@material-ui/icons/QueueMusic';
+import StorageIcon from '@material-ui/icons/Storage';
+import React from 'react';
 import { Link, RouteComponentProps, withRouter } from 'react-router-dom';
-import { Collapse, Slide, Tab, Tabs, useScrollTrigger } from '@material-ui/core';
+import { ListItemLink } from './ListItemLink';
+import './ResponsiveDrawer.css';
 
 function CollapseOnScroll(props: any) {
   const { children, passthrough } = props;
   const trigger = useScrollTrigger();
 
-  return passthrough ? (
-    children
-  ) : (
-    <Collapse in={!trigger}>
-      {children}
-    </Collapse>
-  );
+  return passthrough ? children : <Collapse in={!trigger}>{children}</Collapse>;
 }
 
 function SlideOnScroll(props: any) {
@@ -100,10 +101,8 @@ const styles = (theme: Theme) =>
     },
   });
 
-type ResponsiveDrawerProps = { title: string } & RouteComponentProps & WithStyles<
-  typeof styles,
-  true
->;
+type ResponsiveDrawerProps = { title: string } & RouteComponentProps &
+  WithStyles<typeof styles, true>;
 
 type ResponsiveDrawerState = {
   mobileOpen: boolean;
@@ -113,20 +112,19 @@ class ResponsiveDrawer extends React.Component<
   ResponsiveDrawerProps,
   ResponsiveDrawerState
 > {
-
   readonly tabs = [
     {
-      label: "Playlists",
-      value: "/playlists",
+      label: 'Playlists',
+      value: '/playlists',
     },
     {
-      label: "Artists",
-      value: "/artists",
+      label: 'Artists',
+      value: '/artists',
     },
     {
-      label: "Albums",
-      value: "/albums",
-    }
+      label: 'Albums',
+      value: '/albums',
+    },
   ];
 
   constructor(props: ResponsiveDrawerProps) {
@@ -144,9 +142,12 @@ class ResponsiveDrawer extends React.Component<
     this.setState({ mobileOpen: false });
   };
 
-  readonly handleTabChange = (event: React.ChangeEvent<{}>, newValue: string) => {
+  readonly handleTabChange = (
+    event: React.ChangeEvent<{}>,
+    newValue: string
+  ) => {
     this.props.history.push(newValue);
-  }
+  };
 
   readonly drawer = (
     <div>
@@ -156,13 +157,19 @@ class ResponsiveDrawer extends React.Component<
             <img src="/logo192.png" className="logo" />
             <span>
               <span className="logo-text">piTunes</span>
-              <sub>{process.env.REACT_APP_VERSION}</sub>
+              <sub>v{process.env.REACT_APP_VERSION}</sub>
             </span>
           </Link>
         </div>
       </div>
       <Divider />
       <List>
+        <ListItemLink
+          to="/playlists"
+          primary="Library"
+          icon={<LibraryMusicIcon />}
+          onClick={this.handleClick}
+        ></ListItemLink>
         <ListItemLink
           to="/albums"
           primary="Albums"
@@ -216,9 +223,12 @@ class ResponsiveDrawer extends React.Component<
 
   render() {
     const index = this.props.location.pathname.indexOf('/', 1);
-    let selectedTab: string | boolean = index > -1 ? this.props.location.pathname.substring(0, index) : this.props.location.pathname;
+    let selectedTab: string | boolean =
+      index > -1
+        ? this.props.location.pathname.substring(0, index)
+        : this.props.location.pathname;
     const renderTabs = selectedTab !== '/upload' && selectedTab !== '/graphiql';
-    if (!this.tabs.some(tab => tab.value === selectedTab)) {
+    if (!this.tabs.some((tab) => tab.value === selectedTab)) {
       selectedTab = false;
     }
     return (
@@ -242,8 +252,16 @@ class ResponsiveDrawer extends React.Component<
               </Toolbar>
             </CollapseOnScroll>
             {renderTabs && (
-              <Tabs value={selectedTab} onChange={this.handleTabChange} indicatorColor="secondary" textColor="secondary" variant="fullWidth">
-                { this.tabs.map((tab, index) => <Tab key={index} label={tab.label} value={tab.value} />) }
+              <Tabs
+                value={selectedTab}
+                onChange={this.handleTabChange}
+                indicatorColor="secondary"
+                textColor="secondary"
+                variant="fullWidth"
+              >
+                {this.tabs.map((tab, index) => (
+                  <Tab key={index} label={tab.label} value={tab.value} />
+                ))}
               </Tabs>
             )}
           </AppBar>
@@ -281,7 +299,7 @@ class ResponsiveDrawer extends React.Component<
         </nav>
         <main className={this.props.classes.content}>
           <div className={this.props.classes.toolbar} />
-          {renderTabs && (<div className={this.props.classes.tabs} />)}
+          {renderTabs && <div className={this.props.classes.tabs} />}
           {this.props.children}
         </main>
       </div>
@@ -289,4 +307,6 @@ class ResponsiveDrawer extends React.Component<
   }
 }
 
-export default withStyles(styles, { withTheme: true })(withRouter(ResponsiveDrawer));
+export default withStyles(styles, { withTheme: true })(
+  withRouter(ResponsiveDrawer)
+);

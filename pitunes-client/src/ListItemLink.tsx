@@ -1,12 +1,12 @@
-import React from 'react';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
+import { Omit } from '@material-ui/types';
+import React from 'react';
 import {
   Link as RouterLink,
   LinkProps as RouterLinkProps,
 } from 'react-router-dom';
-import { Omit } from '@material-ui/types';
 
 interface ListItemLinkProps {
   icon?: React.ReactElement;
@@ -15,7 +15,7 @@ interface ListItemLinkProps {
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }
 
-export default function ListItemLink(props: ListItemLinkProps) {
+export const ListItemLink = (props: ListItemLinkProps) => {
   const { icon, primary, to, onClick } = props;
 
   const renderLink = React.useMemo(
@@ -34,4 +34,4 @@ export default function ListItemLink(props: ListItemLinkProps) {
       </ListItem>
     </li>
   );
-}
+};

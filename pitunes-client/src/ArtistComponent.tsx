@@ -1,116 +1,66 @@
-import {
-  createStyles,
-  List,
-  ListItem,
-  ListItemText,
-  ListSubheader,
-  Theme,
-  WithStyles,
-  withStyles,
-} from '@material-ui/core';
-import React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
-import { Fetcher } from './fetcher';
-import ListItemLink from './ListItemLink';
-import { Album, Track } from './models';
-import { AppAction, AppActionType } from './App';
-import { rotateRight } from './rotateRight';
 // eslint-disable-next-line import/no-webpack-loader-syntax
 import ArtistQuery from '!!raw-loader!./graphql/ArtistQuery.graphql';
+import { List, ListSubheader, makeStyles, Theme } from '@material-ui/core';
+import React from 'react';
+import { RouteComponentProps } from 'react-router-dom';
+import { AppContext } from './App';
+import { GraphQLResource } from './GraphQLResource';
+import { IdNameListItemLinks } from './IdNameListItemLinks';
+import { TrackListItems } from './TrackListItems';
 
-const styles = (theme: Theme) =>
-  createStyles({
-    ul: {
-      backgroundColor: theme.palette.background.default,
-      padding: 0,
-    },
-    listSubheader: {
-      top: 48,
-    },
-  });
+type ArtistComponentProps = RouteComponentProps<{ id: string }>;
 
-type ArtistComponentProps = {
-  dispatch: React.Dispatch<AppAction>;
-  fetcher: Fetcher;
-} & RouteComponentProps<{
-  id: string;
-}> &
-  WithStyles<typeof styles, true>;
+const useStyles = makeStyles((theme: Theme) => ({
+  ul: {
+    backgroundColor: theme.palette.background.default,
+    padding: 0,
+  },
+  listSubheader: {
+    top: 48,
+  },
+}));
 
-type ArtistComponentState = { albums: Album[]; tracks: Track[] };
+export const ArtistComponent = (props: ArtistComponentProps) => {
+  const classes = useStyles();
 
-class ArtistComponent extends React.Component<
-  ArtistComponentProps,
-  ArtistComponentState
-> {
-  constructor(props: ArtistComponentProps) {
-    super(props);
-    this.state = {
-      albums: [],
-      tracks: [],
-    };
-  }
-
-  componentDidMount() {
-    this.props
-      .fetcher({
-        query: ArtistQuery,
-        operationName: 'ArtistQuery',
-        variables: {
-          id: this.props.match.params.id,
-        },
-      })
-      .then((res) => {
-        const { artist } = res.data;
-        this.props.dispatch({
-          type: AppActionType.UPDATE_TITLE,
-          title: artist.name,
-        });
-        this.setState({
-          albums: artist.albums,
-          tracks: artist.tracks,
-        });
-      });
-  }
-
-  render() {
-    const { albums, tracks } = this.state;
-    return (
-      <List subheader={<li />}>
-        <li>
-          <ul className={this.props.classes.ul}>
-            <ListSubheader className={this.props.classes.listSubheader}>Albums</ListSubheader>
-            {albums.map((album) => (
-              <ListItemLink
-                key={album.id}
-                to={`/albums/${album.id}`}
-                primary={album.name}
-              ></ListItemLink>
-            ))}
-          </ul>
-        </li>
-        <li>
-          <ul className={this.props.classes.ul}>
-            <ListSubheader className={this.props.classes.listSubheader}>Tracks</ListSubheader>
-            {tracks.map((track, index) => (
-              <ListItem
-                button
-                key={track.id}
-                onClick={(_) =>
-                  this.props.dispatch({
-                    type: AppActionType.UPDATE_QUEUE,
-                    queue: rotateRight([...tracks], index),
-                  })
-                }
-              >
-                <ListItemText primary={track.name} />
-              </ListItem>
-            ))}
-          </ul>
-        </li>
-      </List>
-    );
-  }
-}
-
-export default withStyles(styles, { withTheme: true })(ArtistComponent);
+  return (
+    <AppContext.Consumer>
+      {({ fetcher }) => (
+        <GraphQLResource
+          fetcher={fetcher}
+          fetcherParams={{
+            query: ArtistQuery,
+            operationName: 'ArtistQuery',
+            variables: {
+              id: props.match.params.id,
+            },
+          }}
+        >
+          {(data: any) => (
+            <List subheader={<li />}>
+              <li>
+                <ul className={classes.ul}>
+                  <ListSubheader className={classes.listSubheader}>
+                    Albums
+                  </ListSubheader>
+                  <IdNameListItemLinks
+                    items={data.artist.albums}
+                    to={(id) => `/albums/${id}`}
+                  />
+                </ul>
+              </li>
+              <li>
+                <ul className={classes.ul}>
+                  <ListSubheader className={classes.listSubheader}>
+                    Tracks
+                  </ListSubheader>
+                  <TrackListItems tracks={data.artist.tracks} />
+                </ul>
+              </li>
+            </List>
+          )}
+        </GraphQLResource>
+      )}
+    </AppContext.Consumer>
+  );
+};

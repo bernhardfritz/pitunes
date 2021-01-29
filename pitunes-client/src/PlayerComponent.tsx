@@ -1,33 +1,33 @@
 import {
+  AppBar,
+  Dialog,
+  IconButton,
+  Slide,
+  Slider,
+  Toolbar,
+} from '@material-ui/core';
+import grey from '@material-ui/core/colors/grey';
+import {
   createStyles,
   Theme,
   withStyles,
   WithStyles,
 } from '@material-ui/core/styles';
-import React from 'react';
-import grey from '@material-ui/core/colors/grey';
-import { AppBar, Dialog, IconButton, Link, Slide, Slider, Toolbar } from '@material-ui/core';
+import { TransitionProps } from '@material-ui/core/transitions';
 import AlbumIcon from '@material-ui/icons/Album';
-import SkipPreviousIcon from '@material-ui/icons/SkipPrevious';
+import CloseIcon from '@material-ui/icons/Close';
+import PauseIcon from '@material-ui/icons/Pause';
+import PauseCircleFilledIcon from '@material-ui/icons/PauseCircleFilled';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
 import PlayCircleFilledIcon from '@material-ui/icons/PlayCircleFilled';
-import PauseCircleFilledIcon from '@material-ui/icons/PauseCircleFilled';
-import SkipNextIcon from '@material-ui/icons/SkipNext';
-import PauseIcon from '@material-ui/icons/Pause';
-import CloseIcon from '@material-ui/icons/Close';
-import ShuffleIcon from '@material-ui/icons/Shuffle';
 import RepeatIcon from '@material-ui/icons/Repeat';
-import RepeatOneIcon from '@material-ui/icons/RepeatOne';
-import { Track } from './models';
-import { TransitionProps } from '@material-ui/core/transitions';
+import ShuffleIcon from '@material-ui/icons/Shuffle';
+import SkipNextIcon from '@material-ui/icons/SkipNext';
+import SkipPreviousIcon from '@material-ui/icons/SkipPrevious';
+import React from 'react';
+import { Route, RouteComponentProps, withRouter } from 'react-router-dom';
 import { AppAction, AppActionType } from './App';
-import {
-  Link as RouterLink,
-  LinkProps as RouterLinkProps,
-  Route,
-  withRouter,
-  RouteComponentProps,
-} from 'react-router-dom';
+import { Track } from './models';
 
 const styles = (theme: Theme) =>
   createStyles({
@@ -86,7 +86,8 @@ type PlayerComponentProps = {
   dispatch: React.Dispatch<AppAction>;
   track?: Track;
   queueUpdatedAt: number;
-} & RouteComponentProps & WithStyles<typeof styles, true>;
+} & RouteComponentProps &
+  WithStyles<typeof styles, true>;
 
 type PlayerComponentState = {
   paused: boolean;
@@ -159,7 +160,9 @@ class PlayerComponent extends React.Component<
         <AppBar
           position="fixed"
           className={this.props.classes.appBar}
-          onClick={() => this.props.history.push(`/tracks/${this.props.track?.id}`)}
+          onClick={() =>
+            this.props.history.push(`/tracks/${this.props.track?.id}`)
+          }
         >
           <Toolbar>
             <AlbumIcon className={this.props.classes.coverArtPreview} />
@@ -169,77 +172,95 @@ class PlayerComponent extends React.Component<
               </div>
               <div>{this.props.track?.artist?.name}</div>
             </div>
-            <IconButton edge="end" color="inherit" onClick={this.handlePauseClick}>
+            <IconButton
+              edge="end"
+              color="inherit"
+              onClick={this.handlePauseClick}
+            >
               {this.state.paused ? <PlayArrowIcon /> : <PauseIcon />}
             </IconButton>
           </Toolbar>
         </AppBar>
-        <Route path="/tracks/:id" render={(props) => (
-          <Dialog
-            fullScreen
-            open={!this.state.shouldClose && props.match != null}
-            onClose={() => this.setState({shouldClose: true})}
-            onExited={() => { this.props.history.goBack(); setTimeout(() => this.setState({shouldClose: false}), 0); }}
-            TransitionComponent={Transition}
-            className={this.props.classes.dialog}
-          >
-            <AppBar>
-              <Toolbar>
-                <IconButton
-                  edge="start"
-                  color="inherit"
-                  onClick={() => this.setState({shouldClose: true})}
-                  aria-label="close"
-                >
-                  <CloseIcon />
-                </IconButton>
-              </Toolbar>
-            </AppBar>
-            <div className={this.props.classes.toolbar} />
-            <AlbumIcon className={this.props.classes.coverArt} />
-            <Slider
-              value={this.state.currentTime}
-              max={this.audio.current?.duration}
-              onChange={(event, value) => {
-                const audio = this.audio.current;
-                if (audio === null) {
-                  return;
-                }
-                audio.currentTime = value as number;
+        <Route
+          path="/tracks/:id"
+          render={(props) => (
+            <Dialog
+              fullScreen
+              open={!this.state.shouldClose && props.match != null}
+              onClose={() => this.setState({ shouldClose: true })}
+              onExited={() => {
+                this.props.history.goBack();
+                setTimeout(() => this.setState({ shouldClose: false }), 0);
               }}
-            ></Slider>
-            <div className={this.props.classes.controls}>
-              <IconButton>
-                <ShuffleIcon />
-              </IconButton>
-              <IconButton
-                onClick={() => this.props.dispatch({ type: AppActionType.PREV })}
-              >
-                <SkipPreviousIcon />
-              </IconButton>
-              <IconButton onClick={this.handlePauseClick}>
-                {this.state.paused ? (
-                  <PlayCircleFilledIcon className={this.props.classes.playIcon} />
-                ) : (
-                  <PauseCircleFilledIcon
-                    className={this.props.classes.playIcon}
-                  />
-                )}
-              </IconButton>
-              <IconButton
-                onClick={() => this.props.dispatch({ type: AppActionType.NEXT })}
-              >
-                <SkipNextIcon />
-              </IconButton>
-              <IconButton>
-                <RepeatIcon />
-              </IconButton>
-            </div>
-          </Dialog>
-          )} />
+              TransitionComponent={Transition}
+              className={this.props.classes.dialog}
+            >
+              <AppBar>
+                <Toolbar>
+                  <IconButton
+                    edge="start"
+                    color="inherit"
+                    onClick={() => this.setState({ shouldClose: true })}
+                    aria-label="close"
+                  >
+                    <CloseIcon />
+                  </IconButton>
+                </Toolbar>
+              </AppBar>
+              <div className={this.props.classes.toolbar} />
+              <AlbumIcon className={this.props.classes.coverArt} />
+              <Slider
+                value={this.state.currentTime}
+                max={this.audio.current?.duration}
+                onChange={(event, value) => {
+                  const audio = this.audio.current;
+                  if (audio === null) {
+                    return;
+                  }
+                  audio.currentTime = value as number;
+                }}
+              ></Slider>
+              <div className={this.props.classes.controls}>
+                <IconButton>
+                  <ShuffleIcon />
+                </IconButton>
+                <IconButton
+                  onClick={() =>
+                    this.props.dispatch({ type: AppActionType.PREV })
+                  }
+                >
+                  <SkipPreviousIcon />
+                </IconButton>
+                <IconButton onClick={this.handlePauseClick}>
+                  {this.state.paused ? (
+                    <PlayCircleFilledIcon
+                      className={this.props.classes.playIcon}
+                    />
+                  ) : (
+                    <PauseCircleFilledIcon
+                      className={this.props.classes.playIcon}
+                    />
+                  )}
+                </IconButton>
+                <IconButton
+                  onClick={() =>
+                    this.props.dispatch({ type: AppActionType.NEXT })
+                  }
+                >
+                  <SkipNextIcon />
+                </IconButton>
+                <IconButton>
+                  <RepeatIcon />
+                </IconButton>
+              </div>
+            </Dialog>
+          )}
+        />
       </>
     );
   }
 }
 
-export default withStyles(styles, { withTheme: true })(withRouter(PlayerComponent));
+export default withStyles(styles, { withTheme: true })(
+  withRouter(PlayerComponent)
+);
