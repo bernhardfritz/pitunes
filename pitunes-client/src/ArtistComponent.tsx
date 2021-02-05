@@ -2,13 +2,11 @@
 import ArtistQuery from '!!raw-loader!./graphql/ArtistQuery.graphql';
 import { List, ListSubheader, makeStyles, Theme } from '@material-ui/core';
 import React from 'react';
-import { RouteComponentProps } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { AppContext } from './App';
 import { GraphQLResource } from './GraphQLResource';
 import { IdNameListItemLinks } from './IdNameListItemLinks';
 import { TrackListItems } from './TrackListItems';
-
-type ArtistComponentProps = RouteComponentProps<{ id: string }>;
 
 const useStyles = makeStyles((theme: Theme) => ({
   ul: {
@@ -20,8 +18,9 @@ const useStyles = makeStyles((theme: Theme) => ({
   },
 }));
 
-export const ArtistComponent = (props: ArtistComponentProps) => {
+export const ArtistComponent = () => {
   const classes = useStyles();
+  const { id } = useParams<{ id: string }>();
 
   return (
     <AppContext.Consumer>
@@ -32,7 +31,7 @@ export const ArtistComponent = (props: ArtistComponentProps) => {
             query: ArtistQuery,
             operationName: 'ArtistQuery',
             variables: {
-              id: props.match.params.id,
+              id,
             },
           }}
         >

@@ -1,4 +1,4 @@
-import { CssBaseline, useMediaQuery } from '@material-ui/core';
+import { CssBaseline, Tab, Tabs, useMediaQuery } from '@material-ui/core';
 import {
   ThemeProvider,
   unstable_createMuiStrictModeTheme as createMuiTheme,
@@ -6,13 +6,14 @@ import {
 import { FetcherParams } from 'graphiql/dist/components/GraphiQL';
 import React, { useReducer } from 'react';
 import {
-  BrowserRouter as Router,
   Redirect,
   Route,
-  Switch,
+  RouteComponentProps,
+  withRouter,
 } from 'react-router-dom';
 import { AlbumComponent } from './AlbumComponent';
 import { AlbumsComponent } from './AlbumsComponent';
+import './App.css';
 import { ArtistComponent } from './ArtistComponent';
 import { ArtistsComponent } from './ArtistsComponent';
 import { GenreComponent } from './GenreComponent';
@@ -22,10 +23,19 @@ import { Track } from './models';
 import PlayerComponent from './PlayerComponent';
 import { PlaylistComponent } from './PlaylistComponent';
 import { PlaylistsComponent } from './PlaylistsComponent';
-import ResponsiveDrawer from './ResponsiveDrawer';
+import { ResponsiveDrawer } from './ResponsiveDrawer';
 import { rotateRight } from './rotateRight';
 import { TracksComponent } from './TracksComponent';
+import { TransitionRoute } from './TransitionRoute';
 import { UploadComponent } from './UploadComponent';
+import { usePrevious } from './usePrevious';
+
+export enum TransitionType {
+  LEFT = 'left',
+  RIGHT = 'right',
+  FORWARD = 'forward',
+  BACKWARD = 'backward',
+}
 
 type AppState = {
   title: string;
@@ -84,7 +94,12 @@ export const AppContext = React.createContext<AppContextProps>({
   fetcher: (graphQLParams: FetcherParams) => Promise.resolve(),
 });
 
-export const App = () => {
+type AppProps = RouteComponentProps;
+
+const App = (props: AppProps) => {
+  const { history, location } = props;
+  const prevLocation = usePrevious(location);
+
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
 
   const theme = React.useMemo(
@@ -97,11 +112,47 @@ export const App = () => {
     [prefersDarkMode]
   );
 
+  const tabs = [
+    {
+      label: 'Playlists',
+      to: '/playlists',
+    },
+    {
+      label: 'Artists',
+      to: '/artists',
+    },
+    {
+      label: 'Albums',
+      to: '/albums',
+    },
+  ];
+
+  const tabIndex = tabs.findIndex((tab) =>
+    location.pathname.startsWith(tab.to)
+  );
+  const prevTabIndex =
+    prevLocation !== undefined
+      ? tabs.findIndex((tab) => prevLocation.pathname.startsWith(tab.to))
+      : -1;
+  const transitionType =
+    tabIndex < prevTabIndex
+      ? TransitionType.LEFT
+      : tabIndex === prevTabIndex
+      ? prevLocation !== undefined &&
+        location.pathname.startsWith(prevLocation.pathname)
+        ? TransitionType.FORWARD
+        : TransitionType.BACKWARD
+      : TransitionType.RIGHT;
+
   const [state, dispatch] = useReducer(reducer, {
     title: '',
     queue: [],
     queueUpdatedAt: 0,
   });
+
+  const handleTabChange = (event: React.ChangeEvent<{}>, tabIndex: number) => {
+    history.push(tabs[tabIndex].to);
+  };
 
   return (
     <AppContext.Provider
@@ -119,53 +170,66 @@ export const App = () => {
     >
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <Router>
-          <ResponsiveDrawer title={state.title}>
-            {/*
-                A <Switch> looks through all its children <Route>
-                elements and renders the first one whose path
-                matches the current URL. Use a <Switch> any time
-                you have multiple routes, but you want only one
-                of them to render at a time
-              */}
-            <Switch>
-              <Route exact path="/">
-                <Redirect to="/playlists" />
-              </Route>
-              <Route exact path="/albums">
-                <AlbumsComponent />
-              </Route>
-              <Route path="/albums/:id" render={AlbumComponent} />
-              <Route exact path="/artists">
-                <ArtistsComponent />
-              </Route>
-              <Route path="/artists/:id" component={ArtistComponent} />
-              <Route exact path="/genres">
-                <GenresComponent />
-              </Route>
-              <Route path="/genres/:id" render={GenreComponent} />
-              <Route exact path="/playlists">
-                <PlaylistsComponent />
-              </Route>
-              <Route path="/playlists/:id" render={PlaylistComponent} />
-              <Route exact path="/tracks">
-                <TracksComponent />
-              </Route>
-              <Route path="/upload">
-                <UploadComponent />
-              </Route>
-              <Route path="/graphiql">
-                <GraphiQLComponent />
-              </Route>
-            </Switch>
-          </ResponsiveDrawer>
-          <PlayerComponent
-            dispatch={dispatch}
-            track={state.queue.length > 0 ? state.queue[0] : undefined}
-            queueUpdatedAt={state.queueUpdatedAt}
-          />
-        </Router>
+        <ResponsiveDrawer
+          tabs={
+            <Tabs
+              value={tabIndex}
+              onChange={handleTabChange}
+              variant="fullWidth"
+            >
+              {tabs.map((tab) => (
+                <Tab key={tab.label} label={tab.label} />
+              ))}
+            </Tabs>
+          }
+        >
+          <div className={transitionType}>
+            <Route exact path="/">
+              <Redirect to="/playlists" />
+            </Route>
+            <TransitionRoute exact path="/albums">
+              <AlbumsComponent />
+            </TransitionRoute>
+            <TransitionRoute exact path="/albums/:id">
+              <AlbumComponent />
+            </TransitionRoute>
+            <TransitionRoute exact path="/artists">
+              <ArtistsComponent />
+            </TransitionRoute>
+            <TransitionRoute exact path="/artists/:id">
+              <ArtistComponent />
+            </TransitionRoute>
+            <Route exact path="/genres">
+              <GenresComponent />
+            </Route>
+            <Route exact path="/genres/:id">
+              <GenreComponent />
+            </Route>
+            <TransitionRoute exact path="/playlists">
+              <PlaylistsComponent />
+            </TransitionRoute>
+            <TransitionRoute exact path="/playlists/:id">
+              <PlaylistComponent />
+            </TransitionRoute>
+            <Route exact path="/tracks">
+              <TracksComponent />
+            </Route>
+            <Route exact path="/upload">
+              <UploadComponent />
+            </Route>
+            <Route exact path="/graphiql">
+              <GraphiQLComponent />
+            </Route>
+          </div>
+        </ResponsiveDrawer>
+        <PlayerComponent
+          dispatch={dispatch}
+          track={state.queue.length > 0 ? state.queue[0] : undefined}
+          queueUpdatedAt={state.queueUpdatedAt}
+        />
       </ThemeProvider>
     </AppContext.Provider>
   );
-}
+};
+
+export const AppWithRouter = withRouter(App);

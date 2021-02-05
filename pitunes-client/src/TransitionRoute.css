@@ -1,0 +1,81 @@
+.left,
+.right,
+.forward,
+.backward {
+  position: relative;
+}
+
+.transition {
+  position: absolute;
+  width: 100%;
+}
+
+.left .transition-enter {
+  opacity: 0;
+  transform: translateX(-100px);
+}
+
+.right .transition-enter {
+  opacity: 0;
+  transform: translateX(100px);
+}
+
+.forward .transition-enter {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+.backward .transition-enter {
+  opacity: 0;
+  transform: scale(1.1);
+}
+
+.left .transition-enter-active,
+.right .transition-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.forward .transition-enter-active,
+.backward .transition-enter-active {
+  opacity: 1;
+  transform: scale(1);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.left .transition-exit,
+.right .transition-exit {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.forward .transition-exit,
+.backward .transition-exit {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.left .transition-exit-active {
+  opacity: 0;
+  transform: translateX(100px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.right .transition-exit-active {
+  opacity: 0;
+  transform: translateX(-100px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.forward .transition-exit-active {
+  opacity: 0;
+  transform: scale(1.1);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.backward .transition-exit-active {
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 300ms, transform 300ms;
+}
