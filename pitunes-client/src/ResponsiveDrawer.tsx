@@ -1,3 +1,4 @@
+import { useScrollTrigger } from '@material-ui/core';
 import AppBar from '@material-ui/core/AppBar';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import Divider from '@material-ui/core/Divider';
@@ -19,6 +20,7 @@ import PublishIcon from '@material-ui/icons/Publish';
 import StorageIcon from '@material-ui/icons/Storage';
 import React, { FunctionComponent } from 'react';
 import { Link } from 'react-router-dom';
+import { CSSTransition } from 'react-transition-group';
 import { ListItemLink } from './ListItemLink';
 
 const drawerWidth = 240;
@@ -35,9 +37,19 @@ const useStyles = makeStyles((theme: Theme) =>
       },
     },
     appBar: {
+      transform: 'translateY(0)',
+      transition: 'transform 300ms',
       [theme.breakpoints.up('sm')]: {
         width: `calc(100% - ${drawerWidth}px)`,
         marginLeft: drawerWidth,
+      },
+    },
+    appBarEnterDone: {
+      transform: `translateY(-${theme.mixins.toolbar.minHeight}px)`,
+      [theme.breakpoints.up('sm')]: {
+        transform: `translateY(-${
+          (theme.mixins.toolbar[theme.breakpoints.up('sm')] as any).minHeight
+        }px)`,
       },
     },
     menuButton: {
@@ -92,6 +104,7 @@ export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
 ) => {
   const classes = useStyles();
   const theme = useTheme();
+  const trigger = useScrollTrigger();
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const handleDrawerToggle = () => {
@@ -148,23 +161,31 @@ export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
   return (
     <div className={classes.root}>
       <CssBaseline />
-      <AppBar position="fixed" className={classes.appBar}>
-        <Toolbar>
-          <IconButton
-            color="inherit"
-            aria-label="open drawer"
-            edge="start"
-            onClick={handleDrawerToggle}
-            className={classes.menuButton}
-          >
-            <MenuIcon />
-          </IconButton>
-          <Typography variant="h6" noWrap>
-            Responsive drawer
-          </Typography>
-        </Toolbar>
-        {props.tabs}
-      </AppBar>
+      <CSSTransition
+        in={trigger}
+        timeout={300}
+        classNames={{
+          enterDone: classes.appBarEnterDone,
+        }}
+      >
+        <AppBar position="fixed" className={classes.appBar}>
+          <Toolbar>
+            <IconButton
+              color="inherit"
+              aria-label="open drawer"
+              edge="start"
+              onClick={handleDrawerToggle}
+              className={classes.menuButton}
+            >
+              <MenuIcon />
+            </IconButton>
+            <Typography variant="h6" noWrap>
+              Responsive drawer
+            </Typography>
+          </Toolbar>
+          {props.tabs}
+        </AppBar>
+      </CSSTransition>
       <nav className={classes.drawer} aria-label="mailbox folders">
         {/* The implementation can be swapped with js to avoid SEO duplication of links. */}
         <Hidden smUp implementation="css">
