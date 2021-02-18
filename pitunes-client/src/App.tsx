@@ -20,11 +20,12 @@ import { GenreComponent } from './GenreComponent';
 import { GenresComponent } from './GenresComponent';
 import { GraphiQLComponent } from './GraphiQLComponent';
 import { Track } from './models';
-import PlayerComponent from './PlayerComponent';
+import { PlayerComponentWithRouter } from './PlayerComponent';
 import { PlaylistComponent } from './PlaylistComponent';
 import { PlaylistsComponent } from './PlaylistsComponent';
 import { ResponsiveDrawer } from './ResponsiveDrawer';
 import { rotateRight } from './rotateRight';
+import { TrackComponentWithRouter } from './TrackComponent';
 import { TracksComponent } from './TracksComponent';
 import { TransitionRoute } from './TransitionRoute';
 import { UploadComponent } from './UploadComponent';
@@ -214,6 +215,9 @@ const App = (props: AppProps) => {
             <Route exact path="/tracks">
               <TracksComponent />
             </Route>
+            <Route exact path="/tracks/:id">
+              <TrackComponentWithRouter />
+            </Route>
             <Route exact path="/upload">
               <UploadComponent />
             </Route>
@@ -222,11 +226,7 @@ const App = (props: AppProps) => {
             </Route>
           </div>
         </ResponsiveDrawer>
-        <PlayerComponent
-          dispatch={dispatch}
-          track={state.queue.length > 0 ? state.queue[0] : undefined}
-          queueUpdatedAt={state.queueUpdatedAt}
-        />
+        { state.queue.length > 0 && <PlayerComponentWithRouter track={state.queue[0]} /> }
       </ThemeProvider>
     </AppContext.Provider>
   );

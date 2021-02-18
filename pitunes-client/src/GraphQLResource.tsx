@@ -1,14 +1,11 @@
 import { FetcherParams } from 'graphiql/dist/components/GraphiQL';
-import { FunctionComponent, useEffect, useState } from 'react';
+import { FunctionComponent } from 'react';
 import { Fetcher } from './fetcher';
+import { useGraphQLData } from './useGraphQLData';
 
 type GraphQLResourceProps = {
   fetcher: Fetcher;
   fetcherParams: FetcherParams;
-};
-
-type GraphQLResourceState = {
-  data: any;
 };
 
 export const GraphQLResource: FunctionComponent<GraphQLResourceProps> = ({
@@ -16,12 +13,7 @@ export const GraphQLResource: FunctionComponent<GraphQLResourceProps> = ({
   fetcherParams,
   children,
 }) => {
-  const [state, setState] = useState<GraphQLResourceState>({ data: null });
-  useEffect(() => {
-    (async () => {
-      const { data } = await fetcher(fetcherParams);
-      setState({ data });
-    })();
-  }, []);
-  return state.data ? (children as any)(state.data) : null;
+  const data = useGraphQLData(fetcher, fetcherParams);
+
+  return data ? (children as any)(data) : null;
 };
