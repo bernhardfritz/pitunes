@@ -62,9 +62,9 @@ table! {
 }
 
 table! {
-    users (email) {
-        email -> Text,
-        password -> Nullable<Text>,
+    users (username) {
+        username -> Text,
+        password -> Binary,
     }
 }
 

@@ -39,17 +39,17 @@ async fn validator(req: ServiceRequest, credentials: BasicAuth) -> Result<Servic
         let mut valid = false;
         if let Some(context) = req.app_data::<Data<RequestContext>>() {
             let conn = context.pool.get().unwrap();
-            if let Ok(user) = users::table.find(credentials.user_id()).get_result::<User>(&conn) {
-                if let Some(user_password) = user.password {
-                    if let Some(credentials_password) = credentials.password() {
-                        let mut hasher = Sha256::new();
-                        hasher.input(credentials_password.as_bytes());
-                        let hashed_credentials_password = format!("{:x}", hasher.result());
-                        valid = user_password == hashed_credentials_password;
-                    }
-                } else {
-                    valid = credentials.password().is_none();
-                }
+            if let Ok(user) = users::table
+                .find(credentials.user_id())
+                .get_result::<User>(&conn)
+            {
+                let hash = Sha256::digest(
+                    credentials
+                        .password()
+                        .map(|password| password.as_bytes())
+                        .unwrap_or_default(),
+                );
+                valid = user.password == hash.as_slice();
             }
         }
         valid
@@ -78,8 +78,29 @@ async fn main() -> std::io::Result<()> {
         .get_matches();
     let port = value_t!(matches, "port", u16).unwrap_or(8443);
 
+    let config_dir = {
+        let mut config_dir = dirs::config_dir().unwrap();
+        config_dir.push("pitunes");
+        config_dir
+    };
+
+    let tracks_dir = {
+        let mut tracks_dir = config_dir.clone();
+        tracks_dir.push("tracks");
+        std::fs::create_dir_all(tracks_dir.as_path())?;
+        tracks_dir
+    };
+
     // r2d2 pool
-    let pool = db::establish_connection();
+    let pool = {
+        let pitunes_db = {
+            let mut pitunes_db = config_dir.clone();
+            pitunes_db.push("pitunes");
+            pitunes_db.set_extension("db");
+            pitunes_db.into_os_string().into_string().unwrap()
+        };
+        db::establish_connection(&pitunes_db[..])
+    };
     let st = Arc::new(create_schema());
 
     // load ssl keys
@@ -92,24 +113,20 @@ async fn main() -> std::io::Result<()> {
     builder.set_certificate_chain_file("cert.pem").unwrap();
 
     let http_server = HttpServer::new(move || {
-        let ctx = RequestContext::new(pool.clone());
+        let ctx = RequestContext::new(pool.clone(), tracks_dir.clone());
         let auth = HttpAuthentication::basic(validator);
-        App::new()
-            .wrap(auth)
-            .data(st.clone())
-            .data(ctx)
-            .service(
-                web::scope("/api")
-                    .service(graphql_service::graphql)
-                    .service(tracks_service::post_tracks)
-                    .service(playlists_service::get_playlist)
-                    .service(Files::new("/tracks", "tracks"))
-                    .service(
-                        web::resource("/tracks/{id}.mp3")
-                            .name("get_track")
-                            .to(|| HttpResponse::NotFound()),
-                    ), // only used for resource url generation
-            )
+        App::new().wrap(auth).data(st.clone()).data(ctx).service(
+            web::scope("/api")
+                .service(graphql_service::graphql)
+                .service(tracks_service::post_tracks)
+                .service(playlists_service::get_playlist)
+                .service(Files::new("/tracks", tracks_dir.clone()))
+                .service(
+                    web::resource("/tracks/{id}.mp3")
+                        .name("get_track")
+                        .to(|| HttpResponse::NotFound()),
+                ), // only used for resource url generation
+        )
     })
     .bind_openssl(format!("0.0.0.0:{}", port), builder)?;
 

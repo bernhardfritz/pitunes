@@ -144,7 +144,12 @@ async fn post_tracks(
         }) {
             let reader = BufReader::new(tf);
             let mut chunker = Chunker::new(reader);
-            let filepath = format!("./tracks/{}.mp3", &external_id.0[..]);
+            let filepath = {
+                let mut filepath = context.tracks_dir.clone();
+                filepath.push(&external_id.0[..]);
+                filepath.set_extension("mp3");
+                filepath
+            };
             // File::create is blocking operation, use threadpool
             let f = web::block(|| std::fs::File::create(filepath)).await?;
             let mut writer = BufWriter::new(f);

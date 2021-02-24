@@ -401,10 +401,22 @@ pub struct PlaylistTrackOrderInput {
 }
 
 #[derive(Identifiable, Queryable)]
-#[primary_key(email)]
+#[primary_key(username)]
 pub struct User {
-    pub email: String,
-    pub password: Option<String>,
+    pub username: String,
+    pub password: Vec<u8>,
+}
+
+#[derive(juniper::GraphQLInputObject)]
+pub struct UserInput {
+    pub password: String,
+}
+
+#[derive(AsChangeset)]
+#[changeset_options(treat_none_as_null = "true")]
+#[table_name = "users"]
+pub struct UserChangeset {
+    pub password: Vec<u8>,
 }
 
 #[derive(AsChangeset, Identifiable, Insertable, Queryable)]

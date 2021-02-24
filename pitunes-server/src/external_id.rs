@@ -29,10 +29,9 @@ impl TryFrom<ExternalId> for i32 {
 fn it_works() {
     let id: i64 = 882286793;
     let encoded = base64::encode_config(id.to_le_bytes(), base64::URL_SAFE_NO_PAD);
-    println!("encoded: {}", encoded);
-    let a = base64::decode_config(encoded, base64::URL_SAFE_NO_PAD).unwrap();
-    let b: [u8; 8] = a.try_into().unwrap();
-    let decoded = i64::from_le_bytes(b);
-    println!("decoded: {}", decoded);
-    assert_eq!(2 + 2, 4);
+    println!("{}", encoded);
+    let decoded = base64::decode_config(encoded, base64::URL_SAFE_NO_PAD).unwrap();
+    let decoded: [u8; 8] = decoded.try_into().unwrap();
+    let decoded = i64::from_le_bytes(decoded);
+    assert_eq!(id, decoded);
 }

@@ -1,5 +1,9 @@
-use std::convert::{TryFrom, TryInto};
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
+use std::{
+    convert::{TryFrom, TryInto},
+    path::PathBuf,
+};
 
 use diesel::prelude::*;
 
@@ -10,28 +14,30 @@ use crate::{
         Album, AlbumBatcher, AlbumInput, AlbumLoader, Artist, ArtistBatcher, ArtistInput,
         ArtistLoader, Genre, GenreBatcher, GenreInput, GenreLoader, NewAlbum, NewArtist, NewGenre,
         NewPlaylist, NewPlaylistTrack, Playlist, PlaylistInput, PlaylistTrack, PlaylistTrackInput,
-        PlaylistTrackOrderInput, Track, TrackChangeset, TrackInput,
+        PlaylistTrackOrderInput, Track, TrackChangeset, TrackInput, UserChangeset, UserInput,
     },
     prng,
-    schema::{albums, artists, genres, playlists, playlists_tracks, tracks},
+    schema::{albums, artists, genres, playlists, playlists_tracks, tracks, users},
 };
 
 #[derive(Clone)]
 pub struct RequestContext {
     pub pool: Arc<SqlitePool>,
+    pub tracks_dir: PathBuf,
     pub album_loader: AlbumLoader,
     pub artist_loader: ArtistLoader,
     pub genre_loader: GenreLoader,
 }
 
 impl RequestContext {
-    pub fn new(pool: SqlitePool) -> RequestContext {
+    pub fn new(pool: SqlitePool, tracks_dir: PathBuf) -> RequestContext {
         let pool = Arc::new(pool);
         let album_loader = AlbumLoader::new(AlbumBatcher { pool: pool.clone() });
         let artist_loader = ArtistLoader::new(ArtistBatcher { pool: pool.clone() });
         let genre_loader = GenreLoader::new(GenreBatcher { pool: pool.clone() });
         RequestContext {
             pool,
+            tracks_dir,
             album_loader,
             artist_loader,
             genre_loader,
@@ -254,7 +260,12 @@ impl Mutation {
     }
 
     fn delete_track(context: &RequestContext, id: juniper::ID) -> juniper::FieldResult<bool> {
-        let filepath = format!("./tracks/{}.mp3", &id[..]);
+        let filepath = {
+            let mut filepath = context.tracks_dir.clone();
+            filepath.push(&id[..]);
+            filepath.set_extension("mp3");
+            filepath
+        };
         let id: i32 = ExternalId(id).try_into()?;
         let conn = context.pool.get()?;
         let deleted = diesel::delete(tracks::table.find(id)).execute(&conn)? == 1;
@@ -442,6 +453,23 @@ impl Mutation {
                 }
             }
             Ok(playlists::table.find(playlist_id).get_result(&conn)?)
+        })
+    }
+
+    fn update_user(
+        context: &RequestContext,
+        username: String,
+        input: UserInput,
+    ) -> juniper::FieldResult<bool> {
+        let conn = context.pool.get()?;
+        conn.transaction::<_, juniper::FieldError, _>(|| {
+            let user_changeset = UserChangeset {
+                password: Vec::from(Sha256::digest(input.password.as_bytes()).as_slice()),
+            };
+            diesel::update(users::table.find(username))
+                .set(&user_changeset)
+                .execute(&conn)?;
+            Ok(true)
         })
     }
 }
