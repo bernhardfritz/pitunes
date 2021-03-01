@@ -1,0 +1,17 @@
+[package]
+name = "pitunes_frontend"
+version = "0.1.0"
+authors = ["Bernhard Fritz <bernhard.e.fritz@gmail.com>"]
+edition = "2018"
+description = "React-based frontend for piTunes."
+license = "MIT"
+repository = "https://github.com/bernhardfritz/pitunes"
+build = "build.rs"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-web-static-files = "3.0.5"
+
+[build-dependencies]
+actix-web-static-files = "3.0.5"

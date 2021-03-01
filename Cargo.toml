@@ -1,0 +1,9 @@
+[workspace]
+
+members = [
+    "pitunes",
+    "pitunes_frontend",
+]
+
+[patch.crates-io]
+pitunes_frontend = { path = 'pitunes_frontend' }

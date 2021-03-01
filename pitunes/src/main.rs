@@ -26,6 +26,7 @@ use actix_web::{
     App, Error, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::{extractors::basic::BasicAuth, middleware::HttpAuthentication};
+use actix_web_static_files;
 use clap::{self, value_t};
 use diesel::prelude::*;
 use graphql_schema::{create_schema, RequestContext};
@@ -33,6 +34,8 @@ use models::User;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use schema::users;
 use sha2::{Digest, Sha256};
+
+use pitunes_frontend::generate;
 
 async fn validator(req: ServiceRequest, credentials: BasicAuth) -> Result<ServiceRequest, Error> {
     let valid = {
@@ -115,6 +118,7 @@ async fn main() -> std::io::Result<()> {
     let http_server = HttpServer::new(move || {
         let ctx = RequestContext::new(pool.clone(), tracks_dir.clone());
         let auth = HttpAuthentication::basic(validator);
+        let generated = generate();
         App::new().wrap(auth).data(st.clone()).data(ctx).service(
             web::scope("/api")
                 .service(graphql_service::graphql)
@@ -125,7 +129,9 @@ async fn main() -> std::io::Result<()> {
                     web::resource("/tracks/{id}.mp3")
                         .name("get_track")
                         .to(|| HttpResponse::NotFound()),
-                ), // only used for resource url generation
+                ) // only used for resource url generation
+            )
+            .service(actix_web_static_files::ResourceFiles::new("/", generated).resolve_not_found_to_root(),
         )
     })
     .bind_openssl(format!("0.0.0.0:{}", port), builder)?;

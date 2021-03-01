@@ -1,5 +1,5 @@
 ![pitunes](pitunes.png)
 
-# piTunes
+# piTunes monorepo
 
-A client-server architecture that allows you to stream your personal music collection.
+A Raspberry Pi compatible tool to manage and stream your personal music collection remotely.

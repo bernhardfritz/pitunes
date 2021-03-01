@@ -123,7 +123,7 @@ export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
             <img src="/logo192.png" className={classes.logo} />
             <span>
               <span className={classes.logoText}>piTunes</span>
-              <sub>v{process.env.REACT_APP_VERSION}</sub>
+              <sub>{process.env.REACT_APP_VERSION && `v${process.env.REACT_APP_VERSION}` || 'dev'}</sub>
             </span>
           </Link>
         </div>

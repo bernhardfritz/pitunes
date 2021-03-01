@@ -7,39 +7,39 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'pitunes-server'",
+            "name": "Debug executable 'pitunes'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=pitunes-server",
-                    "--package=pitunes-server"
+                    "--bin=pitunes",
+                    "--package=pitunes"
                 ],
                 "filter": {
-                    "name": "pitunes-server",
+                    "name": "pitunes",
                     "kind": "bin"
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}/pitunes-server"
+            "cwd": "${workspaceFolder}/pitunes"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'pitunes-server'",
+            "name": "Debug unit tests in executable 'pitunes'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=pitunes-server",
-                    "--package=pitunes-server"
+                    "--bin=pitunes",
+                    "--package=pitunes"
                 ],
                 "filter": {
-                    "name": "pitunes-server",
+                    "name": "pitunes",
                     "kind": "bin"
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}/pitunes-server"
+            "cwd": "${workspaceFolder}/pitunes"
         },
     ]
 }
