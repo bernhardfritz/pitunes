@@ -5,14 +5,26 @@ import React from 'react';
 import { AppContext } from './App';
 
 const useStyles = makeStyles((theme: Theme) => ({
-  graphiql: {
+  graphiql: (props: GraphiQLComponentProps) => ({
     boxSizing: 'unset',
-    height: '100vh',
-  },
+    height: `calc(100vh - ${
+      (props.playerVisible ? 2 : 1) * Number(theme.mixins.toolbar.minHeight)
+    }px)`,
+    [theme.breakpoints.up('sm')]: {
+      height: `calc(100vh - ${
+        (props.playerVisible ? 2 : 1) *
+        Number(
+          (theme.mixins.toolbar[theme.breakpoints.up('sm')] as any).minHeight
+        )
+      }px)`,
+    },
+  }),
 }));
 
-export const GraphiQLComponent = () => {
-  const classes = useStyles();
+type GraphiQLComponentProps = { playerVisible: boolean };
+
+export const GraphiQLComponent = (props: GraphiQLComponentProps) => {
+  const classes = useStyles(props);
 
   return (
     <AppContext.Consumer>

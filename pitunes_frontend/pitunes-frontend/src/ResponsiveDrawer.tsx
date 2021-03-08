@@ -97,7 +97,7 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
-type ResponsiveDrawerProps = { tabs: any };
+type ResponsiveDrawerProps = { title: string; tabs: any };
 
 export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
   props
@@ -123,7 +123,11 @@ export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
             <img src="/logo192.png" className={classes.logo} />
             <span>
               <span className={classes.logoText}>piTunes</span>
-              <sub>{process.env.REACT_APP_VERSION && `v${process.env.REACT_APP_VERSION}` || 'dev'}</sub>
+              <sub>
+                {(process.env.REACT_APP_VERSION &&
+                  `v${process.env.REACT_APP_VERSION}`) ||
+                  'dev'}
+              </sub>
             </span>
           </Link>
         </div>
@@ -180,7 +184,7 @@ export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
               <MenuIcon />
             </IconButton>
             <Typography variant="h6" noWrap>
-              Responsive drawer
+              {props.title}
             </Typography>
           </Toolbar>
           {props.tabs}

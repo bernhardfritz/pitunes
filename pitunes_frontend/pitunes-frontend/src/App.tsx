@@ -39,31 +39,23 @@ export enum TransitionType {
 }
 
 type AppState = {
-  title: string;
   queue: Track[];
   queueUpdatedAt: number;
 };
 
 export enum AppActionType {
-  UPDATE_TITLE,
   UPDATE_QUEUE,
   PREV,
   NEXT,
 }
 
 export type AppAction =
-  | { type: AppActionType.UPDATE_TITLE; title: string }
   | { type: AppActionType.UPDATE_QUEUE; queue: Track[] }
   | { type: AppActionType.PREV }
   | { type: AppActionType.NEXT };
 
 const reducer: React.Reducer<AppState, AppAction> = (prevState, action) => {
   switch (action.type) {
-    case AppActionType.UPDATE_TITLE:
-      return {
-        ...prevState,
-        title: action.title,
-      };
     case AppActionType.UPDATE_QUEUE:
       return {
         ...prevState,
@@ -146,7 +138,6 @@ const App = (props: AppProps) => {
       : TransitionType.RIGHT;
 
   const [state, dispatch] = useReducer(reducer, {
-    title: '',
     queue: [],
     queueUpdatedAt: 0,
   });
@@ -172,16 +163,26 @@ const App = (props: AppProps) => {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <ResponsiveDrawer
+          title={
+            location.pathname.startsWith('/upload')
+              ? 'Upload'
+              : location.pathname.startsWith('/graphiql')
+              ? 'GraphiQL'
+              : 'Library'
+          }
           tabs={
-            <Tabs
-              value={tabIndex}
-              onChange={handleTabChange}
-              variant="fullWidth"
-            >
-              {tabs.map((tab) => (
-                <Tab key={tab.label} label={tab.label} />
-              ))}
-            </Tabs>
+            !location.pathname.startsWith('/upload') &&
+            !location.pathname.startsWith('/graphiql') && (
+              <Tabs
+                value={tabIndex}
+                onChange={handleTabChange}
+                variant="fullWidth"
+              >
+                {tabs.map((tab) => (
+                  <Tab key={tab.label} label={tab.label} />
+                ))}
+              </Tabs>
+            )
           }
         >
           <div className={transitionType}>
@@ -222,11 +223,13 @@ const App = (props: AppProps) => {
               <UploadComponent />
             </Route>
             <Route exact path="/graphiql">
-              <GraphiQLComponent />
+              <GraphiQLComponent playerVisible={state.queue.length > 0} />
             </Route>
           </div>
         </ResponsiveDrawer>
-        { state.queue.length > 0 && <PlayerComponentWithRouter track={state.queue[0]} /> }
+        {state.queue.length > 0 && (
+          <PlayerComponentWithRouter track={state.queue[0]} />
+        )}
       </ThemeProvider>
     </AppContext.Provider>
   );

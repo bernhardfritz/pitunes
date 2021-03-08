@@ -10,6 +10,7 @@ mod db;
 mod external_id;
 mod graphql_schema;
 mod graphql_service;
+mod mk_certs;
 mod models;
 mod playlists_service;
 mod prng;
@@ -30,12 +31,11 @@ use actix_web_static_files;
 use clap::{self, value_t};
 use diesel::prelude::*;
 use graphql_schema::{create_schema, RequestContext};
+use mk_certs::{mk_ca_cert, mk_ca_signed_cert};
 use models::User;
 use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
 use schema::users;
 use sha2::{Digest, Sha256};
-
-use pitunes_frontend::generate;
 
 async fn validator(req: ServiceRequest, credentials: BasicAuth) -> Result<ServiceRequest, Error> {
     let valid = {
@@ -66,9 +66,9 @@ async fn validator(req: ServiceRequest, credentials: BasicAuth) -> Result<Servic
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-    let matches = clap::App::new("piTunes")
+    let matches = clap::App::new("pitunes")
         .version("0.1.0")
-        .about("A server that allows you to stream your personal music collection")
+        .about("A Raspberry Pi compatible tool to manage and stream your personal music collection remotely.")
         .author("Bernhard Fritz <bernhard.e.fritz@gmail.com>")
         .arg(
             clap::Arg::with_name("port")
@@ -78,8 +78,24 @@ async fn main() -> std::io::Result<()> {
                 .help("Port to use (defaults to 8443)")
                 .takes_value(true),
         )
+        .arg(
+            clap::Arg::with_name("cert")
+                .short("c")
+                .long("cert")
+                .value_name("FILE")
+                .help("Certificate to use (defaults to self-signed)")
+        )
+        .arg(
+            clap::Arg::with_name("key")
+                .short("k")
+                .long("key")
+                .value_name("FILE")
+                .help("Private key to use (defaults to self-signed)")
+        )
         .get_matches();
     let port = value_t!(matches, "port", u16).unwrap_or(8443);
+    let cert = value_t!(matches, "cert", String);
+    let key = value_t!(matches, "key", String);
 
     let config_dir = {
         let mut config_dir = dirs::config_dir().unwrap();
@@ -107,32 +123,41 @@ async fn main() -> std::io::Result<()> {
     let st = Arc::new(create_schema());
 
     // load ssl keys
-    // to create a self-signed temporary cert for testing:
-    // https://letsencrypt.org/docs/certificates-for-localhost/#making-and-trusting-your-own-certificates
     let mut builder = SslAcceptor::mozilla_intermediate(SslMethod::tls()).unwrap();
-    builder
-        .set_private_key_file("key.pem", SslFiletype::PEM)
-        .unwrap();
-    builder.set_certificate_chain_file("cert.pem").unwrap();
+    if let (Ok(cert), Ok(key)) = (cert, key) {
+        builder.set_private_key_file(key, SslFiletype::PEM).unwrap();
+        builder.set_certificate_chain_file(cert).unwrap();
+    } else {
+        let (ca_cert, ca_privkey) = mk_ca_cert().unwrap();
+        let (cert, _privkey) = mk_ca_signed_cert(&ca_cert, &ca_privkey).unwrap();
+        builder.set_private_key(&_privkey).unwrap();
+        builder.set_certificate(&cert).unwrap();
+    }
 
     let http_server = HttpServer::new(move || {
         let ctx = RequestContext::new(pool.clone(), tracks_dir.clone());
         let auth = HttpAuthentication::basic(validator);
-        let generated = generate();
-        App::new().wrap(auth).data(st.clone()).data(ctx).service(
-            web::scope("/api")
-                .service(graphql_service::graphql)
-                .service(tracks_service::post_tracks)
-                .service(playlists_service::get_playlist)
-                .service(Files::new("/tracks", tracks_dir.clone()))
-                .service(
-                    web::resource("/tracks/{id}.mp3")
-                        .name("get_track")
-                        .to(|| HttpResponse::NotFound()),
-                ) // only used for resource url generation
+        let pitunes_frontend = pitunes_frontend::generate();
+        App::new()
+            .wrap(auth)
+            .data(st.clone())
+            .data(ctx)
+            .service(
+                web::scope("/api")
+                    .service(graphql_service::graphql)
+                    .service(tracks_service::post_tracks)
+                    .service(playlists_service::get_playlist)
+                    .service(Files::new("/tracks", tracks_dir.clone()))
+                    .service(
+                        web::resource("/tracks/{id}.mp3")
+                            .name("get_track")
+                            .to(|| HttpResponse::NotFound()),
+                    ), // only used for resource url generation
             )
-            .service(actix_web_static_files::ResourceFiles::new("/", generated).resolve_not_found_to_root(),
-        )
+            .service(
+                actix_web_static_files::ResourceFiles::new("/", pitunes_frontend)
+                    .resolve_not_found_to_root(),
+            )
     })
     .bind_openssl(format!("0.0.0.0:{}", port), builder)?;
 
