@@ -21,6 +21,7 @@ import SkipPreviousIcon from '@material-ui/icons/SkipPrevious';
 import React, { useContext, useEffect } from 'react';
 import { RouteComponentProps, useParams, withRouter } from 'react-router-dom';
 import { AppActionType, AppContext } from './App';
+import { TitleComponent } from './TitleComponent';
 import { useGraphQLData } from './useGraphQLData';
 import { useLoaded } from './useLoaded';
 import { WithAudio, withAudio } from './withAudio';
@@ -99,6 +100,12 @@ const TrackComponent = (props: TrackComponentProps) => {
       </AppBar>
       <div className={classes.column}>
         <div className={classes.toolbar} />
+        {data && (
+          <TitleComponent
+            title={data.track.name}
+            subtitle={data.track.artist?.name ?? 'Track'}
+          ></TitleComponent>
+        )}
         <AlbumIcon className={classes.coverArt} />
         <Slider
           color="secondary"

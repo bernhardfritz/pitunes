@@ -3,6 +3,7 @@ import TracksQuery from '!!raw-loader!./graphql/TracksQuery.graphql';
 import { List } from '@material-ui/core';
 import React from 'react';
 import { AppContext } from './App';
+import { EmptyListComponent } from './EmptyListComponent';
 import { GraphQLResource } from './GraphQLResource';
 import { TrackListItems } from './TrackListItems';
 
@@ -16,11 +17,15 @@ export const TracksComponent = () => (
           operationName: 'TracksQuery',
         }}
       >
-        {(data: any) => (
-          <List>
-            <TrackListItems tracks={data.tracks} />
-          </List>
-        )}
+        {(data: any) =>
+          data.tracks ? (
+            <List>
+              <TrackListItems tracks={data.tracks} />
+            </List>
+          ) : (
+            <EmptyListComponent />
+          )
+        }
       </GraphQLResource>
     )}
   </AppContext.Consumer>

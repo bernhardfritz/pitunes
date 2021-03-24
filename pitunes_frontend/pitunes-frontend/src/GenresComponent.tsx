@@ -3,6 +3,7 @@ import GenresQuery from '!!raw-loader!./graphql/GenresQuery.graphql';
 import { List } from '@material-ui/core';
 import React from 'react';
 import { AppContext } from './App';
+import { EmptyListComponent } from './EmptyListComponent';
 import { GraphQLResource } from './GraphQLResource';
 import { IdNameListItemLinks } from './IdNameListItemLinks';
 
@@ -16,14 +17,18 @@ export const GenresComponent = () => (
           operationName: 'GenresQuery',
         }}
       >
-        {(data: any) => (
-          <List>
-            <IdNameListItemLinks
-              items={data.genres}
-              to={(id) => `/genres/${id}`}
-            />
-          </List>
-        )}
+        {(data: any) =>
+          data.genres ? (
+            <List>
+              <IdNameListItemLinks
+                items={data.genres}
+                to={(id) => `/genres/${id}`}
+              />
+            </List>
+          ) : (
+            <EmptyListComponent />
+          )
+        }
       </GraphQLResource>
     )}
   </AppContext.Consumer>

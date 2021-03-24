@@ -29,6 +29,7 @@ const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     root: {
       display: 'flex',
+      height: '100vh',
     },
     drawer: {
       [theme.breakpoints.up('sm')]: {
@@ -66,6 +67,10 @@ const useStyles = makeStyles((theme: Theme) =>
     content: {
       flexGrow: 1,
       // padding: theme.spacing(3),
+      display: 'flex',
+      flexFlow: 'column',
+      overflowX: 'hidden',
+      overflowY: 'auto',
     },
     logoContainer: {
       display: 'flex',

@@ -3,6 +3,7 @@ import ArtistsQuery from '!!raw-loader!./graphql/ArtistsQuery.graphql';
 import { List } from '@material-ui/core';
 import React from 'react';
 import { AppContext } from './App';
+import { EmptyListComponent } from './EmptyListComponent';
 import { GraphQLResource } from './GraphQLResource';
 import { IdNameListItemLinks } from './IdNameListItemLinks';
 
@@ -16,14 +17,18 @@ export const ArtistsComponent = () => (
           operationName: 'ArtistsQuery',
         }}
       >
-        {(data: any) => (
-          <List>
-            <IdNameListItemLinks
-              items={data.artists}
-              to={(id) => `/artists/${id}`}
-            />
-          </List>
-        )}
+        {(data: any) =>
+          data.artists ? (
+            <List>
+              <IdNameListItemLinks
+                items={data.artists}
+                to={(id) => `/artists/${id}`}
+              />
+            </List>
+          ) : (
+            <EmptyListComponent />
+          )
+        }
       </GraphQLResource>
     )}
   </AppContext.Consumer>

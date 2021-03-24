@@ -4,7 +4,9 @@ import { List } from '@material-ui/core';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { AppContext } from './App';
+import { EmptyListComponent } from './EmptyListComponent';
 import { GraphQLResource } from './GraphQLResource';
+import { TitleComponent } from './TitleComponent';
 import { TrackListItems } from './TrackListItems';
 
 export const PlaylistComponent = () => {
@@ -24,9 +26,19 @@ export const PlaylistComponent = () => {
           }}
         >
           {(data: any) => (
-            <List>
-              <TrackListItems tracks={data.playlist.tracks} />
-            </List>
+            <>
+              <TitleComponent
+                title={data.playlist.name}
+                subtitle="Playlist"
+              ></TitleComponent>
+              {data.playlist.tracks.length > 0 ? (
+                <List>
+                  <TrackListItems tracks={data.playlist.tracks} />
+                </List>
+              ) : (
+                <EmptyListComponent />
+              )}
+            </>
           )}
         </GraphQLResource>
       )}

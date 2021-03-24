@@ -1,0 +1,6 @@
+mutation CreatePlaylistMutation($input: PlaylistInput!) {
+  createPlaylist(input: $input) {
+    id
+    name
+  }
+}

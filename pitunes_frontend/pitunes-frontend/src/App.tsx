@@ -13,7 +13,6 @@ import {
 } from 'react-router-dom';
 import { AlbumComponent } from './AlbumComponent';
 import { AlbumsComponent } from './AlbumsComponent';
-import './App.css';
 import { ArtistComponent } from './ArtistComponent';
 import { ArtistsComponent } from './ArtistsComponent';
 import { GenreComponent } from './GenreComponent';
@@ -22,6 +21,7 @@ import { GraphiQLComponent } from './GraphiQLComponent';
 import { Track } from './models';
 import { PlayerComponentWithRouter } from './PlayerComponent';
 import { PlaylistComponent } from './PlaylistComponent';
+import { PlaylistDialog } from './PlaylistDialog';
 import { PlaylistsComponent } from './PlaylistsComponent';
 import { ResponsiveDrawer } from './ResponsiveDrawer';
 import { rotateRight } from './rotateRight';
@@ -146,18 +146,20 @@ const App = (props: AppProps) => {
     history.push(tabs[tabIndex].to);
   };
 
+  const fetcher = (graphQLParams: FetcherParams) =>
+    fetch('/api/graphql', {
+      method: 'post',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(graphQLParams),
+    }).then((response) => response.json());
+
   return (
     <AppContext.Provider
       value={{
         dispatch,
-        fetcher: (graphQLParams: FetcherParams) =>
-          fetch('/api/graphql', {
-            method: 'post',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(graphQLParams),
-          }).then((response) => response.json()),
+        fetcher,
       }}
     >
       <ThemeProvider theme={theme}>
@@ -227,6 +229,10 @@ const App = (props: AppProps) => {
             </Route>
           </div>
         </ResponsiveDrawer>
+        <PlaylistDialog
+          fetcher={fetcher}
+          playerVisible={state.queue.length > 0}
+        />
         {state.queue.length > 0 && (
           <PlayerComponentWithRouter track={state.queue[0]} />
         )}

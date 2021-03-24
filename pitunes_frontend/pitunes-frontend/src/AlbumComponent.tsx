@@ -5,6 +5,7 @@ import React from 'react';
 import { useParams } from 'react-router-dom';
 import { AppContext } from './App';
 import { GraphQLResource } from './GraphQLResource';
+import { TitleComponent } from './TitleComponent';
 import { TrackListItems } from './TrackListItems';
 
 export const AlbumComponent = () => {
@@ -24,9 +25,15 @@ export const AlbumComponent = () => {
           }}
         >
           {(data: any) => (
-            <List>
-              <TrackListItems tracks={data.album.tracks} />
-            </List>
+            <>
+              <TitleComponent
+                title={data.album.name}
+                subtitle="Album"
+              ></TitleComponent>
+              <List>
+                <TrackListItems tracks={data.album.tracks} />
+              </List>
+            </>
           )}
         </GraphQLResource>
       )}
