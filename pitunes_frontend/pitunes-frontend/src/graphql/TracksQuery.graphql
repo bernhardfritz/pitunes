@@ -17,4 +17,8 @@ query TracksQuery {
     }
     trackNumber
   }
+  playlists {
+    id
+    name
+  }
 }

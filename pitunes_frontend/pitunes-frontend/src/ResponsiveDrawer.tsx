@@ -44,6 +44,8 @@ const useStyles = makeStyles((theme: Theme) =>
         width: `calc(100% - ${drawerWidth}px)`,
         marginLeft: drawerWidth,
       },
+      color: theme.palette.text.primary,
+      backgroundColor: theme.palette.background.paper,
     },
     appBarEnterDone: {
       transform: `translateY(-${theme.mixins.toolbar.minHeight}px)`,

@@ -13,7 +13,7 @@ export const GraphQLResource: FunctionComponent<GraphQLResourceProps> = ({
   fetcherParams,
   children,
 }) => {
-  const data = useGraphQLData(fetcher, fetcherParams);
+  const { data, refresh } = useGraphQLData(fetcher, fetcherParams);
 
-  return data ? (children as any)(data) : null;
+  return data ? (children as any)({ data, refresh }) : null;
 };

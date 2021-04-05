@@ -1,47 +1,41 @@
 // eslint-disable-next-line import/no-webpack-loader-syntax
 import GenreTracksQuery from '!!raw-loader!./graphql/GenreTracksQuery.graphql';
 import { List } from '@material-ui/core';
-import React from 'react';
+import React, { useContext } from 'react';
 import { useParams } from 'react-router-dom';
 import { AppContext } from './App';
 import { EmptyListComponent } from './EmptyListComponent';
-import { GraphQLResource } from './GraphQLResource';
+import { LoadingComponent } from './LoadingComponent';
 import { TitleComponent } from './TitleComponent';
 import { TrackListItems } from './TrackListItems';
+import { useGraphQLData } from './useGraphQLData';
 
 export const GenreComponent = () => {
   const { id } = useParams<{ id: string }>();
+  const { fetcher } = useContext(AppContext);
+  const { data } = useGraphQLData(fetcher, {
+    query: GenreTracksQuery,
+    operationName: 'GenreTracksQuery',
+    variables: {
+      id,
+    },
+  });
 
-  return (
-    <AppContext.Consumer>
-      {({ fetcher }) => (
-        <GraphQLResource
-          fetcher={fetcher}
-          fetcherParams={{
-            query: GenreTracksQuery,
-            operationName: 'GenreTracksQuery',
-            variables: {
-              id,
-            },
-          }}
-        >
-          {(data: any) => (
-            <>
-              <TitleComponent
-                title={data.genre.name}
-                subtitle="Genre"
-              ></TitleComponent>
-              {data.genre.tracks.length > 0 ? (
-                <List>
-                  <TrackListItems tracks={data.genre.tracks} />
-                </List>
-              ) : (
-                <EmptyListComponent />
-              )}
-            </>
-          )}
-        </GraphQLResource>
+  return data ? (
+    <>
+      <TitleComponent title={data.genre.name} subtitle="Genre"></TitleComponent>
+      {data.genre.tracks.length > 0 ? (
+        <List>
+          <TrackListItems
+            tracks={data.genre.tracks}
+            playlists={data.playlists ?? []}
+          />
+        </List>
+      ) : (
+        <EmptyListComponent />
       )}
-    </AppContext.Consumer>
+    </>
+  ) : (
+    <LoadingComponent />
   );
 };

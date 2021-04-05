@@ -7,11 +7,18 @@ export const useGraphQLData = (
   fetcherParams: FetcherParams
 ) => {
   const [data, setData] = useState<any>(null);
-  useEffect(() => {
+  const refresh = () => {
     (async () => {
       const { data } = await fetcher(fetcherParams);
       setData(data);
     })();
-  }, []);
-  return data;
+  };
+  useEffect(refresh, []);
+
+  return { data, refresh };
 };
+
+export interface GraphQLData {
+  data: any;
+  refresh: () => void;
+}

@@ -25,16 +25,22 @@ const useStyles = makeStyles((theme: Theme) =>
         width: `calc(100% - ${drawerWidth}px)`,
         marginLeft: drawerWidth,
       },
+      color: theme.palette.text.primary,
+      backgroundColor: theme.palette.background.paper,
     },
     toolbar: {
       paddingLeft: 0,
+      paddingRight: 4,
+      [theme.breakpoints.up('sm')]: {
+        paddingRight: 8,
+      },
     },
     indicator: {
       position: 'absolute',
       top: 0,
       left: 0,
       height: 2,
-      backgroundColor: theme.palette.secondary.main,
+      backgroundColor: theme.palette.primary.main,
     },
     coverArtPreview: {
       backgroundColor: '#fff',
@@ -46,12 +52,26 @@ const useStyles = makeStyles((theme: Theme) =>
           .minHeight,
       },
     },
-    grow: {
-      flexGrow: 1,
-      marginLeft: theme.spacing(1),
+    flex: {
+      display: 'flex',
+      width: '100%',
     },
-    trackName: {
+    trackMetadataContainer: {
+      flexGrow: 1,
+      minWidth: 0,
+      margin: 'auto 8px',
+    },
+    bold: {
       fontWeight: theme.typography.fontWeightBold,
+    },
+    ellipsis: {
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+    },
+    iconButtonWrapper: {
+      display: 'flex',
+      alignItems: 'center',
     },
   })
 );
@@ -87,14 +107,20 @@ const PlayerComponent = (props: PlayerComponentProps) => {
             }%`,
           }}
         ></span>
-        <AlbumIcon className={classes.coverArtPreview} />
-        <div className={classes.grow}>
-          <div className={classes.trackName}>{props.track?.name}</div>
-          <div>{props.track?.artist?.name}</div>
+        <div className={classes.flex}>
+          <AlbumIcon className={classes.coverArtPreview} />
+          <div className={classes.trackMetadataContainer}>
+            <div className={`${classes.ellipsis} ${classes.bold}`}>
+              {props.track?.name}
+            </div>
+            <div className={classes.ellipsis}>{props.track?.artist?.name}</div>
+          </div>
+          <div className={classes.iconButtonWrapper}>
+            <IconButton color="inherit" onClick={handlePauseClick}>
+              {props.paused ? <PlayArrowIcon /> : <PauseIcon />}
+            </IconButton>
+          </div>
         </div>
-        <IconButton edge="end" color="inherit" onClick={handlePauseClick}>
-          {props.paused ? <PlayArrowIcon /> : <PauseIcon />}
-        </IconButton>
       </Toolbar>
     </AppBar>
   );

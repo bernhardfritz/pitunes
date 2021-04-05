@@ -21,7 +21,6 @@ import SkipPreviousIcon from '@material-ui/icons/SkipPrevious';
 import React, { useContext, useEffect } from 'react';
 import { RouteComponentProps, useParams, withRouter } from 'react-router-dom';
 import { AppActionType, AppContext } from './App';
-import { TitleComponent } from './TitleComponent';
 import { useGraphQLData } from './useGraphQLData';
 import { useLoaded } from './useLoaded';
 import { WithAudio, withAudio } from './withAudio';
@@ -33,6 +32,10 @@ const useStyles = makeStyles((theme: Theme) =>
       inset: 0,
       backgroundColor: theme.palette.background.default,
       zIndex: theme.zIndex.modal,
+    },
+    appBar: {
+      color: theme.palette.text.primary,
+      backgroundColor: theme.palette.background.paper,
     },
     toolbar: theme.mixins.toolbar,
     column: {
@@ -57,6 +60,19 @@ const useStyles = makeStyles((theme: Theme) =>
       height: 48,
       width: 48,
     },
+    trackMetadataContainer: {
+      flexGrow: 1,
+      minWidth: 0,
+      margin: 'auto 8px',
+    },
+    bold: {
+      fontWeight: theme.typography.fontWeightBold,
+    },
+    ellipsis: {
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+    },
   })
 );
 
@@ -66,7 +82,7 @@ const TrackComponent = (props: TrackComponentProps) => {
   const classes = useStyles();
   const { id } = useParams<{ id: string }>();
   const { dispatch, fetcher } = useContext(AppContext);
-  const data = useGraphQLData(fetcher, {
+  const { data } = useGraphQLData(fetcher, {
     query: TrackQuery,
     operationName: 'TrackQuery',
     variables: {
@@ -86,7 +102,7 @@ const TrackComponent = (props: TrackComponentProps) => {
 
   return (
     <div className={classes.container}>
-      <AppBar>
+      <AppBar className={classes.appBar}>
         <Toolbar>
           <IconButton
             edge="start"
@@ -96,19 +112,20 @@ const TrackComponent = (props: TrackComponentProps) => {
           >
             <CloseIcon />
           </IconButton>
+          {data && (
+            <div className={classes.trackMetadataContainer}>
+              <div className={`${classes.ellipsis} ${classes.bold}`}>
+                {data.track.name}
+              </div>
+              <div className={classes.ellipsis}>{data.track.artist?.name}</div>
+            </div>
+          )}
         </Toolbar>
       </AppBar>
       <div className={classes.column}>
         <div className={classes.toolbar} />
-        {data && (
-          <TitleComponent
-            title={data.track.name}
-            subtitle={data.track.artist?.name ?? 'Track'}
-          ></TitleComponent>
-        )}
         <AlbumIcon className={classes.coverArt} />
         <Slider
-          color="secondary"
           value={props.currentTime}
           max={data?.track.duration / 1000}
           onChange={(event, value) => props.seek(value as number)}

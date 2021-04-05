@@ -21,4 +21,8 @@ query PlaylistTracksQuery($id: ID!) {
       trackNumber
     }
   }
+  playlists {
+    id
+    name
+  }
 }

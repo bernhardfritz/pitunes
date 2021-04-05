@@ -1,3 +1,4 @@
+import { createStyles, makeStyles, Theme, Typography } from '@material-ui/core';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
@@ -8,6 +9,16 @@ import {
   LinkProps as RouterLinkProps,
 } from 'react-router-dom';
 
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    ellipsis: {
+      overflow: 'hidden',
+      whiteSpace: 'nowrap',
+      textOverflow: 'ellipsis',
+    },
+  })
+);
+
 interface ListItemLinkProps {
   icon?: React.ReactElement;
   primary: string;
@@ -16,6 +27,7 @@ interface ListItemLinkProps {
 }
 
 export const ListItemLink = (props: ListItemLinkProps) => {
+  const classes = useStyles();
   const { icon, primary, to, onClick } = props;
 
   const renderLink = React.useMemo(
@@ -30,7 +42,11 @@ export const ListItemLink = (props: ListItemLinkProps) => {
     <li>
       <ListItem button component={renderLink} onClick={onClick}>
         {icon ? <ListItemIcon>{icon}</ListItemIcon> : null}
-        <ListItemText primary={primary} />
+        <ListItemText
+          primary={
+            <Typography className={classes.ellipsis}>{primary}</Typography>
+          }
+        />
       </ListItem>
     </li>
   );
