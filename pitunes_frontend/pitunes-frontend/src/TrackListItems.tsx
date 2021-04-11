@@ -1,7 +1,3 @@
-// eslint-disable-next-line import/no-webpack-loader-syntax
-import CreatePlaylistTrackMutation from '!!raw-loader!./graphql/CreatePlaylistTrackMutation.graphql';
-// eslint-disable-next-line import/no-webpack-loader-syntax
-import DeletePlaylistTrackMutation from '!!raw-loader!./graphql/DeletePlaylistTrackMutation.graphql';
 import {
   createStyles,
   IconButton,
@@ -17,8 +13,15 @@ import {
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import React, { useContext, useState } from 'react';
 import { AppActionType, AppContext } from './App';
+import {
+  createPlaylist,
+  createPlaylistTrack,
+  deletePlaylistTrack,
+  fetcher,
+} from './graphql/api';
 import { Playlist, Track } from './models';
 import { NestedMenuItem } from './NestedMenuItem';
+import { PlaylistDialog } from './PlaylistDialogComponent';
 import { rotateRight } from './rotateRight';
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -38,6 +41,8 @@ type TrackListItemProps = {
   refresh?: () => void;
 };
 
+type TrackAndPosition = { track: Track; position: number };
+
 export const TrackListItems = ({
   tracks,
   playlists,
@@ -47,7 +52,12 @@ export const TrackListItems = ({
   const classes = useStyles();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const openMenu = Boolean(anchorEl);
-  const { dispatch, fetcher } = useContext(AppContext);
+  const [
+    trackAndPositionForNewPlaylist,
+    setTrackAndPositionForNewPlaylist,
+  ] = useState<TrackAndPosition | null>(null);
+  const openPlaylistDialog = Boolean(trackAndPositionForNewPlaylist);
+  const { dispatch } = useContext(AppContext);
 
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -57,44 +67,54 @@ export const TrackListItems = ({
     setAnchorEl(null);
   };
 
-  const createPlaylistTrack = async (
+  const handleNewPlaylistClick = (track: Track, position: number) => {
+    setAnchorEl(null);
+    setTrackAndPositionForNewPlaylist({ track, position });
+  };
+
+  const handlePlaylistDialogClose = () => {
+    setTrackAndPositionForNewPlaylist(null);
+  };
+
+  const handleNewPlaylistSubmit = async (event: any) => {
+    event.preventDefault();
+    const { data: createPlaylistMutationData } = await fetcher(
+      createPlaylist(event.target.elements['name'].value)
+    );
+    const { data: createPlaylistTrackMutationData } = await fetcher(
+      createPlaylistTrack(
+        createPlaylistMutationData.createPlaylist.id,
+        trackAndPositionForNewPlaylist!.track.id,
+        trackAndPositionForNewPlaylist!.position
+      )
+    );
+    setTrackAndPositionForNewPlaylist(null);
+
+    return createPlaylistTrackMutationData;
+  };
+
+  const handleAddToPlaylist = async (
     playlist: Playlist,
     track: Track,
     position?: number
   ) => {
     setAnchorEl(null);
-    const { data } = await fetcher({
-      query: CreatePlaylistTrackMutation,
-      operationName: 'CreatePlaylistTrackMutation',
-      variables: {
-        id: playlist.id,
-        input: {
-          id: track.id,
-          position,
-        },
-      },
-    });
+    const { data } = await fetcher(
+      createPlaylistTrack(playlist.id, track.id, position)
+    );
 
     return data;
   };
 
-  const deletePlaylistTrack = async (
+  const handleRemoveFromPlaylist = async (
     playlist: Playlist,
     track: Track,
     position?: number
   ) => {
     setAnchorEl(null);
-    const { data } = await fetcher({
-      query: DeletePlaylistTrackMutation,
-      operationName: 'DeletePlaylistTrackMutation',
-      variables: {
-        id: playlist.id,
-        input: {
-          id: track.id,
-          position,
-        },
-      },
-    });
+    const { data } = await fetcher(
+      deletePlaylistTrack(playlist.id, track.id, position)
+    );
 
     if (refresh) {
       refresh();
@@ -131,9 +151,12 @@ export const TrackListItems = ({
                 parentMenuOpen={openMenu}
                 left
               >
+                <MenuItem onClick={() => handleNewPlaylistClick(track, index)}>
+                  New playlist
+                </MenuItem>
                 {playlists.map((playlist) => (
                   <MenuItem
-                    onClick={() => createPlaylistTrack(playlist, track)}
+                    onClick={() => handleAddToPlaylist(playlist, track)}
                   >
                     {playlist.name}
                   </MenuItem>
@@ -141,7 +164,9 @@ export const TrackListItems = ({
               </NestedMenuItem>
               {playlist && (
                 <MenuItem
-                  onClick={() => deletePlaylistTrack(playlist, track, index)}
+                  onClick={() =>
+                    handleRemoveFromPlaylist(playlist, track, index)
+                  }
                 >
                   Remove from this playlist
                 </MenuItem>
@@ -150,6 +175,11 @@ export const TrackListItems = ({
           </ListItemSecondaryAction>
         </ListItem>
       ))}
+      <PlaylistDialog
+        open={openPlaylistDialog}
+        handleClose={handlePlaylistDialogClose}
+        handleSubmit={handleNewPlaylistSubmit}
+      />
     </>
   );
 };

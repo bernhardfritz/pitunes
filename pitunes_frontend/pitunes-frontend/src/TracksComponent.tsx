@@ -1,28 +1,29 @@
-// eslint-disable-next-line import/no-webpack-loader-syntax
-import TracksQuery from '!!raw-loader!./graphql/TracksQuery.graphql';
 import { List } from '@material-ui/core';
-import React, { useContext } from 'react';
-import { AppContext } from './App';
+import React from 'react';
 import { EmptyListComponent } from './EmptyListComponent';
+import { tracks } from './graphql/api';
 import { LoadingComponent } from './LoadingComponent';
+import { TitleComponent } from './TitleComponent';
 import { TrackListItems } from './TrackListItems';
 import { useGraphQLData } from './useGraphQLData';
 
 export const TracksComponent = () => {
-  const { fetcher } = useContext(AppContext);
-  const { data } = useGraphQLData(fetcher, {
-    query: TracksQuery,
-    operationName: 'TracksQuery',
-  });
+  const { data } = useGraphQLData(tracks());
 
   return data ? (
-    data.tracks ? (
-      <List>
-        <TrackListItems tracks={data.tracks} playlists={data.playlists ?? []} />
-      </List>
-    ) : (
-      <EmptyListComponent />
-    )
+    <>
+      <TitleComponent title="Tracks"></TitleComponent>
+      {data.tracks && data.tracks.length > 0 ? (
+        <List>
+          <TrackListItems
+            tracks={data.tracks}
+            playlists={data.playlists ?? []}
+          />
+        </List>
+      ) : (
+        <EmptyListComponent />
+      )}
+    </>
   ) : (
     <LoadingComponent />
   );

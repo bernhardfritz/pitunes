@@ -2,7 +2,7 @@ import { createStyles, makeStyles, Theme } from '@material-ui/core/styles';
 import GraphiQL from 'graphiql';
 import 'graphiql/graphiql.min.css';
 import React from 'react';
-import { AppContext } from './App';
+import { fetcher } from './graphql/api';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -29,12 +29,8 @@ export const GraphiQLComponent = (props: GraphiQLComponentProps) => {
   const classes = useStyles(props);
 
   return (
-    <AppContext.Consumer>
-      {({ fetcher }) => (
-        <div className={classes.graphiql}>
-          <GraphiQL fetcher={fetcher} />
-        </div>
-      )}
-    </AppContext.Consumer>
+    <div className={classes.graphiql}>
+      <GraphiQL fetcher={fetcher} />
+    </div>
   );
 };

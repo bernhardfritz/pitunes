@@ -1,10 +1,8 @@
-// eslint-disable-next-line import/no-webpack-loader-syntax
-import ArtistQuery from '!!raw-loader!./graphql/ArtistQuery.graphql';
 import { List, ListSubheader, makeStyles, Theme } from '@material-ui/core';
-import React, { useContext } from 'react';
+import React from 'react';
 import { useParams } from 'react-router-dom';
-import { AppContext } from './App';
 import { EmptyListComponent } from './EmptyListComponent';
+import { artist } from './graphql/api';
 import { IdNameListItemLinks } from './IdNameListItemLinks';
 import { LoadingComponent } from './LoadingComponent';
 import { TitleComponent } from './TitleComponent';
@@ -24,14 +22,7 @@ const useStyles = makeStyles((theme: Theme) => ({
 export const ArtistComponent = () => {
   const classes = useStyles();
   const { id } = useParams<{ id: string }>();
-  const { fetcher } = useContext(AppContext);
-  const { data } = useGraphQLData(fetcher, {
-    query: ArtistQuery,
-    operationName: 'ArtistQuery',
-    variables: {
-      id,
-    },
-  });
+  const { data } = useGraphQLData(artist(id));
 
   return data ? (
     <>
@@ -39,9 +30,12 @@ export const ArtistComponent = () => {
         title={data.artist.name}
         subtitle="Artist"
       ></TitleComponent>
-      {data.artist.albums.length > 0 && data.artist.tracks.length > 0 ? (
+      {data.artist.albums &&
+      data.artist.albums.length > 0 &&
+      data.artist.tracks &&
+      data.artist.tracks.length > 0 ? (
         <List subheader={<li />}>
-          {data.artist.albums && (
+          {data.artist.albums && data.artist.albums.length > 0 && (
             <li>
               <ul className={classes.ul}>
                 <ListSubheader className={classes.listSubheader}>
@@ -54,7 +48,7 @@ export const ArtistComponent = () => {
               </ul>
             </li>
           )}
-          {data.artist.tracks && (
+          {data.artist.tracks && data.artist.tracks.length > 0 && (
             <li>
               <ul className={classes.ul}>
                 <ListSubheader className={classes.listSubheader}>

@@ -3,7 +3,6 @@ import {
   ThemeProvider,
   unstable_createMuiStrictModeTheme as createMuiTheme,
 } from '@material-ui/core/styles';
-import { FetcherParams } from 'graphiql/dist/components/GraphiQL';
 import React, { useReducer } from 'react';
 import {
   Redirect,
@@ -21,7 +20,7 @@ import { GraphiQLComponent } from './GraphiQLComponent';
 import { Track } from './models';
 import { PlayerComponentWithRouter } from './PlayerComponent';
 import { PlaylistComponent } from './PlaylistComponent';
-import { PlaylistDialog } from './PlaylistDialog';
+import { PlaylistDialogComponent } from './PlaylistDialogComponent';
 import { PlaylistsComponent } from './PlaylistsComponent';
 import { ResponsiveDrawer } from './ResponsiveDrawer';
 import { rotateRight } from './rotateRight';
@@ -79,12 +78,10 @@ const reducer: React.Reducer<AppState, AppAction> = (prevState, action) => {
 
 type AppContextProps = {
   dispatch: React.Dispatch<AppAction>;
-  fetcher: (graphQLParams: FetcherParams) => Promise<any>;
 };
 
 export const AppContext = React.createContext<AppContextProps>({
   dispatch: (action: AppAction) => {},
-  fetcher: (graphQLParams: FetcherParams) => Promise.resolve(),
 });
 
 type AppProps = RouteComponentProps;
@@ -172,20 +169,10 @@ const App = (props: AppProps) => {
     history.push(tabs[tabIndex].to);
   };
 
-  const fetcher = (graphQLParams: FetcherParams) =>
-    fetch('/api/graphql', {
-      method: 'post',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(graphQLParams),
-    }).then((response) => response.json());
-
   return (
     <AppContext.Provider
       value={{
         dispatch,
-        fetcher,
       }}
     >
       <ThemeProvider theme={theme}>
@@ -257,10 +244,7 @@ const App = (props: AppProps) => {
             </Route>
           </div>
         </ResponsiveDrawer>
-        <PlaylistDialog
-          fetcher={fetcher}
-          playerVisible={state.queue.length > 0}
-        />
+        <PlaylistDialogComponent playerVisible={state.queue.length > 0} />
         {state.queue.length > 0 && (
           <PlayerComponentWithRouter track={state.queue[0]} />
         )}

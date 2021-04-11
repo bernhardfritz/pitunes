@@ -1,28 +1,29 @@
-// eslint-disable-next-line import/no-webpack-loader-syntax
-import AlbumsQuery from '!!raw-loader!./graphql/AlbumsQuery.graphql';
 import { List } from '@material-ui/core';
-import React, { useContext } from 'react';
-import { AppContext } from './App';
+import React from 'react';
 import { EmptyListComponent } from './EmptyListComponent';
+import { albums } from './graphql/api';
 import { IdNameListItemLinks } from './IdNameListItemLinks';
 import { LoadingComponent } from './LoadingComponent';
+import { TitleComponent } from './TitleComponent';
 import { useGraphQLData } from './useGraphQLData';
 
 export const AlbumsComponent = () => {
-  const { fetcher } = useContext(AppContext);
-  const { data } = useGraphQLData(fetcher, {
-    query: AlbumsQuery,
-    operationName: 'AlbumsQuery',
-  });
+  const { data } = useGraphQLData(albums());
 
   return data ? (
-    data.albums ? (
-      <List>
-        <IdNameListItemLinks items={data.albums} to={(id) => `/albums/${id}`} />
-      </List>
-    ) : (
-      <EmptyListComponent />
-    )
+    <>
+      <TitleComponent title="Albums"></TitleComponent>
+      {data.albums && data.albums.length ? (
+        <List>
+          <IdNameListItemLinks
+            items={data.albums}
+            to={(id) => `/albums/${id}`}
+          />
+        </List>
+      ) : (
+        <EmptyListComponent />
+      )}
+    </>
   ) : (
     <LoadingComponent />
   );

@@ -1,5 +1,3 @@
-// eslint-disable-next-line import/no-webpack-loader-syntax
-import TrackQuery from '!!raw-loader!./graphql/TrackQuery.graphql';
 import {
   AppBar,
   createStyles,
@@ -21,6 +19,7 @@ import SkipPreviousIcon from '@material-ui/icons/SkipPrevious';
 import React, { useContext, useEffect } from 'react';
 import { RouteComponentProps, useParams, withRouter } from 'react-router-dom';
 import { AppActionType, AppContext } from './App';
+import { track } from './graphql/api';
 import { useGraphQLData } from './useGraphQLData';
 import { useLoaded } from './useLoaded';
 import { WithAudio, withAudio } from './withAudio';
@@ -81,14 +80,8 @@ type TrackComponentProps = WithAudio & RouteComponentProps;
 const TrackComponent = (props: TrackComponentProps) => {
   const classes = useStyles();
   const { id } = useParams<{ id: string }>();
-  const { dispatch, fetcher } = useContext(AppContext);
-  const { data } = useGraphQLData(fetcher, {
-    query: TrackQuery,
-    operationName: 'TrackQuery',
-    variables: {
-      id,
-    },
-  });
+  const { dispatch } = useContext(AppContext);
+  const { data } = useGraphQLData(track(id));
   const loaded = useLoaded();
 
   useEffect(() => {

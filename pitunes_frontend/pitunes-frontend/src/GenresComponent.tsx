@@ -1,28 +1,29 @@
-// eslint-disable-next-line import/no-webpack-loader-syntax
-import GenresQuery from '!!raw-loader!./graphql/GenresQuery.graphql';
 import { List } from '@material-ui/core';
-import React, { useContext } from 'react';
-import { AppContext } from './App';
+import React from 'react';
 import { EmptyListComponent } from './EmptyListComponent';
+import { genres } from './graphql/api';
 import { IdNameListItemLinks } from './IdNameListItemLinks';
 import { LoadingComponent } from './LoadingComponent';
+import { TitleComponent } from './TitleComponent';
 import { useGraphQLData } from './useGraphQLData';
 
 export const GenresComponent = () => {
-  const { fetcher } = useContext(AppContext);
-  const { data } = useGraphQLData(fetcher, {
-    query: GenresQuery,
-    operationName: 'GenresQuery',
-  });
+  const { data } = useGraphQLData(genres());
 
   return data ? (
-    data.genres ? (
-      <List>
-        <IdNameListItemLinks items={data.genres} to={(id) => `/genres/${id}`} />
-      </List>
-    ) : (
-      <EmptyListComponent />
-    )
+    <>
+      <TitleComponent title="Genres"></TitleComponent>
+      {data.genres && data.genres.length > 0 ? (
+        <List>
+          <IdNameListItemLinks
+            items={data.genres}
+            to={(id) => `/genres/${id}`}
+          />
+        </List>
+      ) : (
+        <EmptyListComponent />
+      )}
+    </>
   ) : (
     <LoadingComponent />
   );

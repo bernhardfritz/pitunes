@@ -1,11 +1,8 @@
 import { FetcherParams } from 'graphiql/dist/components/GraphiQL';
 import { useEffect, useState } from 'react';
-import { Fetcher } from './fetcher';
+import { fetcher } from './graphql/api';
 
-export const useGraphQLData = (
-  fetcher: Fetcher,
-  fetcherParams: FetcherParams
-) => {
+export const useGraphQLData = (fetcherParams: FetcherParams) => {
   const [data, setData] = useState<any>(null);
   const refresh = () => {
     (async () => {
