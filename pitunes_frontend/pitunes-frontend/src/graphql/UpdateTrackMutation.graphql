@@ -1,0 +1,20 @@
+mutation UpdateTrackMutation($id: ID!, $input: TrackInput!) {
+  updateTrack(id: $id, input: $input) {
+    id
+    name
+    duration
+    album {
+      id
+      name
+    }
+    artist {
+      id
+      name
+    }
+    genre {
+      id
+      name
+    }
+    trackNumber
+  }
+}

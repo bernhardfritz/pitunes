@@ -1,10 +1,5 @@
 import {
-  Button,
   createStyles,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Fab,
   makeStyles,
   TextField,
@@ -15,7 +10,9 @@ import {
 import AddIcon from '@material-ui/icons/Add';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
-import { createPlaylist, fetcher } from './graphql/api';
+import { FormDialogComponent } from './FormDialogComponent';
+import { createPlaylist } from './graphql/api';
+import { fetcher } from './graphql/fetcher';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -43,34 +40,23 @@ const useStyles = makeStyles((theme: Theme) =>
 
 type PlaylistDialogComponentProps = {
   playerVisible: boolean;
+  refresh?: () => void;
 };
-
-type PlaylistDialogComponentState = { open: boolean };
 
 export const PlaylistDialogComponent = (
   props: PlaylistDialogComponentProps
 ) => {
   const classes = useStyles(props);
-  const [state, setState] = useState<PlaylistDialogComponentState>({
-    open: false,
-  });
+  const [open, setOpen] = useState<boolean>(false);
   const history = useHistory();
   const sm = !useMediaQuery((theme: Theme) => theme.breakpoints.up('sm')); // workaround
-
-  const handleClickOpen = () => {
-    setState({ open: true });
-  };
-
-  const handleClose = () => {
-    setState({ open: false });
-  };
 
   const handleSubmit = async (event: any) => {
     event.preventDefault();
     const { data } = await fetcher(
       createPlaylist(event.target.elements['name'].value)
     );
-    setState({ open: false });
+    setOpen(false);
     history.push(`/playlists/${data.createPlaylist.id}`);
   };
 
@@ -79,41 +65,20 @@ export const PlaylistDialogComponent = (
       <Zoom in={history.location.pathname === '/playlists'} unmountOnExit>
         <Fab
           className={sm ? classes.fabSm : classes.fab}
-          onClick={handleClickOpen}
+          onClick={() => setOpen(true)}
         >
           <AddIcon />
         </Fab>
       </Zoom>
-      <PlaylistDialog
-        open={state.open}
-        handleClose={handleClose}
-        handleSubmit={handleSubmit}
-      />
+      <FormDialogComponent
+        open={open}
+        onClose={() => setOpen(false)}
+        onSubmit={handleSubmit}
+        title="Create playlist"
+        submit="Create"
+      >
+        <TextField type="text" id="name" label="Name" autoFocus />
+      </FormDialogComponent>
     </>
   );
 };
-
-type PlaylistDialogProps = {
-  open: boolean;
-  handleClose: () => void;
-  handleSubmit: (event: any) => void;
-};
-
-export const PlaylistDialog = (props: PlaylistDialogProps) => (
-  <Dialog
-    open={props.open}
-    onClose={props.handleClose}
-    aria-labelledby="form-dialog-title"
-  >
-    <form onSubmit={props.handleSubmit}>
-      <DialogTitle id="form-dialog-title">Create playlist</DialogTitle>
-      <DialogContent>
-        <TextField type="text" id="name" label="Name" autoFocus />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={props.handleClose}>Cancel</Button>
-        <Button type="submit">Create</Button>
-      </DialogActions>
-    </form>
-  </Dialog>
-);

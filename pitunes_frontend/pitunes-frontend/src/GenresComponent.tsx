@@ -1,14 +1,14 @@
 import { List } from '@material-ui/core';
 import React from 'react';
 import { EmptyListComponent } from './EmptyListComponent';
-import { genres } from './graphql/api';
+import * as API from './graphql/api';
 import { IdNameListItemLinks } from './IdNameListItemLinks';
 import { LoadingComponent } from './LoadingComponent';
 import { TitleComponent } from './TitleComponent';
 import { useGraphQLData } from './useGraphQLData';
 
 export const GenresComponent = () => {
-  const { data } = useGraphQLData(genres());
+  const { data } = useGraphQLData(API.genres());
 
   return data ? (
     <>

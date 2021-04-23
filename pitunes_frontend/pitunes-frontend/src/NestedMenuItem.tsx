@@ -1,7 +1,16 @@
+import { createStyles, makeStyles, Theme } from '@material-ui/core';
 import Menu from '@material-ui/core/Menu';
 import MenuItem from '@material-ui/core/MenuItem';
 import ChevronRightIcon from '@material-ui/icons/ChevronRight';
 import React, { FunctionComponent, useRef, useState } from 'react';
+
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    chevronRight: {
+      marginLeft: 'auto',
+    },
+  })
+);
 
 type NestedMenuItemProps = {
   label: string;
@@ -14,6 +23,7 @@ const ITEM_HEIGHT = 48;
 export const NestedMenuItem: FunctionComponent<NestedMenuItemProps> = (
   props
 ) => {
+  const classes = useStyles();
   const [open, setOpen] = useState(false);
   const nestedMenuRef = useRef<any>(null);
 
@@ -39,7 +49,7 @@ export const NestedMenuItem: FunctionComponent<NestedMenuItemProps> = (
       onClick={handleClick}
     >
       {props.label}
-      <ChevronRightIcon />
+      <ChevronRightIcon className={classes.chevronRight} />
       <Menu
         // set to pointerEvents to none to prevent menu from capturing
         // events meant for child elements

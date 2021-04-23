@@ -2,7 +2,7 @@ import { createStyles, makeStyles, Theme } from '@material-ui/core/styles';
 import GraphiQL from 'graphiql';
 import 'graphiql/graphiql.min.css';
 import React from 'react';
-import { fetcher } from './graphql/api';
+import { fetcher } from './graphql/fetcher';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({

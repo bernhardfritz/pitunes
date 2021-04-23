@@ -1,0 +1,3 @@
+mutation DeletePlaylistMutation($id: ID!) {
+  deletePlaylist(id: $id)
+}

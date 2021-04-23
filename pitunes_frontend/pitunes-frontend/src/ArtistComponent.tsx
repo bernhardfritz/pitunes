@@ -2,7 +2,7 @@ import { List, ListSubheader, makeStyles, Theme } from '@material-ui/core';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { EmptyListComponent } from './EmptyListComponent';
-import { artist } from './graphql/api';
+import * as API from './graphql/api';
 import { IdNameListItemLinks } from './IdNameListItemLinks';
 import { LoadingComponent } from './LoadingComponent';
 import { TitleComponent } from './TitleComponent';
@@ -22,7 +22,7 @@ const useStyles = makeStyles((theme: Theme) => ({
 export const ArtistComponent = () => {
   const classes = useStyles();
   const { id } = useParams<{ id: string }>();
-  const { data } = useGraphQLData(artist(id));
+  const { data, refresh } = useGraphQLData(API.artist(id));
 
   return data ? (
     <>
@@ -57,6 +57,7 @@ export const ArtistComponent = () => {
                 <TrackListItems
                   tracks={data.artist.tracks}
                   playlists={data.playlists ?? []}
+                  refresh={refresh}
                 />
               </ul>
             </li>

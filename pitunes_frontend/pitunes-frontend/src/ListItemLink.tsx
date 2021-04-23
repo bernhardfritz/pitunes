@@ -1,4 +1,10 @@
-import { createStyles, makeStyles, Theme, Typography } from '@material-ui/core';
+import {
+  createStyles,
+  ListItemSecondaryAction,
+  makeStyles,
+  Theme,
+  Typography,
+} from '@material-ui/core';
 import ListItem from '@material-ui/core/ListItem';
 import ListItemIcon from '@material-ui/core/ListItemIcon';
 import ListItemText from '@material-ui/core/ListItemText';
@@ -24,11 +30,12 @@ interface ListItemLinkProps {
   primary: string;
   to: string;
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
+  menu?: React.ReactElement;
 }
 
 export const ListItemLink = (props: ListItemLinkProps) => {
   const classes = useStyles();
-  const { icon, primary, to, onClick } = props;
+  const { icon, primary, to, onClick, menu } = props;
 
   const renderLink = React.useMemo(
     () =>
@@ -47,6 +54,7 @@ export const ListItemLink = (props: ListItemLinkProps) => {
             <Typography className={classes.ellipsis}>{primary}</Typography>
           }
         />
+        {menu && <ListItemSecondaryAction>{menu}</ListItemSecondaryAction>}
       </ListItem>
     </li>
   );

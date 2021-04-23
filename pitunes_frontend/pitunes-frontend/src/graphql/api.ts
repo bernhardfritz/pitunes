@@ -5,28 +5,18 @@ import ArtistQuery from '!!raw-loader!./ArtistQuery.graphql';
 import ArtistsQuery from '!!raw-loader!./ArtistsQuery.graphql';
 import CreatePlaylistMutation from '!!raw-loader!./CreatePlaylistMutation.graphql';
 import CreatePlaylistTrackMutation from '!!raw-loader!./CreatePlaylistTrackMutation.graphql';
+import DeletePlaylistMutation from '!!raw-loader!./DeletePlaylistMutation.graphql';
 import DeletePlaylistTrackMutation from '!!raw-loader!./DeletePlaylistTrackMutation.graphql';
+import DeleteTrackMutation from '!!raw-loader!./DeleteTrackMutation.graphql';
 import GenresQuery from '!!raw-loader!./GenresQuery.graphql';
 import GenreTracksQuery from '!!raw-loader!./GenreTracksQuery.graphql';
 import PlaylistsQuery from '!!raw-loader!./PlaylistsQuery.graphql';
 import PlaylistTracksQuery from '!!raw-loader!./PlaylistTracksQuery.graphql';
 import TrackQuery from '!!raw-loader!./TrackQuery.graphql';
 import TracksQuery from '!!raw-loader!./TracksQuery.graphql';
+import UpdatePlaylistMutation from '!!raw-loader!./UpdatePlaylistMutation.graphql';
+import UpdateTrackMutation from '!!raw-loader!./UpdateTrackMutation.graphql';
 /* eslint-enable import/no-webpack-loader-syntax */
-import { FetcherParams } from 'graphiql/dist/components/GraphiQL';
-
-type FetcherResult = { data: any };
-
-type Fetcher = (graphQLParams: FetcherParams) => Promise<FetcherResult>;
-
-export const fetcher: Fetcher = (graphQLParams: FetcherParams) =>
-  fetch('/api/graphql', {
-    method: 'post',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(graphQLParams),
-  }).then((response) => response.json());
 
 export const albums = () => ({
   query: AlbumsQuery,
@@ -80,6 +70,14 @@ export const createPlaylistTrack = (
   },
 });
 
+export const deletePlaylist = (id: string) => ({
+  query: DeletePlaylistMutation,
+  operationName: 'DeletePlaylistMutation',
+  variables: {
+    id,
+  },
+});
+
 export const deletePlaylistTrack = (
   playlistId: string,
   trackId: string,
@@ -93,6 +91,14 @@ export const deletePlaylistTrack = (
       id: trackId,
       position,
     },
+  },
+});
+
+export const deleteTrack = (id: string) => ({
+  query: DeleteTrackMutation,
+  operationName: 'DeleteTrackMutation',
+  variables: {
+    id,
   },
 });
 
@@ -133,4 +139,37 @@ export const track = (id: string) => ({
 export const tracks = () => ({
   query: TracksQuery,
   operationName: 'TracksQuery',
+});
+
+export const updatePlaylist = (id: string, name: string) => ({
+  query: UpdatePlaylistMutation,
+  operationName: 'UpdatePlaylistMutation',
+  variables: {
+    id,
+    input: {
+      name,
+    },
+  },
+});
+
+export const updateTrack = (
+  id: string,
+  name: string,
+  albumId?: string,
+  artistId?: string,
+  genreId?: string,
+  trackNumber?: number
+) => ({
+  query: UpdateTrackMutation,
+  operationName: 'UpdateTrackMutation',
+  variables: {
+    id,
+    input: {
+      name,
+      albumId,
+      artistId,
+      genreId,
+      trackNumber,
+    },
+  },
 });

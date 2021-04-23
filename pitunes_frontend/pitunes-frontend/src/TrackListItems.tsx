@@ -1,27 +1,21 @@
 import {
   createStyles,
-  IconButton,
   ListItem,
   ListItemSecondaryAction,
   ListItemText,
   makeStyles,
-  Menu,
-  MenuItem,
+  TextField,
   Theme,
   Typography,
 } from '@material-ui/core';
-import MoreVertIcon from '@material-ui/icons/MoreVert';
 import React, { useContext, useState } from 'react';
 import { AppActionType, AppContext } from './App';
-import {
-  createPlaylist,
-  createPlaylistTrack,
-  deletePlaylistTrack,
-  fetcher,
-} from './graphql/api';
+import { ConfirmationDialogComponent } from './ConfirmationDialogComponent';
+import { FormDialogComponent } from './FormDialogComponent';
+import * as API from './graphql/api';
+import { fetcher } from './graphql/fetcher';
+import { MenuComponent } from './MenuComponent';
 import { Playlist, Track } from './models';
-import { NestedMenuItem } from './NestedMenuItem';
-import { PlaylistDialog } from './PlaylistDialogComponent';
 import { rotateRight } from './rotateRight';
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -50,136 +44,205 @@ export const TrackListItems = ({
   refresh,
 }: TrackListItemProps) => {
   const classes = useStyles();
-  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
-  const openMenu = Boolean(anchorEl);
   const [
-    trackAndPositionForNewPlaylist,
-    setTrackAndPositionForNewPlaylist,
+    newPlaylistTrack,
+    setClickNewPlaylistTrack,
   ] = useState<TrackAndPosition | null>(null);
-  const openPlaylistDialog = Boolean(trackAndPositionForNewPlaylist);
+  const openCreatePlaylistDialog = Boolean(newPlaylistTrack);
+  const [editTrack, setEditTrack] = useState<Track | null>(null);
+  const openEditTrackDialog = Boolean(editTrack);
+  const [deleteTrack, setDeleteTrack] = useState<Track | null>(null);
+  const openDeleteTrackDialog = Boolean(deleteTrack);
   const { dispatch } = useContext(AppContext);
 
-  const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleNewPlaylistClick = (track: Track, position: number) => {
-    setAnchorEl(null);
-    setTrackAndPositionForNewPlaylist({ track, position });
-  };
-
-  const handlePlaylistDialogClose = () => {
-    setTrackAndPositionForNewPlaylist(null);
-  };
-
-  const handleNewPlaylistSubmit = async (event: any) => {
+  const handleSubmitCreatePlaylistDialog = async (event: any) => {
     event.preventDefault();
-    const { data: createPlaylistMutationData } = await fetcher(
-      createPlaylist(event.target.elements['name'].value)
+
+    const { data } = await fetcher(
+      API.createPlaylist(event.target.elements['name'].value)
     );
-    const { data: createPlaylistTrackMutationData } = await fetcher(
-      createPlaylistTrack(
-        createPlaylistMutationData.createPlaylist.id,
-        trackAndPositionForNewPlaylist!.track.id,
-        trackAndPositionForNewPlaylist!.position
+
+    await fetcher(
+      API.createPlaylistTrack(
+        data.createPlaylist.id,
+        newPlaylistTrack!.track.id,
+        newPlaylistTrack!.position
       )
     );
-    setTrackAndPositionForNewPlaylist(null);
 
-    return createPlaylistTrackMutationData;
-  };
+    setClickNewPlaylistTrack(null);
 
-  const handleAddToPlaylist = async (
-    playlist: Playlist,
-    track: Track,
-    position?: number
-  ) => {
-    setAnchorEl(null);
-    const { data } = await fetcher(
-      createPlaylistTrack(playlist.id, track.id, position)
-    );
-
-    return data;
-  };
-
-  const handleRemoveFromPlaylist = async (
-    playlist: Playlist,
-    track: Track,
-    position?: number
-  ) => {
-    setAnchorEl(null);
-    const { data } = await fetcher(
-      deletePlaylistTrack(playlist.id, track.id, position)
-    );
-
-    if (refresh) {
+    if (refresh !== undefined) {
       refresh();
     }
+  };
 
-    return data;
+  const handleSubmitEditTrackDialog = async (event: any) => {
+    event.preventDefault();
+
+    if (editTrack === null) {
+      return;
+    }
+
+    await fetcher(
+      API.updateTrack(
+        editTrack.id,
+        event.target.elements['name'].value,
+        editTrack.album?.id,
+        editTrack.artist?.id,
+        editTrack.genre?.id,
+        editTrack.trackNumber
+      )
+    );
+
+    setEditTrack(null);
+
+    if (refresh !== undefined) {
+      refresh();
+    }
+  };
+
+  const handleClickAddToPlaylist = async (
+    playlist: Playlist,
+    track: Track,
+    position?: number
+  ) => {
+    await fetcher(API.createPlaylistTrack(playlist.id, track.id, position));
+
+    if (refresh !== undefined) {
+      refresh();
+    }
+  };
+
+  const handleClickRemoveFromPlaylist = async (
+    playlist: Playlist,
+    track: Track,
+    position?: number
+  ) => {
+    await fetcher(API.deletePlaylistTrack(playlist.id, track.id, position));
+
+    if (refresh !== undefined) {
+      refresh();
+    }
+  };
+
+  const handleConfirmDeleteTrackDialog = async () => {
+    if (deleteTrack === null) {
+      return;
+    }
+
+    await fetcher(API.deleteTrack(deleteTrack.id));
+    setDeleteTrack(null);
+
+    if (refresh !== undefined) {
+      refresh();
+    }
   };
 
   return (
     <>
-      {tracks.map((track, index) => (
-        <ListItem
-          key={track.id}
-          button
-          onClick={() =>
-            dispatch({
-              type: AppActionType.UPDATE_QUEUE,
-              queue: rotateRight([...tracks], index),
-            })
-          }
-        >
-          <ListItemText
-            primary={
-              <Typography className={classes.ellipsis}>{track.name}</Typography>
-            }
-          />
-          <ListItemSecondaryAction>
-            <IconButton edge="end" onClick={handleMenuClick}>
-              <MoreVertIcon />
-            </IconButton>
-            <Menu anchorEl={anchorEl} open={openMenu} onClose={handleMenuClose}>
-              <NestedMenuItem
-                label="Add to playlist"
-                parentMenuOpen={openMenu}
-                left
-              >
-                <MenuItem onClick={() => handleNewPlaylistClick(track, index)}>
-                  New playlist
-                </MenuItem>
-                {playlists.map((playlist) => (
-                  <MenuItem
-                    onClick={() => handleAddToPlaylist(playlist, track)}
-                  >
-                    {playlist.name}
-                  </MenuItem>
-                ))}
-              </NestedMenuItem>
-              {playlist && (
-                <MenuItem
-                  onClick={() =>
-                    handleRemoveFromPlaylist(playlist, track, index)
-                  }
-                >
-                  Remove from this playlist
-                </MenuItem>
-              )}
-            </Menu>
-          </ListItemSecondaryAction>
-        </ListItem>
-      ))}
-      <PlaylistDialog
-        open={openPlaylistDialog}
-        handleClose={handlePlaylistDialogClose}
-        handleSubmit={handleNewPlaylistSubmit}
-      />
+      {tracks && tracks.length > 0 && (
+        <>
+          {tracks.map((track, index) => (
+            <ListItem
+              key={track.id}
+              button
+              onClick={() =>
+                dispatch({
+                  type: AppActionType.UPDATE_QUEUE,
+                  queue: rotateRight([...tracks], index),
+                })
+              }
+            >
+              <ListItemText
+                primary={
+                  <Typography className={classes.ellipsis}>
+                    {track.name}
+                  </Typography>
+                }
+              />
+              <ListItemSecondaryAction>
+                <MenuComponent
+                  items={[
+                    {
+                      name: 'Add to playlist',
+                      items: [
+                        {
+                          name: 'New playlist',
+                          onClick: () =>
+                            setClickNewPlaylistTrack({
+                              track,
+                              position: index,
+                            }),
+                        },
+                        ...playlists.map((playlist) => ({
+                          name: playlist.name,
+                          onClick: () =>
+                            handleClickAddToPlaylist(playlist, track),
+                        })),
+                      ],
+                    },
+                    ...(playlist
+                      ? [
+                          {
+                            name: 'Remove from this playlist',
+                            onClick: () =>
+                              handleClickRemoveFromPlaylist(
+                                playlist,
+                                track,
+                                index
+                              ),
+                          },
+                        ]
+                      : []),
+                    {
+                      name: 'Edit',
+                      onClick: () => setEditTrack(track),
+                    },
+                    {
+                      name: 'Delete',
+                      onClick: () => setDeleteTrack(track),
+                    },
+                  ]}
+                ></MenuComponent>
+              </ListItemSecondaryAction>
+            </ListItem>
+          ))}
+        </>
+      )}
+      <FormDialogComponent
+        open={openCreatePlaylistDialog}
+        onClose={() => setClickNewPlaylistTrack(null)}
+        onSubmit={handleSubmitCreatePlaylistDialog}
+        title="Create playlist"
+        submit="Create"
+      >
+        <TextField type="text" id="name" label="Name" autoFocus />
+      </FormDialogComponent>
+      <FormDialogComponent
+        open={openEditTrackDialog}
+        onClose={() => setEditTrack(null)}
+        onSubmit={handleSubmitEditTrackDialog}
+        title="Edit track"
+        submit="Edit"
+      >
+        <TextField
+          type="text"
+          id="name"
+          label="Name"
+          defaultValue={editTrack?.name}
+          autoFocus
+        />
+      </FormDialogComponent>
+      <ConfirmationDialogComponent
+        open={openDeleteTrackDialog}
+        onClose={() => setDeleteTrack(null)}
+        onConfirm={handleConfirmDeleteTrackDialog}
+        title="Delete track"
+        confirm="Delete"
+      >
+        {deleteTrack?.name}
+      </ConfirmationDialogComponent>
     </>
   );
 };

@@ -8,7 +8,7 @@ import { TrackListItems } from './TrackListItems';
 import { useGraphQLData } from './useGraphQLData';
 
 export const TracksComponent = () => {
-  const { data } = useGraphQLData(tracks());
+  const { data, refresh } = useGraphQLData(tracks());
 
   return data ? (
     <>
@@ -18,6 +18,7 @@ export const TracksComponent = () => {
           <TrackListItems
             tracks={data.tracks}
             playlists={data.playlists ?? []}
+            refresh={refresh}
           />
         </List>
       ) : (
