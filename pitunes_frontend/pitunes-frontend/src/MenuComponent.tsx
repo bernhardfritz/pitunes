@@ -1,4 +1,4 @@
-import { IconButton, Menu, MenuItem } from '@material-ui/core';
+import { Divider, IconButton, Menu, MenuItem } from '@material-ui/core';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import React, { useState } from 'react';
 import { NestedMenuItem } from './NestedMenuItem';
@@ -10,15 +10,21 @@ type MenuItemType = {
 
 type NestedMenuItemType = {
   name: string;
-  items: MenuItemType[];
+  items: (MenuItemType | DividerType)[];
 };
 
+type DividerType = {};
+
+const isMenuItemType = (
+  item: MenuItemType | NestedMenuItemType | DividerType
+): item is MenuItemType => (item as any).onClick;
+
 const isNestedMenuItemType = (
-  item: MenuItemType | NestedMenuItemType
+  item: MenuItemType | NestedMenuItemType | DividerType
 ): item is NestedMenuItemType => (item as any).items;
 
 type MenuComponentProps = {
-  items: (MenuItemType | NestedMenuItemType)[];
+  items: (MenuItemType | NestedMenuItemType | DividerType)[];
 };
 
 export const MenuComponent = ({ items }: MenuComponentProps) => {
@@ -39,21 +45,8 @@ export const MenuComponent = ({ items }: MenuComponentProps) => {
         <MoreVertIcon />
       </IconButton>
       <Menu anchorEl={anchorEl} open={open} onClose={handleClose}>
-        {items.map((item: MenuItemType | NestedMenuItemType) =>
-          isNestedMenuItemType(item) ? (
-            <NestedMenuItem label={item.name} parentMenuOpen={open} left>
-              {item.items.map((nestedItem: MenuItemType) => (
-                <MenuItem
-                  onClick={() => {
-                    handleClose();
-                    nestedItem.onClick();
-                  }}
-                >
-                  {nestedItem.name}
-                </MenuItem>
-              ))}
-            </NestedMenuItem>
-          ) : (
+        {items.map((item: MenuItemType | NestedMenuItemType | DividerType) =>
+          isMenuItemType(item) ? (
             <MenuItem
               onClick={() => {
                 handleClose();
@@ -62,6 +55,25 @@ export const MenuComponent = ({ items }: MenuComponentProps) => {
             >
               {item.name}
             </MenuItem>
+          ) : isNestedMenuItemType(item) ? (
+            <NestedMenuItem label={item.name} parentMenuOpen={open} left>
+              {item.items.map((nestedItem: MenuItemType | DividerType) => (
+                isMenuItemType(nestedItem) ? (
+                  <MenuItem
+                    onClick={() => {
+                      handleClose();
+                      nestedItem.onClick();
+                    }}
+                  >
+                    {nestedItem.name}
+                  </MenuItem>
+                ) : (
+                  <Divider />
+                )
+              ))}
+            </NestedMenuItem>
+          ) : (
+            <Divider />
           )
         )}
       </Menu>

@@ -28,7 +28,7 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
-type TrackListItemProps = {
+type TrackListItemsProps = {
   tracks: Track[];
   playlists: Playlist[];
   playlist?: Playlist;
@@ -42,7 +42,7 @@ export const TrackListItems = ({
   playlists,
   playlist,
   refresh,
-}: TrackListItemProps) => {
+}: TrackListItemsProps) => {
   const classes = useStyles();
   const [
     newPlaylistTrack,
@@ -164,6 +164,19 @@ export const TrackListItems = ({
               <ListItemSecondaryAction>
                 <MenuComponent
                   items={[
+                    ...(playlist
+                      ? [
+                          {
+                            name: 'Remove from this playlist',
+                            onClick: () =>
+                              handleClickRemoveFromPlaylist(
+                                playlist,
+                                track,
+                                index
+                              ),
+                          },
+                        ]
+                      : []),
                     {
                       name: 'Add to playlist',
                       items: [
@@ -182,19 +195,7 @@ export const TrackListItems = ({
                         })),
                       ],
                     },
-                    ...(playlist
-                      ? [
-                          {
-                            name: 'Remove from this playlist',
-                            onClick: () =>
-                              handleClickRemoveFromPlaylist(
-                                playlist,
-                                track,
-                                index
-                              ),
-                          },
-                        ]
-                      : []),
+                    {},
                     {
                       name: 'Edit',
                       onClick: () => setEditTrack(track),
@@ -208,41 +209,41 @@ export const TrackListItems = ({
               </ListItemSecondaryAction>
             </ListItem>
           ))}
+          <FormDialogComponent
+            open={openCreatePlaylistDialog}
+            onClose={() => setClickNewPlaylistTrack(null)}
+            onSubmit={handleSubmitCreatePlaylistDialog}
+            title="Create playlist"
+            submit="Create"
+          >
+            <TextField type="text" id="name" label="Name" autoFocus />
+          </FormDialogComponent>
+          <FormDialogComponent
+            open={openEditTrackDialog}
+            onClose={() => setEditTrack(null)}
+            onSubmit={handleSubmitEditTrackDialog}
+            title="Edit track"
+            submit="Edit"
+          >
+            <TextField
+              type="text"
+              id="name"
+              label="Name"
+              defaultValue={editTrack?.name}
+              autoFocus
+            />
+          </FormDialogComponent>
+          <ConfirmationDialogComponent
+            open={openDeleteTrackDialog}
+            onClose={() => setDeleteTrack(null)}
+            onConfirm={handleConfirmDeleteTrackDialog}
+            title="Delete track"
+            confirm="Delete"
+          >
+            {deleteTrack?.name}
+          </ConfirmationDialogComponent>
         </>
       )}
-      <FormDialogComponent
-        open={openCreatePlaylistDialog}
-        onClose={() => setClickNewPlaylistTrack(null)}
-        onSubmit={handleSubmitCreatePlaylistDialog}
-        title="Create playlist"
-        submit="Create"
-      >
-        <TextField type="text" id="name" label="Name" autoFocus />
-      </FormDialogComponent>
-      <FormDialogComponent
-        open={openEditTrackDialog}
-        onClose={() => setEditTrack(null)}
-        onSubmit={handleSubmitEditTrackDialog}
-        title="Edit track"
-        submit="Edit"
-      >
-        <TextField
-          type="text"
-          id="name"
-          label="Name"
-          defaultValue={editTrack?.name}
-          autoFocus
-        />
-      </FormDialogComponent>
-      <ConfirmationDialogComponent
-        open={openDeleteTrackDialog}
-        onClose={() => setDeleteTrack(null)}
-        onConfirm={handleConfirmDeleteTrackDialog}
-        title="Delete track"
-        confirm="Delete"
-      >
-        {deleteTrack?.name}
-      </ConfirmationDialogComponent>
     </>
   );
 };

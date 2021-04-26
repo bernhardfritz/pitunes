@@ -5,6 +5,8 @@ import ArtistQuery from '!!raw-loader!./ArtistQuery.graphql';
 import ArtistsQuery from '!!raw-loader!./ArtistsQuery.graphql';
 import CreatePlaylistMutation from '!!raw-loader!./CreatePlaylistMutation.graphql';
 import CreatePlaylistTrackMutation from '!!raw-loader!./CreatePlaylistTrackMutation.graphql';
+import DeleteAlbumMutation from '!!raw-loader!./DeleteAlbumMutation.graphql';
+import DeleteArtistMutation from '!!raw-loader!./DeleteArtistMutation.graphql';
 import DeletePlaylistMutation from '!!raw-loader!./DeletePlaylistMutation.graphql';
 import DeletePlaylistTrackMutation from '!!raw-loader!./DeletePlaylistTrackMutation.graphql';
 import DeleteTrackMutation from '!!raw-loader!./DeleteTrackMutation.graphql';
@@ -14,6 +16,9 @@ import PlaylistsQuery from '!!raw-loader!./PlaylistsQuery.graphql';
 import PlaylistTracksQuery from '!!raw-loader!./PlaylistTracksQuery.graphql';
 import TrackQuery from '!!raw-loader!./TrackQuery.graphql';
 import TracksQuery from '!!raw-loader!./TracksQuery.graphql';
+import UpdateAlbumMutation from '!!raw-loader!./UpdateAlbumMutation.graphql';
+import UpdateArtistMutation from '!!raw-loader!./UpdateArtistMutation.graphql';
+import UpdateGenreMutation from '!!raw-loader!./UpdateGenreMutation.graphql';
 import UpdatePlaylistMutation from '!!raw-loader!./UpdatePlaylistMutation.graphql';
 import UpdateTrackMutation from '!!raw-loader!./UpdateTrackMutation.graphql';
 /* eslint-enable import/no-webpack-loader-syntax */
@@ -67,6 +72,22 @@ export const createPlaylistTrack = (
       id: trackId,
       position,
     },
+  },
+});
+
+export const deleteAlbum = (id: string) => ({
+  query: DeleteAlbumMutation,
+  operationName: 'DeleteAlbumMutation',
+  variables: {
+    id,
+  },
+});
+
+export const deleteArtist = (id: string) => ({
+  query: DeleteArtistMutation,
+  operationName: 'DeleteArtistMutation',
+  variables: {
+    id,
   },
 });
 
@@ -139,6 +160,39 @@ export const track = (id: string) => ({
 export const tracks = () => ({
   query: TracksQuery,
   operationName: 'TracksQuery',
+});
+
+export const updateAlbum = (id: string, name: string) => ({
+  query: UpdateAlbumMutation,
+  operationName: 'UpdateAlbumMutation',
+  variables: {
+    id,
+    input: {
+      name,
+    },
+  },
+});
+
+export const updateArtist = (id: string, name: string) => ({
+  query: UpdateArtistMutation,
+  operationName: 'UpdateArtistMutation',
+  variables: {
+    id,
+    input: {
+      name,
+    },
+  },
+});
+
+export const updateGenre = (id: string, name: string) => ({
+  query: UpdateGenreMutation,
+  operationName: 'UpdateGenreMutation',
+  variables: {
+    id,
+    input: {
+      name,
+    },
+  },
 });
 
 export const updatePlaylist = (id: string, name: string) => ({

@@ -1,25 +1,103 @@
-import { List } from '@material-ui/core';
-import React from 'react';
+import { List, TextField } from '@material-ui/core';
+import React, { useState } from 'react';
+import { ConfirmationDialogComponent } from './ConfirmationDialogComponent';
 import { EmptyListComponent } from './EmptyListComponent';
+import { FormDialogComponent } from './FormDialogComponent';
 import * as API from './graphql/api';
-import { IdNameListItemLinks } from './IdNameListItemLinks';
+import { fetcher } from './graphql/fetcher';
+import { ListItemLink } from './ListItemLink';
 import { LoadingComponent } from './LoadingComponent';
+import { MenuComponent } from './MenuComponent';
+import { Genre } from './models';
 import { TitleComponent } from './TitleComponent';
 import { useGraphQLData } from './useGraphQLData';
 
 export const GenresComponent = () => {
-  const { data } = useGraphQLData(API.genres());
+  const { data, refresh } = useGraphQLData(API.genres());
+
+  const [editGenre, setEditGenre] = useState<Genre | null>(null);
+  const openEditGenreDialog = Boolean(editGenre);
+
+  const [deleteGenre, setDeleteGenre] = useState<Genre | null>(null);
+  const openDeleteGenreDialog = Boolean(deleteGenre);
+
+  const handleSubmitEditGenreDialog = async (event: any) => {
+    event.preventDefault();
+
+    if (editGenre === null) {
+      return;
+    }
+
+    await fetcher(
+      API.updateAlbum(editGenre.id, event.target.elements['name'].value)
+    );
+    setEditGenre(null);
+    refresh();
+  };
+
+  const handleConfirmDeleteGenreDialog = async () => {
+    if (deleteGenre === null) {
+      return;
+    }
+
+    await fetcher(API.deleteAlbum(deleteGenre.id));
+    setDeleteGenre(null);
+    refresh();
+  };
 
   return data ? (
     <>
       <TitleComponent title="Genres"></TitleComponent>
       {data.genres && data.genres.length > 0 ? (
-        <List>
-          <IdNameListItemLinks
-            items={data.genres}
-            to={(id) => `/genres/${id}`}
-          />
-        </List>
+        <>
+          <List>
+            {data.genres.map((genre: Genre) => (
+              <ListItemLink
+                key={genre.id}
+                to={`/genres/${genre.id}`}
+                primary={genre.name}
+                menu={
+                  <MenuComponent
+                    items={[
+                      {
+                        name: 'Edit',
+                        onClick: () => setEditGenre(genre),
+                      },
+                      {
+                        name: 'Delete',
+                        onClick: () => setDeleteGenre(genre),
+                      },
+                    ]}
+                  ></MenuComponent>
+                }
+              />
+            ))}
+          </List>
+          <FormDialogComponent
+            open={openEditGenreDialog}
+            onClose={() => setEditGenre(null)}
+            onSubmit={handleSubmitEditGenreDialog}
+            title="Edit genre"
+            submit="Edit"
+          >
+            <TextField
+              type="text"
+              id="name"
+              label="Name"
+              defaultValue={editGenre?.name}
+              autoFocus
+            />
+          </FormDialogComponent>
+          <ConfirmationDialogComponent
+            open={openDeleteGenreDialog}
+            onClose={() => setDeleteGenre(null)}
+            onConfirm={handleConfirmDeleteGenreDialog}
+            title="Delete genre"
+            confirm="Delete"
+          >
+            {deleteGenre?.name}
+          </ConfirmationDialogComponent>
+        </>
       ) : (
         <EmptyListComponent />
       )}
