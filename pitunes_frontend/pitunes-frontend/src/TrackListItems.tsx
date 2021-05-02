@@ -157,7 +157,7 @@ export const TrackListItems = ({
               <ListItemText
                 primary={
                   <Typography className={classes.ellipsis}>
-                    {track.name}
+                    {track.name || '\u00a0'}
                   </Typography>
                 }
               />

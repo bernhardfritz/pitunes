@@ -1,8 +1,14 @@
-import { CssBaseline, Tab, Tabs, useMediaQuery } from '@material-ui/core';
 import {
+  createMuiTheme,
+  createStyles,
+  CssBaseline,
+  makeStyles,
+  Tab,
+  Tabs,
+  Theme,
   ThemeProvider,
-  unstable_createMuiStrictModeTheme as createMuiTheme,
-} from '@material-ui/core/styles';
+  useMediaQuery,
+} from '@material-ui/core';
 import React, { useReducer } from 'react';
 import {
   Redirect,
@@ -29,6 +35,12 @@ import { TracksComponent } from './TracksComponent';
 import { TransitionRoute } from './TransitionRoute';
 import { UploadComponent } from './UploadComponent';
 import { usePrevious } from './usePrevious';
+
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    toolbar: theme.mixins.toolbar,
+  })
+);
 
 export enum TransitionType {
   LEFT = 'left',
@@ -87,6 +99,7 @@ export const AppContext = React.createContext<AppContextProps>({
 type AppProps = RouteComponentProps;
 
 const App = (props: AppProps) => {
+  const classes = useStyles();
   const { history, location } = props;
   const prevLocation = usePrevious(location);
 
@@ -165,6 +178,8 @@ const App = (props: AppProps) => {
     queueUpdatedAt: 0,
   });
 
+  const playerVisible = state.queue.length > 0;
+
   const handleTabChange = (event: React.ChangeEvent<{}>, tabIndex: number) => {
     history.push(tabs[tabIndex].to);
   };
@@ -208,46 +223,54 @@ const App = (props: AppProps) => {
             </Route>
             <TransitionRoute exact path="/albums">
               <AlbumsComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </TransitionRoute>
             <TransitionRoute exact path="/albums/:id">
               <AlbumComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </TransitionRoute>
             <TransitionRoute exact path="/artists">
               <ArtistsComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </TransitionRoute>
             <TransitionRoute exact path="/artists/:id">
               <ArtistComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </TransitionRoute>
             <Route exact path="/genres">
               <GenresComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </Route>
             <Route exact path="/genres/:id">
               <GenreComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </Route>
             <TransitionRoute exact path="/playlists">
               <PlaylistsComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </TransitionRoute>
             <TransitionRoute exact path="/playlists/:id">
               <PlaylistComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </TransitionRoute>
             <Route exact path="/tracks">
               <TracksComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </Route>
             <Route exact path="/tracks/:id">
               <TrackComponentWithRouter />
             </Route>
             <Route exact path="/upload">
               <UploadComponent />
+              {playerVisible && <div className={classes.toolbar} />}
             </Route>
             <Route exact path="/graphiql">
-              <GraphiQLComponent playerVisible={state.queue.length > 0} />
+              <GraphiQLComponent playerVisible={playerVisible} />
             </Route>
           </div>
         </ResponsiveDrawer>
-        <PlaylistDialogComponent playerVisible={state.queue.length > 0} />
-        {state.queue.length > 0 && (
-          <PlayerComponentWithRouter track={state.queue[0]} />
-        )}
+        <PlaylistDialogComponent playerVisible={playerVisible} />
+        {playerVisible && <PlayerComponentWithRouter track={state.queue[0]} />}
       </ThemeProvider>
     </AppContext.Provider>
   );

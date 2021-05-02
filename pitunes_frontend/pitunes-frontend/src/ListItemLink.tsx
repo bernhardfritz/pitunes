@@ -46,16 +46,16 @@ export const ListItemLink = (props: ListItemLinkProps) => {
   );
 
   return (
-    <li>
-      <ListItem button component={renderLink} onClick={onClick}>
-        {icon ? <ListItemIcon>{icon}</ListItemIcon> : null}
-        <ListItemText
-          primary={
-            <Typography className={classes.ellipsis}>{primary}</Typography>
-          }
-        />
-        {menu && <ListItemSecondaryAction>{menu}</ListItemSecondaryAction>}
-      </ListItem>
-    </li>
+    <ListItem button component={renderLink} onClick={onClick}>
+      {icon ? <ListItemIcon>{icon}</ListItemIcon> : null}
+      <ListItemText
+        primary={
+          <Typography className={classes.ellipsis}>
+            {primary || '\u00a0'}
+          </Typography>
+        }
+      />
+      {menu && <ListItemSecondaryAction>{menu}</ListItemSecondaryAction>}
+    </ListItem>
   );
 };

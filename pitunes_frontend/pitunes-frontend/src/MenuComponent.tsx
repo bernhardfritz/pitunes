@@ -1,7 +1,24 @@
-import { Divider, IconButton, Menu, MenuItem } from '@material-ui/core';
+import {
+  createStyles,
+  Divider,
+  IconButton,
+  makeStyles,
+  Menu,
+  MenuItem,
+  Theme,
+} from '@material-ui/core';
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import React, { useState } from 'react';
 import { NestedMenuItem } from './NestedMenuItem';
+
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    divider: {
+      marginTop: 6,
+      marginBottom: 6,
+    },
+  })
+);
 
 type MenuItemType = {
   name: string;
@@ -28,6 +45,7 @@ type MenuComponentProps = {
 };
 
 export const MenuComponent = ({ items }: MenuComponentProps) => {
+  const classes = useStyles();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const open = Boolean(anchorEl);
 
@@ -57,7 +75,7 @@ export const MenuComponent = ({ items }: MenuComponentProps) => {
             </MenuItem>
           ) : isNestedMenuItemType(item) ? (
             <NestedMenuItem label={item.name} parentMenuOpen={open} left>
-              {item.items.map((nestedItem: MenuItemType | DividerType) => (
+              {item.items.map((nestedItem: MenuItemType | DividerType) =>
                 isMenuItemType(nestedItem) ? (
                   <MenuItem
                     onClick={() => {
@@ -68,12 +86,12 @@ export const MenuComponent = ({ items }: MenuComponentProps) => {
                     {nestedItem.name}
                   </MenuItem>
                 ) : (
-                  <Divider />
+                  <Divider variant="middle" className={classes.divider} />
                 )
-              ))}
+              )}
             </NestedMenuItem>
           ) : (
-            <Divider />
+            <Divider variant="middle" className={classes.divider} />
           )
         )}
       </Menu>

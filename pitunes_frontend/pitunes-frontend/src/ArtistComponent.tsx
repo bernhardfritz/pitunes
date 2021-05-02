@@ -1,4 +1,10 @@
-import { List, ListSubheader, makeStyles, Theme } from '@material-ui/core';
+import {
+  createStyles,
+  List,
+  ListSubheader,
+  makeStyles,
+  Theme,
+} from '@material-ui/core';
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { AlbumListItems } from './AlbumListItems';
@@ -9,15 +15,17 @@ import { TitleComponent } from './TitleComponent';
 import { TrackListItems } from './TrackListItems';
 import { useGraphQLData } from './useGraphQLData';
 
-const useStyles = makeStyles((theme: Theme) => ({
-  ul: {
-    backgroundColor: theme.palette.background.default,
-    padding: 0,
-  },
-  listSubheader: {
-    top: 48,
-  },
-}));
+const useStyles = makeStyles((theme: Theme) =>
+  createStyles({
+    ul: {
+      backgroundColor: theme.palette.background.default,
+      padding: 0,
+    },
+    listSubheader: {
+      top: 48,
+    },
+  })
+);
 
 export const ArtistComponent = () => {
   const classes = useStyles();
@@ -39,7 +47,12 @@ export const ArtistComponent = () => {
                 <ListSubheader className={classes.listSubheader}>
                   Albums
                 </ListSubheader>
-                <AlbumListItems albums={data.artist.albums} refresh={refresh} />
+                <List component="div">
+                  <AlbumListItems
+                    albums={data.artist.albums}
+                    refresh={refresh}
+                  />
+                </List>
               </ul>
             </li>
           )}
@@ -49,11 +62,13 @@ export const ArtistComponent = () => {
                 <ListSubheader className={classes.listSubheader}>
                   Tracks
                 </ListSubheader>
-                <TrackListItems
-                  tracks={data.artist.tracks}
-                  playlists={data.playlists ?? []}
-                  refresh={refresh}
-                />
+                <List component="div">
+                  <TrackListItems
+                    tracks={data.artist.tracks}
+                    playlists={data.playlists ?? []}
+                    refresh={refresh}
+                  />
+                </List>
               </ul>
             </li>
           )}

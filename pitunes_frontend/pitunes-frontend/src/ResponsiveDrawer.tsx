@@ -18,7 +18,7 @@ import LibraryMusicIcon from '@material-ui/icons/LibraryMusic';
 import MenuIcon from '@material-ui/icons/Menu';
 import PublishIcon from '@material-ui/icons/Publish';
 import StorageIcon from '@material-ui/icons/Storage';
-import React, { FunctionComponent } from 'react';
+import React, { FunctionComponent, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { CSSTransition } from 'react-transition-group';
 import { ListItemLink } from './ListItemLink';
@@ -111,7 +111,8 @@ export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
 ) => {
   const classes = useStyles();
   const theme = useTheme();
-  const trigger = useScrollTrigger();
+  const mainEl = useRef(null);
+  const trigger = useScrollTrigger({ target: mainEl.current ?? undefined });
   const [mobileOpen, setMobileOpen] = React.useState(false);
 
   const handleDrawerToggle = () => {
@@ -228,7 +229,7 @@ export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
           </Drawer>
         </Hidden>
       </nav>
-      <main className={classes.content}>
+      <main className={classes.content} ref={mainEl}>
         <div className={classes.toolbar} />
         {!!props.tabs && <div className={classes.tabs} />}
         {props.children}

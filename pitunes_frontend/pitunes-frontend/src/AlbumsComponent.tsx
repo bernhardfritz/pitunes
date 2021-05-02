@@ -1,3 +1,4 @@
+import { List } from '@material-ui/core';
 import React from 'react';
 import { AlbumListItems } from './AlbumListItems';
 import { EmptyListComponent } from './EmptyListComponent';
@@ -13,7 +14,9 @@ export const AlbumsComponent = () => {
     <>
       <TitleComponent title="Albums"></TitleComponent>
       {data.albums && data.albums.length > 0 ? (
-        <AlbumListItems albums={data.albums} refresh={refresh} />
+        <List>
+          <AlbumListItems albums={data.albums} refresh={refresh} />
+        </List>
       ) : (
         <EmptyListComponent />
       )}
