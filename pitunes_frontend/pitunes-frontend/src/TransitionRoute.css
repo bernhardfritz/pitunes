@@ -1,7 +1,8 @@
 .left,
 .right,
 .forward,
-.backward {
+.backward,
+.fade {
   position: relative;
 }
 
@@ -30,6 +31,10 @@
   transform: scale(1.1);
 }
 
+.fade .transition-enter {
+  opacity: 0;
+}
+
 .left .transition-enter-active,
 .right .transition-enter-active {
   opacity: 1;
@@ -44,6 +49,11 @@
   transition: opacity 300ms, transform 300ms;
 }
 
+.fade .transition-enter-active {
+  opacity: 1;
+  transition: opacity 300ms;
+}
+
 .left .transition-exit,
 .right .transition-exit {
   opacity: 1;
@@ -54,6 +64,10 @@
 .backward .transition-exit {
   opacity: 1;
   transform: scale(1);
+}
+
+.fade .transition-exit {
+  opacity: 1;
 }
 
 .left .transition-exit-active {
@@ -78,4 +92,35 @@
   opacity: 0;
   transform: scale(0.9);
   transition: opacity 300ms, transform 300ms;
+}
+
+.fade .transition-exit-active {
+  opacity: 0;
+  transition: opacity 300ms;
+}
+
+.up .transition,
+.down .transition {
+  position: fixed;
+  top: 0;
+  height: 100%;
+  z-index: 1200;
+}
+
+.up .transition-enter {
+  transform: translateY(100vh);
+}
+
+.up .transition-enter-active {
+  transform: translateY(0);
+  transition: transform 300ms;
+}
+
+.down .transition-exit {
+  transform: translateY(0);
+}
+
+.down .transition-exit-active {
+  transform: translateY(100vh);
+  transition: transform 300ms;
 }

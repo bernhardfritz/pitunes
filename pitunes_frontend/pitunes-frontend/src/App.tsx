@@ -47,6 +47,9 @@ export enum TransitionType {
   RIGHT = 'right',
   FORWARD = 'forward',
   BACKWARD = 'backward',
+  FADE = 'fade',
+  UP = 'up',
+  DOWN = 'down',
 }
 
 type AppState = {
@@ -164,14 +167,16 @@ const App = (props: AppProps) => {
       ? tabs.findIndex((tab) => prevLocation.pathname.startsWith(tab.to))
       : -1;
   const transitionType =
-    tabIndex < prevTabIndex
-      ? TransitionType.LEFT
-      : tabIndex === prevTabIndex
-      ? prevLocation !== undefined &&
-        location.pathname.startsWith(prevLocation.pathname)
-        ? TransitionType.FORWARD
-        : TransitionType.BACKWARD
-      : TransitionType.RIGHT;
+    tabIndex >= 0 && prevTabIndex >= 0
+      ? tabIndex < prevTabIndex
+        ? TransitionType.LEFT
+        : tabIndex === prevTabIndex
+        ? prevLocation !== undefined &&
+          location.pathname.startsWith(prevLocation.pathname)
+          ? TransitionType.FORWARD
+          : TransitionType.BACKWARD
+        : TransitionType.RIGHT
+      : TransitionType.FADE;
 
   const [state, dispatch] = useReducer(reducer, {
     queue: [],
@@ -204,7 +209,13 @@ const App = (props: AppProps) => {
             !location.pathname.startsWith('/upload') &&
             !location.pathname.startsWith('/graphiql') && (
               <Tabs
-                value={tabIndex}
+                value={
+                  tabIndex >= 0
+                    ? tabIndex
+                    : prevTabIndex >= 0
+                    ? prevTabIndex
+                    : false
+                }
                 onChange={handleTabChange}
                 variant="fullWidth"
                 indicatorColor="primary"
@@ -257,9 +268,6 @@ const App = (props: AppProps) => {
               <TracksComponent />
               {playerVisible && <div className={classes.toolbar} />}
             </Route>
-            <Route exact path="/tracks/:id">
-              <TrackComponentWithRouter />
-            </Route>
             <Route exact path="/upload">
               <UploadComponent />
               {playerVisible && <div className={classes.toolbar} />}
@@ -269,6 +277,17 @@ const App = (props: AppProps) => {
             </Route>
           </div>
         </ResponsiveDrawer>
+        <div
+          className={
+            location.pathname.startsWith('/tracks/')
+              ? TransitionType.UP
+              : TransitionType.DOWN
+          }
+        >
+          <TransitionRoute exact path="/tracks/:id">
+            <TrackComponentWithRouter />
+          </TransitionRoute>
+        </div>
         <PlaylistDialogComponent playerVisible={playerVisible} />
         {playerVisible && <PlayerComponentWithRouter track={state.queue[0]} />}
       </ThemeProvider>
