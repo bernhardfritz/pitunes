@@ -1,9 +1,11 @@
 import {
   createStyles,
+  FormGroup,
   ListItem,
   ListItemSecondaryAction,
   ListItemText,
   makeStyles,
+  MenuItem,
   TextField,
   Theme,
   Typography,
@@ -15,8 +17,10 @@ import { FormDialogComponent } from './FormDialogComponent';
 import * as API from './graphql/api';
 import { fetcher } from './graphql/fetcher';
 import { MenuComponent } from './MenuComponent';
-import { Playlist, Track } from './models';
+import { Album, Artist, Genre, Playlist, Track } from './models';
+import { orNbsp } from './orNbsp';
 import { rotateRight } from './rotateRight';
+import { useGraphQLData } from './useGraphQLData';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -25,12 +29,16 @@ const useStyles = makeStyles((theme: Theme) =>
       whiteSpace: 'nowrap',
       textOverflow: 'ellipsis',
     },
+    formGroup: {
+      '&>*:not(last-child)': {
+        marginBottom: theme.spacing(2),
+      },
+    },
   })
 );
 
 type TrackListItemsProps = {
   tracks: Track[];
-  playlists: Playlist[];
   playlist?: Playlist;
   refresh?: () => void;
 };
@@ -39,7 +47,6 @@ type TrackAndPosition = { track: Track; position: number };
 
 export const TrackListItems = ({
   tracks,
-  playlists,
   playlist,
   refresh,
 }: TrackListItemsProps) => {
@@ -54,6 +61,7 @@ export const TrackListItems = ({
   const [deleteTrack, setDeleteTrack] = useState<Track | null>(null);
   const openDeleteTrackDialog = Boolean(deleteTrack);
   const { dispatch } = useContext(AppContext);
+  const { data } = useGraphQLData(API.albumsArtistsGenresPlaylists());
 
   const handleSubmitCreatePlaylistDialog = async (event: any) => {
     event.preventDefault();
@@ -88,10 +96,10 @@ export const TrackListItems = ({
       API.updateTrack(
         editTrack.id,
         event.target.elements['name'].value,
-        editTrack.album?.id,
-        editTrack.artist?.id,
-        editTrack.genre?.id,
-        editTrack.trackNumber
+        event.target.elements['albumId'].value || undefined,
+        event.target.elements['artistId'].value || undefined,
+        event.target.elements['genreId'].value || undefined,
+        +event.target.elements['trackNumber'].value || undefined
       )
     );
 
@@ -157,7 +165,7 @@ export const TrackListItems = ({
               <ListItemText
                 primary={
                   <Typography className={classes.ellipsis}>
-                    {track.name || '\u00a0'}
+                    {orNbsp(track.name)}
                   </Typography>
                 }
               />
@@ -188,11 +196,13 @@ export const TrackListItems = ({
                               position: index,
                             }),
                         },
-                        ...playlists.map((playlist) => ({
-                          name: playlist.name,
-                          onClick: () =>
-                            handleClickAddToPlaylist(playlist, track),
-                        })),
+                        ...(data?.playlists ?? []).map(
+                          (playlist: Playlist) => ({
+                            name: playlist.name,
+                            onClick: () =>
+                              handleClickAddToPlaylist(playlist, track),
+                          })
+                        ),
                       ],
                     },
                     {},
@@ -225,13 +235,54 @@ export const TrackListItems = ({
             title="Edit track"
             submit="Edit"
           >
-            <TextField
-              type="text"
-              id="name"
-              label="Name"
-              defaultValue={editTrack?.name}
-              autoFocus
-            />
+            <FormGroup className={classes.formGroup}>
+              <TextField
+                type="text"
+                id="name"
+                label="Name"
+                defaultValue={editTrack?.name}
+                autoFocus
+              />
+              <TextField
+                label="Artist"
+                defaultValue={editTrack?.artist?.id}
+                inputProps={{ id: 'artistId' }}
+                select
+              >
+                <MenuItem value="">{orNbsp('')}</MenuItem>
+                {(data?.artists ?? []).map((artist: Artist) => (
+                  <MenuItem value={artist.id}>{orNbsp(artist.name)}</MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                label="Album"
+                defaultValue={editTrack?.album?.id}
+                inputProps={{ id: 'albumId' }}
+                select
+              >
+                <MenuItem value="">{orNbsp('')}</MenuItem>
+                {(data?.albums ?? []).map((album: Album) => (
+                  <MenuItem value={album.id}>{orNbsp(album.name)}</MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                type="number"
+                id="trackNumber"
+                label="Track number"
+                defaultValue={editTrack?.trackNumber}
+              />
+              <TextField
+                label="Genre"
+                defaultValue={editTrack?.genre?.id}
+                inputProps={{ id: 'genreId' }}
+                select
+              >
+                <MenuItem value="">{orNbsp('')}</MenuItem>
+                {(data?.genres ?? []).map((genre: Genre) => (
+                  <MenuItem value={genre.id}>{orNbsp(genre.name)}</MenuItem>
+                ))}
+              </TextField>
+            </FormGroup>
           </FormDialogComponent>
           <ConfirmationDialogComponent
             open={openDeleteTrackDialog}

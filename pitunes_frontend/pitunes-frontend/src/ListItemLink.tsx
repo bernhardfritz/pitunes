@@ -14,6 +14,7 @@ import {
   Link as RouterLink,
   LinkProps as RouterLinkProps,
 } from 'react-router-dom';
+import { orNbsp } from './orNbsp';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -51,7 +52,7 @@ export const ListItemLink = (props: ListItemLinkProps) => {
       <ListItemText
         primary={
           <Typography className={classes.ellipsis}>
-            {primary || '\u00a0'}
+            {orNbsp(primary)}
           </Typography>
         }
       />

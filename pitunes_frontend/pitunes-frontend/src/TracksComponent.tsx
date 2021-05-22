@@ -1,14 +1,14 @@
 import { List } from '@material-ui/core';
 import React from 'react';
 import { EmptyListComponent } from './EmptyListComponent';
-import { tracks } from './graphql/api';
+import * as API from './graphql/api';
 import { LoadingComponent } from './LoadingComponent';
 import { TitleComponent } from './TitleComponent';
 import { TrackListItems } from './TrackListItems';
 import { useGraphQLData } from './useGraphQLData';
 
 export const TracksComponent = () => {
-  const { data, refresh } = useGraphQLData(tracks());
+  const { data, refresh } = useGraphQLData(API.tracks());
 
   return data ? (
     <>
@@ -17,7 +17,6 @@ export const TracksComponent = () => {
         <List>
           <TrackListItems
             tracks={data.tracks}
-            playlists={data.playlists ?? []}
             refresh={refresh}
           />
         </List>

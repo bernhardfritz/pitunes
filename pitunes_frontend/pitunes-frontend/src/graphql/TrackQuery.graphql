@@ -17,8 +17,4 @@ query TrackQuery($id: ID!) {
     }
     trackNumber
   }
-  playlists {
-    id
-    name
-  }
 }

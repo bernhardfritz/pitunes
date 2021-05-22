@@ -19,7 +19,6 @@ export const GenreComponent = () => {
         <List>
           <TrackListItems
             tracks={data.genre.tracks}
-            playlists={data.playlists ?? []}
             refresh={refresh}
           />
         </List>

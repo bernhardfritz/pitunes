@@ -1,4 +1,5 @@
 /* eslint-disable import/no-webpack-loader-syntax */
+import AlbumsArtistsGenresPlaylistsQuery from '!!raw-loader!./AlbumsArtistsGenresPlaylistsQuery.graphql';
 import AlbumsQuery from '!!raw-loader!./AlbumsQuery.graphql';
 import AlbumTracksQuery from '!!raw-loader!./AlbumTracksQuery.graphql';
 import ArtistQuery from '!!raw-loader!./ArtistQuery.graphql';
@@ -22,6 +23,11 @@ import UpdateGenreMutation from '!!raw-loader!./UpdateGenreMutation.graphql';
 import UpdatePlaylistMutation from '!!raw-loader!./UpdatePlaylistMutation.graphql';
 import UpdateTrackMutation from '!!raw-loader!./UpdateTrackMutation.graphql';
 /* eslint-enable import/no-webpack-loader-syntax */
+
+export const albumsArtistsGenresPlaylists = () => ({
+  query: AlbumsArtistsGenresPlaylistsQuery,
+  operationName: 'AlbumsArtistsGenresPlaylistsQuery',
+});
 
 export const albums = () => ({
   query: AlbumsQuery,

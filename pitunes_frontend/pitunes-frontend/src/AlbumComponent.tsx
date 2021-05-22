@@ -19,7 +19,6 @@ export const AlbumComponent = () => {
         <List>
           <TrackListItems
             tracks={data.album.tracks}
-            playlists={data.playlists ?? []}
             refresh={refresh}
           />
         </List>

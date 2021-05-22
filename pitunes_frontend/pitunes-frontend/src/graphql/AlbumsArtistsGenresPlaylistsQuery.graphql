@@ -1,0 +1,18 @@
+query AlbumsArtistsGenresPlaylistsQuery {
+  albums {
+    id
+    name
+  }
+  artists {
+    id
+    name
+  }
+  genres {
+    id
+    name
+  }
+  playlists {
+    id
+    name
+  }
+}

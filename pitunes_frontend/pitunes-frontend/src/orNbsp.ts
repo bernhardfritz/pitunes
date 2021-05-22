@@ -1,0 +1,1 @@
+export const orNbsp = (s?: string) => s || '\u00a0';

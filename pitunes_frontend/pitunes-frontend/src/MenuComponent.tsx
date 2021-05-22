@@ -10,6 +10,7 @@ import {
 import MoreVertIcon from '@material-ui/icons/MoreVert';
 import React, { useState } from 'react';
 import { NestedMenuItem } from './NestedMenuItem';
+import { orNbsp } from './orNbsp';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -71,7 +72,7 @@ export const MenuComponent = ({ items }: MenuComponentProps) => {
                 item.onClick();
               }}
             >
-              {item.name}
+              {orNbsp(item.name)}
             </MenuItem>
           ) : isNestedMenuItemType(item) ? (
             <NestedMenuItem label={item.name} parentMenuOpen={open} left>
@@ -83,7 +84,7 @@ export const MenuComponent = ({ items }: MenuComponentProps) => {
                       nestedItem.onClick();
                     }}
                   >
-                    {nestedItem.name}
+                    {orNbsp(nestedItem.name)}
                   </MenuItem>
                 ) : (
                   <Divider variant="middle" className={classes.divider} />

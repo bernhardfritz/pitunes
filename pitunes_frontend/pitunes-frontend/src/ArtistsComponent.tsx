@@ -77,7 +77,7 @@ export const ArtistsComponent = () => {
             open={openEditArtistDialog}
             onClose={() => setEditArtist(null)}
             onSubmit={handleSubmitEditArtistDialog}
-            title="Edit genre"
+            title="Edit artist"
             submit="Edit"
           >
             <TextField

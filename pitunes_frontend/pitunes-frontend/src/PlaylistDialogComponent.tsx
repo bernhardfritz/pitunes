@@ -11,7 +11,7 @@ import AddIcon from '@material-ui/icons/Add';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { FormDialogComponent } from './FormDialogComponent';
-import { createPlaylist } from './graphql/api';
+import * as API from './graphql/api';
 import { fetcher } from './graphql/fetcher';
 
 const useStyles = makeStyles((theme: Theme) =>
@@ -54,7 +54,7 @@ export const PlaylistDialogComponent = (
   const handleSubmit = async (event: any) => {
     event.preventDefault();
     const { data } = await fetcher(
-      createPlaylist(event.target.elements['name'].value)
+      API.createPlaylist(event.target.elements['name'].value)
     );
     setOpen(false);
     history.push(`/playlists/${data.createPlaylist.id}`);

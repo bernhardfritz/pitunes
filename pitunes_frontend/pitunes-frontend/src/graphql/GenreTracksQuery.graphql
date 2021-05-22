@@ -21,8 +21,4 @@ query GenreTracksQuery($id: ID!) {
       trackNumber
     }
   }
-  playlists {
-    id
-    name
-  }
 }

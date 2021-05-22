@@ -19,7 +19,7 @@ import SkipPreviousIcon from '@material-ui/icons/SkipPrevious';
 import React, { useContext, useEffect } from 'react';
 import { RouteComponentProps, useParams, withRouter } from 'react-router-dom';
 import { AppActionType, AppContext } from './App';
-import { track } from './graphql/api';
+import * as API from './graphql/api';
 import { useGraphQLData } from './useGraphQLData';
 import { useLoaded } from './useLoaded';
 import { WithAudio, withAudio } from './withAudio';
@@ -81,7 +81,7 @@ const TrackComponent = (props: TrackComponentProps) => {
   const classes = useStyles();
   const { id } = useParams<{ id: string }>();
   const { dispatch } = useContext(AppContext);
-  const { data } = useGraphQLData(track(id));
+  const { data } = useGraphQLData(API.track(id));
   const loaded = useLoaded();
 
   useEffect(() => {

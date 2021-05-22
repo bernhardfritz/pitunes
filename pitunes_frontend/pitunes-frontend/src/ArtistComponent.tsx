@@ -65,7 +65,6 @@ export const ArtistComponent = () => {
                 <List component="div">
                   <TrackListItems
                     tracks={data.artist.tracks}
-                    playlists={data.playlists ?? []}
                     refresh={refresh}
                   />
                 </List>
