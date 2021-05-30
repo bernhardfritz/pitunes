@@ -1,4 +1,10 @@
-import { useScrollTrigger } from '@material-ui/core';
+import {
+  Collapse,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  useScrollTrigger,
+} from '@material-ui/core';
 import AppBar from '@material-ui/core/AppBar';
 import CssBaseline from '@material-ui/core/CssBaseline';
 import Divider from '@material-ui/core/Divider';
@@ -14,9 +20,16 @@ import {
 } from '@material-ui/core/styles';
 import Toolbar from '@material-ui/core/Toolbar';
 import Typography from '@material-ui/core/Typography';
+import Album from '@material-ui/icons/Album';
+import Audiotrack from '@material-ui/icons/Audiotrack';
+import Category from '@material-ui/icons/Category';
+import ExpandLess from '@material-ui/icons/ExpandLess';
+import ExpandMore from '@material-ui/icons/ExpandMore';
 import LibraryMusicIcon from '@material-ui/icons/LibraryMusic';
 import MenuIcon from '@material-ui/icons/Menu';
+import Mic from '@material-ui/icons/Mic';
 import PublishIcon from '@material-ui/icons/Publish';
+import QueueMusic from '@material-ui/icons/QueueMusic';
 import StorageIcon from '@material-ui/icons/Storage';
 import React, { FunctionComponent, useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -101,6 +114,9 @@ const useStyles = makeStyles((theme: Theme) =>
     tabs: {
       minHeight: 48,
     },
+    nested: {
+      paddingLeft: theme.spacing(4),
+    },
   })
 );
 
@@ -114,6 +130,7 @@ export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
   const mainEl = useRef(null);
   const trigger = useScrollTrigger({ target: mainEl.current ?? undefined });
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [libraryOpen, setLibraryOpen] = React.useState(false);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -142,12 +159,52 @@ export const ResponsiveDrawer: FunctionComponent<ResponsiveDrawerProps> = (
       </div>
       <Divider />
       <List>
-        <ListItemLink
-          to="/"
-          primary="Library"
-          icon={<LibraryMusicIcon />}
-          onClick={handleClick}
-        ></ListItemLink>
+        <ListItem button onClick={() => setLibraryOpen(!libraryOpen)}>
+          <ListItemIcon>
+            <LibraryMusicIcon />
+          </ListItemIcon>
+          <ListItemText primary="Library" />
+          {libraryOpen ? <ExpandLess /> : <ExpandMore />}
+        </ListItem>
+        <Collapse in={libraryOpen} timeout="auto" unmountOnExit>
+          <List component="div" disablePadding>
+            <ListItemLink
+              to="/playlists"
+              primary="Playlists"
+              icon={<QueueMusic />}
+              onClick={handleClick}
+              className={classes.nested}
+            />
+            <ListItemLink
+              to="/artists"
+              primary="Artists"
+              icon={<Mic />}
+              onClick={handleClick}
+              className={classes.nested}
+            />
+            <ListItemLink
+              to="/albums"
+              primary="Albums"
+              icon={<Album />}
+              onClick={handleClick}
+              className={classes.nested}
+            />
+            <ListItemLink
+              to="/genres"
+              primary="Genres"
+              icon={<Category />}
+              onClick={handleClick}
+              className={classes.nested}
+            />
+            <ListItemLink
+              to="/tracks"
+              primary="Tracks"
+              icon={<Audiotrack />}
+              onClick={handleClick}
+              className={classes.nested}
+            />
+          </List>
+        </Collapse>
       </List>
       <Divider />
       <List>

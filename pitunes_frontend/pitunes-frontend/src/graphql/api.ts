@@ -4,10 +4,14 @@ import AlbumsQuery from '!!raw-loader!./AlbumsQuery.graphql';
 import AlbumTracksQuery from '!!raw-loader!./AlbumTracksQuery.graphql';
 import ArtistQuery from '!!raw-loader!./ArtistQuery.graphql';
 import ArtistsQuery from '!!raw-loader!./ArtistsQuery.graphql';
+import CreateAlbumMutation from '!!raw-loader!./CreateAlbumMutation.graphql';
+import CreateArtistMutation from '!!raw-loader!./CreateArtistMutation.graphql';
+import CreateGenreMutation from '!!raw-loader!./CreateGenreMutation.graphql';
 import CreatePlaylistMutation from '!!raw-loader!./CreatePlaylistMutation.graphql';
 import CreatePlaylistTrackMutation from '!!raw-loader!./CreatePlaylistTrackMutation.graphql';
 import DeleteAlbumMutation from '!!raw-loader!./DeleteAlbumMutation.graphql';
 import DeleteArtistMutation from '!!raw-loader!./DeleteArtistMutation.graphql';
+import DeleteGenreMutation from '!!raw-loader!./DeleteGenreMutation.graphql';
 import DeletePlaylistMutation from '!!raw-loader!./DeletePlaylistMutation.graphql';
 import DeletePlaylistTrackMutation from '!!raw-loader!./DeletePlaylistTrackMutation.graphql';
 import DeleteTrackMutation from '!!raw-loader!./DeleteTrackMutation.graphql';
@@ -55,6 +59,36 @@ export const artists = () => ({
   operationName: 'ArtistsQuery',
 });
 
+export const createAlbum = (name: string) => ({
+  query: CreateAlbumMutation,
+  operationName: 'CreateAlbumMutation',
+  variables: {
+    input: {
+      name,
+    },
+  },
+});
+
+export const createArtist = (name: string) => ({
+  query: CreateArtistMutation,
+  operationName: 'CreateArtistMutation',
+  variables: {
+    input: {
+      name,
+    },
+  },
+});
+
+export const createGenre = (name: string) => ({
+  query: CreateGenreMutation,
+  operationName: 'CreateGenreMutation',
+  variables: {
+    input: {
+      name,
+    },
+  },
+});
+
 export const createPlaylist = (name: string) => ({
   query: CreatePlaylistMutation,
   operationName: 'CreatePlaylistMutation',
@@ -92,6 +126,14 @@ export const deleteAlbum = (id: string) => ({
 export const deleteArtist = (id: string) => ({
   query: DeleteArtistMutation,
   operationName: 'DeleteArtistMutation',
+  variables: {
+    id,
+  },
+});
+
+export const deleteGenre = (id: string) => ({
+  query: DeleteGenreMutation,
+  operationName: 'DeleteGenreMutation',
   variables: {
     id,
   },

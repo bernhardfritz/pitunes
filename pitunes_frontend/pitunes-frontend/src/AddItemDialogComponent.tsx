@@ -8,15 +8,15 @@ import {
   Zoom,
 } from '@material-ui/core';
 import AddIcon from '@material-ui/icons/Add';
+import { FetcherParams } from 'graphiql/dist/components/GraphiQL';
 import React, { useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { FormDialogComponent } from './FormDialogComponent';
-import * as API from './graphql/api';
 import { fetcher } from './graphql/fetcher';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
-    fabSm: (props: PlaylistDialogComponentProps) => ({
+    fabSm: (props: AddItemDialogComponentProps) => ({
       position: 'fixed',
       right: theme.spacing(2),
       bottom:
@@ -24,7 +24,7 @@ const useStyles = makeStyles((theme: Theme) =>
         theme.spacing(2),
       [theme.breakpoints.up('sm')]: {},
     }),
-    fab: (props: PlaylistDialogComponentProps) => ({
+    fab: (props: AddItemDialogComponentProps) => ({
       position: 'fixed',
       right: theme.spacing(2),
       bottom:
@@ -38,14 +38,15 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
-type PlaylistDialogComponentProps = {
+type AddItemDialogComponentProps = {
   playerVisible: boolean;
-  refresh?: () => void;
+  nameTofetcherParams: (name: string) => FetcherParams;
+  dataToId: (data: any) => string;
+  pathname: string;
+  label: string;
 };
 
-export const PlaylistDialogComponent = (
-  props: PlaylistDialogComponentProps
-) => {
+export const AddItemDialogComponent = (props: AddItemDialogComponentProps) => {
   const classes = useStyles(props);
   const [open, setOpen] = useState<boolean>(false);
   const history = useHistory();
@@ -54,15 +55,15 @@ export const PlaylistDialogComponent = (
   const handleSubmit = async (event: any) => {
     event.preventDefault();
     const { data } = await fetcher(
-      API.createPlaylist(event.target.elements['name'].value)
+      props.nameTofetcherParams(event.target.elements['name'].value)
     );
     setOpen(false);
-    history.push(`/playlists/${data.createPlaylist.id}`);
+    history.push(`${props.pathname}/${props.dataToId(data)}`);
   };
 
   return (
     <>
-      <Zoom in={history.location.pathname === '/playlists'} unmountOnExit>
+      <Zoom in={history.location.pathname === props.pathname} unmountOnExit>
         <Fab
           className={sm ? classes.fabSm : classes.fab}
           onClick={() => setOpen(true)}
@@ -74,7 +75,7 @@ export const PlaylistDialogComponent = (
         open={open}
         onClose={() => setOpen(false)}
         onSubmit={handleSubmit}
-        title="Create playlist"
+        title={`Create ${props.label}`}
         submit="Create"
       >
         <TextField type="text" id="name" label="Name" autoFocus />

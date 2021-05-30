@@ -40,7 +40,7 @@ export const GenresComponent = () => {
       return;
     }
 
-    await fetcher(API.deleteAlbum(deleteGenre.id));
+    await fetcher(API.deleteGenre(deleteGenre.id));
     setDeleteGenre(null);
     refresh();
   };

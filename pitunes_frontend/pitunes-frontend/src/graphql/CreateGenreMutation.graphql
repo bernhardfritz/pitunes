@@ -1,0 +1,6 @@
+mutation CreateGenreMutation($input: GenreInput!) {
+  createGenre(input: $input) {
+    id
+    name
+  }
+}

@@ -16,6 +16,7 @@ import {
   RouteComponentProps,
   withRouter,
 } from 'react-router-dom';
+import { AddItemDialogComponent } from './AddItemDialogComponent';
 import { AlbumComponent } from './AlbumComponent';
 import { AlbumsComponent } from './AlbumsComponent';
 import { ArtistComponent } from './ArtistComponent';
@@ -23,10 +24,10 @@ import { ArtistsComponent } from './ArtistsComponent';
 import { GenreComponent } from './GenreComponent';
 import { GenresComponent } from './GenresComponent';
 import { GraphiQLComponent } from './GraphiQLComponent';
+import * as API from './graphql/api';
 import { Track } from './models';
 import { PlayerComponentWithRouter } from './PlayerComponent';
 import { PlaylistComponent } from './PlaylistComponent';
-import { PlaylistDialogComponent } from './PlaylistDialogComponent';
 import { PlaylistsComponent } from './PlaylistsComponent';
 import { ResponsiveDrawer } from './ResponsiveDrawer';
 import { rotateRight } from './rotateRight';
@@ -209,13 +210,7 @@ const App = (props: AppProps) => {
             !location.pathname.startsWith('/upload') &&
             !location.pathname.startsWith('/graphiql') && (
               <Tabs
-                value={
-                  tabIndex >= 0
-                    ? tabIndex
-                    : prevTabIndex >= 0
-                    ? prevTabIndex
-                    : false
-                }
+                value={tabIndex >= 0 ? tabIndex : false}
                 onChange={handleTabChange}
                 variant="fullWidth"
                 indicatorColor="primary"
@@ -288,7 +283,34 @@ const App = (props: AppProps) => {
             <TrackComponentWithRouter />
           </TransitionRoute>
         </div>
-        <PlaylistDialogComponent playerVisible={playerVisible} />
+        <AddItemDialogComponent
+          playerVisible={playerVisible}
+          nameTofetcherParams={API.createAlbum}
+          dataToId={(data) => data.createAlbum.id}
+          pathname="/albums"
+          label="album"
+        />
+        <AddItemDialogComponent
+          playerVisible={playerVisible}
+          nameTofetcherParams={API.createArtist}
+          dataToId={(data) => data.createArtist.id}
+          pathname="/artists"
+          label="artist"
+        />
+        <AddItemDialogComponent
+          playerVisible={playerVisible}
+          nameTofetcherParams={API.createGenre}
+          dataToId={(data) => data.createGenre.id}
+          pathname="/genres"
+          label="genre"
+        />
+        <AddItemDialogComponent
+          playerVisible={playerVisible}
+          nameTofetcherParams={API.createPlaylist}
+          dataToId={(data) => data.createPlaylist.id}
+          pathname="/playlists"
+          label="playlist"
+        />
         {playerVisible && <PlayerComponentWithRouter track={state.queue[0]} />}
       </ThemeProvider>
     </AppContext.Provider>

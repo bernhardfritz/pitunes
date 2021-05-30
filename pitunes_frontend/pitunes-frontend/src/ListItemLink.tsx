@@ -32,6 +32,7 @@ interface ListItemLinkProps {
   to: string;
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
   menu?: React.ReactElement;
+  className?: string;
 }
 
 export const ListItemLink = (props: ListItemLinkProps) => {
@@ -47,7 +48,12 @@ export const ListItemLink = (props: ListItemLinkProps) => {
   );
 
   return (
-    <ListItem button component={renderLink} onClick={onClick}>
+    <ListItem
+      button
+      component={renderLink}
+      onClick={onClick}
+      className={props.className}
+    >
       {icon ? <ListItemIcon>{icon}</ListItemIcon> : null}
       <ListItemText
         primary={

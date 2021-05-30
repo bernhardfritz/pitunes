@@ -1,0 +1,3 @@
+mutation DeleteGenreMutation($id: ID!) {
+  deleteGenre(id: $id)
+}
