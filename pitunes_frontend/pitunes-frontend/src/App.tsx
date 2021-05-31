@@ -158,14 +158,26 @@ const App = (props: AppProps) => {
       label: 'Albums',
       to: '/albums',
     },
+    {
+      label: 'Genres',
+      to: '/genres',
+    },
+    {
+      label: 'Tracks',
+      to: '/tracks',
+    },
   ];
 
   const tabIndex = tabs.findIndex((tab) =>
-    location.pathname.startsWith(tab.to)
+    !location.pathname.startsWith('/tracks/')
+      && location.pathname.startsWith(tab.to)
   );
   const prevTabIndex =
     prevLocation !== undefined
-      ? tabs.findIndex((tab) => prevLocation.pathname.startsWith(tab.to))
+      ? tabs.findIndex((tab) =>
+        !prevLocation.pathname.startsWith('/tracks/')
+          && prevLocation.pathname.startsWith(tab.to)
+      )
       : -1;
   const transitionType =
     tabIndex >= 0 && prevTabIndex >= 0
@@ -210,11 +222,16 @@ const App = (props: AppProps) => {
             !location.pathname.startsWith('/upload') &&
             !location.pathname.startsWith('/graphiql') && (
               <Tabs
-                value={tabIndex >= 0 ? tabIndex : false}
+                value={tabIndex >= 0
+                  ? tabIndex
+                  : prevTabIndex >= 0
+                    ? prevTabIndex
+                    : false}
                 onChange={handleTabChange}
-                variant="fullWidth"
                 indicatorColor="primary"
                 textColor="primary"
+                variant="scrollable"
+                scrollButtons="auto"
               >
                 {tabs.map((tab) => (
                   <Tab key={tab.label} label={tab.label} />
@@ -243,14 +260,14 @@ const App = (props: AppProps) => {
               <ArtistComponent />
               {playerVisible && <div className={classes.toolbar} />}
             </TransitionRoute>
-            <Route exact path="/genres">
+            <TransitionRoute exact path="/genres">
               <GenresComponent />
               {playerVisible && <div className={classes.toolbar} />}
-            </Route>
-            <Route exact path="/genres/:id">
+            </TransitionRoute>
+            <TransitionRoute exact path="/genres/:id">
               <GenreComponent />
               {playerVisible && <div className={classes.toolbar} />}
-            </Route>
+            </TransitionRoute>
             <TransitionRoute exact path="/playlists">
               <PlaylistsComponent />
               {playerVisible && <div className={classes.toolbar} />}
@@ -259,10 +276,10 @@ const App = (props: AppProps) => {
               <PlaylistComponent />
               {playerVisible && <div className={classes.toolbar} />}
             </TransitionRoute>
-            <Route exact path="/tracks">
+            <TransitionRoute exact path="/tracks">
               <TracksComponent />
               {playerVisible && <div className={classes.toolbar} />}
-            </Route>
+            </TransitionRoute>
             <Route exact path="/upload">
               <UploadComponent />
               {playerVisible && <div className={classes.toolbar} />}

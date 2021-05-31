@@ -60,10 +60,12 @@ export const PlaylistsComponent = () => {
                   <MenuComponent
                     items={[
                       {
+                        key: 'edit',
                         name: 'Edit',
                         onClick: () => setEditPlaylist(playlist),
                       },
                       {
+                        key: 'delete',
                         name: 'Delete',
                         onClick: () => setDeletePlaylist(playlist),
                       },

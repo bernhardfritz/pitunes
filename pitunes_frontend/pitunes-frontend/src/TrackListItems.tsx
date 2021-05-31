@@ -175,6 +175,7 @@ export const TrackListItems = ({
                     ...(playlist
                       ? [
                           {
+                            key: 'remove',
                             name: 'Remove from this playlist',
                             onClick: () =>
                               handleClickRemoveFromPlaylist(
@@ -186,9 +187,11 @@ export const TrackListItems = ({
                         ]
                       : []),
                     {
+                      key: 'add',
                       name: 'Add to playlist',
                       items: [
                         {
+                          key: 'new',
                           name: 'New playlist',
                           onClick: () =>
                             setClickNewPlaylistTrack({
@@ -198,6 +201,7 @@ export const TrackListItems = ({
                         },
                         ...(data?.playlists ?? []).map(
                           (playlist: Playlist) => ({
+                            key: playlist.id,
                             name: playlist.name,
                             onClick: () =>
                               handleClickAddToPlaylist(playlist, track),
@@ -205,12 +209,16 @@ export const TrackListItems = ({
                         ),
                       ],
                     },
-                    {},
                     {
+                      key: 'divider',
+                    },
+                    {
+                      key: 'edit',
                       name: 'Edit',
                       onClick: () => setEditTrack(track),
                     },
                     {
+                      key: 'delete',
                       name: 'Delete',
                       onClick: () => setDeleteTrack(track),
                     },
@@ -251,7 +259,7 @@ export const TrackListItems = ({
               >
                 <MenuItem value="">{orNbsp('')}</MenuItem>
                 {(data?.artists ?? []).map((artist: Artist) => (
-                  <MenuItem value={artist.id}>{orNbsp(artist.name)}</MenuItem>
+                  <MenuItem key={artist.id} value={artist.id}>{orNbsp(artist.name)}</MenuItem>
                 ))}
               </TextField>
               <TextField
@@ -262,7 +270,7 @@ export const TrackListItems = ({
               >
                 <MenuItem value="">{orNbsp('')}</MenuItem>
                 {(data?.albums ?? []).map((album: Album) => (
-                  <MenuItem value={album.id}>{orNbsp(album.name)}</MenuItem>
+                  <MenuItem key={album.id} value={album.id}>{orNbsp(album.name)}</MenuItem>
                 ))}
               </TextField>
               <TextField
@@ -279,7 +287,7 @@ export const TrackListItems = ({
               >
                 <MenuItem value="">{orNbsp('')}</MenuItem>
                 {(data?.genres ?? []).map((genre: Genre) => (
-                  <MenuItem value={genre.id}>{orNbsp(genre.name)}</MenuItem>
+                  <MenuItem key={genre.id} value={genre.id}>{orNbsp(genre.name)}</MenuItem>
                 ))}
               </TextField>
             </FormGroup>

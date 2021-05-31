@@ -60,10 +60,12 @@ export const ArtistsComponent = () => {
                   <MenuComponent
                     items={[
                       {
+                        key: 'edit',
                         name: 'Edit',
                         onClick: () => setEditArtist(artist),
                       },
                       {
+                        key: 'delete',
                         name: 'Delete',
                         onClick: () => setDeleteArtist(artist),
                       },

@@ -60,10 +60,12 @@ export const GenresComponent = () => {
                   <MenuComponent
                     items={[
                       {
+                        key: 'edit',
                         name: 'Edit',
                         onClick: () => setEditGenre(genre),
                       },
                       {
+                        key: 'delete',
                         name: 'Delete',
                         onClick: () => setDeleteGenre(genre),
                       },

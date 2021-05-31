@@ -22,16 +22,20 @@ const useStyles = makeStyles((theme: Theme) =>
 );
 
 type MenuItemType = {
+  key?: string;
   name: string;
   onClick: () => void;
 };
 
 type NestedMenuItemType = {
+  key?: string;
   name: string;
   items: (MenuItemType | DividerType)[];
 };
 
-type DividerType = {};
+type DividerType = {
+  key?: string;
+};
 
 const isMenuItemType = (
   item: MenuItemType | NestedMenuItemType | DividerType
@@ -67,6 +71,7 @@ export const MenuComponent = ({ items }: MenuComponentProps) => {
         {items.map((item: MenuItemType | NestedMenuItemType | DividerType) =>
           isMenuItemType(item) ? (
             <MenuItem
+              key={item.key}
               onClick={() => {
                 handleClose();
                 item.onClick();
@@ -75,10 +80,16 @@ export const MenuComponent = ({ items }: MenuComponentProps) => {
               {orNbsp(item.name)}
             </MenuItem>
           ) : isNestedMenuItemType(item) ? (
-            <NestedMenuItem label={item.name} parentMenuOpen={open} left>
+            <NestedMenuItem
+              key={item.key}
+              label={item.name}
+              parentMenuOpen={open}
+              left
+            >
               {item.items.map((nestedItem: MenuItemType | DividerType) =>
                 isMenuItemType(nestedItem) ? (
                   <MenuItem
+                    key={nestedItem.key}
                     onClick={() => {
                       handleClose();
                       nestedItem.onClick();
@@ -87,12 +98,12 @@ export const MenuComponent = ({ items }: MenuComponentProps) => {
                     {orNbsp(nestedItem.name)}
                   </MenuItem>
                 ) : (
-                  <Divider variant="middle" className={classes.divider} />
+                  <Divider key={nestedItem.key} variant="middle" className={classes.divider} />
                 )
               )}
             </NestedMenuItem>
           ) : (
-            <Divider variant="middle" className={classes.divider} />
+            <Divider key={item.key} variant="middle" className={classes.divider} />
           )
         )}
       </Menu>

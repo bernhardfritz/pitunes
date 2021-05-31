@@ -63,10 +63,12 @@ export const AlbumListItems = ({ albums, refresh }: AlbumListItemsProps) => {
                 <MenuComponent
                   items={[
                     {
+                      key: 'edit',
                       name: 'Edit',
                       onClick: () => setEditAlbum(album),
                     },
                     {
+                      key: 'delete',
                       name: 'Delete',
                       onClick: () => setDeleteAlbum(album),
                     },
