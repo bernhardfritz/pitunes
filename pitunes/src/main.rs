@@ -27,6 +27,7 @@ use actix_web::{
     App, Error, HttpResponse, HttpServer,
 };
 use actix_web_httpauth::{extractors::basic::BasicAuth, middleware::HttpAuthentication};
+use actix_web_middleware_redirect_scheme::RedirectSchemeBuilder;
 use actix_web_static_files;
 use clap::{self, value_t};
 use diesel::prelude::*;
@@ -71,11 +72,19 @@ async fn main() -> std::io::Result<()> {
         .about("A Raspberry Pi compatible tool to manage and stream your personal music collection remotely.")
         .author("Bernhard Fritz <bernhard.e.fritz@gmail.com>")
         .arg(
-            clap::Arg::with_name("port")
+            clap::Arg::with_name("http-port")
                 .short("p")
-                .long("port")
-                .value_name("PORT")
-                .help("Port to use (defaults to 8443)")
+                .long("http-port")
+                .value_name("HTTP PORT")
+                .help("HTTP port to use (defaults to 8080)")
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("https-port")
+                .short("s")
+                .long("https-port")
+                .value_name("HTTPS PORT")
+                .help("HTTPS port to use (defaults to 8443)")
                 .takes_value(true),
         )
         .arg(
@@ -93,7 +102,8 @@ async fn main() -> std::io::Result<()> {
                 .help("Private key to use (defaults to self-signed)")
         )
         .get_matches();
-    let port = value_t!(matches, "port", u16).unwrap_or(8443);
+    let http_port = value_t!(matches, "http-port", u16).unwrap_or(8080);
+    let https_port = value_t!(matches, "https-port", u16).unwrap_or(8443);
     let cert = value_t!(matches, "cert", String);
     let key = value_t!(matches, "key", String);
 
@@ -140,6 +150,7 @@ async fn main() -> std::io::Result<()> {
         let pitunes_frontend = pitunes_frontend::generate();
         App::new()
             .wrap(auth)
+            .wrap(RedirectSchemeBuilder::new().replacements(&[(format!(":{}", http_port), format!(":{}", https_port))]).build())
             .data(st.clone())
             .data(ctx)
             .service(
@@ -159,7 +170,8 @@ async fn main() -> std::io::Result<()> {
                     .resolve_not_found_to_root(),
             )
     })
-    .bind_openssl(format!("0.0.0.0:{}", port), builder)?;
+    .bind(format!("0.0.0.0:{}", http_port))?
+    .bind_openssl(format!("0.0.0.0:{}", https_port), builder)?;
 
     println!(
         r#"       _ _____
