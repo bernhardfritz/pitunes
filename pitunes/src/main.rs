@@ -101,11 +101,19 @@ async fn main() -> std::io::Result<()> {
                 .value_name("FILE")
                 .help("Private key to use (defaults to self-signed)")
         )
+        .arg(
+            clap::Arg::with_name("redirect-http-to-https")
+                .short("r")
+                .long("redirect-http-to-https")
+                .value_name("BOOL")
+                .help("Redirect HTTP to HTTPS (defaults to true)")
+        )
         .get_matches();
     let http_port = value_t!(matches, "http-port", u16).unwrap_or(8080);
     let https_port = value_t!(matches, "https-port", u16).unwrap_or(8443);
     let cert = value_t!(matches, "cert", String);
     let key = value_t!(matches, "key", String);
+    let redirect_http_to_https = value_t!(matches, "redirect-http-to-https", bool).unwrap_or(true);
 
     let config_dir = {
         let mut config_dir = dirs::config_dir().unwrap();
@@ -150,7 +158,7 @@ async fn main() -> std::io::Result<()> {
         let pitunes_frontend = pitunes_frontend::generate();
         App::new()
             .wrap(auth)
-            .wrap(RedirectSchemeBuilder::new().replacements(&[(format!(":{}", http_port), format!(":{}", https_port))]).build())
+            .wrap(RedirectSchemeBuilder::new().replacements(&[(format!(":{}", http_port), format!(":{}", https_port))]).enable(redirect_http_to_https).build())
             .data(st.clone())
             .data(ctx)
             .service(
