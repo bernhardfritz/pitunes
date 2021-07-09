@@ -19,6 +19,7 @@ import SkipPreviousIcon from '@material-ui/icons/SkipPrevious';
 import React, { useContext, useEffect } from 'react';
 import { RouteComponentProps, useParams, withRouter } from 'react-router-dom';
 import { AppActionType, AppContext } from './App';
+import { formatDuration } from './formatDuration';
 import * as API from './graphql/api';
 import { useGraphQLData } from './useGraphQLData';
 import { useLoaded } from './useLoaded';
@@ -54,6 +55,7 @@ const useStyles = makeStyles((theme: Theme) =>
       display: 'flex',
       justifyContent: 'center',
       alignItems: 'center',
+      marginBottom: 12,
     },
     playIcon: {
       height: 48,
@@ -72,6 +74,17 @@ const useStyles = makeStyles((theme: Theme) =>
       whiteSpace: 'nowrap',
       textOverflow: 'ellipsis',
     },
+    sliderContainerWrapper: {
+      margin: '8px 8px 0 8px',
+    },
+    sliderContainer: {
+      display: 'flex',
+      alignItems: 'center',
+      margin: '0 -4px',
+      '&>*': {
+        margin: '0 4px',
+      }
+    }
   })
 );
 
@@ -118,11 +131,17 @@ const TrackComponent = (props: TrackComponentProps) => {
       <div className={classes.column}>
         <div className={classes.toolbar} />
         <AlbumIcon className={classes.coverArt} />
-        <Slider
-          value={props.currentTime}
-          max={data?.track.duration / 1000}
-          onChange={(event, value) => props.seek(value as number)}
-        ></Slider>
+        <div className={classes.sliderContainerWrapper}>
+          <div className={classes.sliderContainer}>
+            <div>{formatDuration(props.currentTime * 1000)}</div>
+            <Slider
+              value={props.currentTime}
+              max={data?.track.duration / 1000}
+              onChange={(event, value) => props.seek(value as number)}
+            ></Slider>
+            <div>{formatDuration(data?.track.duration)}</div>
+          </div>
+        </div>
         <div className={classes.controls}>
           <IconButton>
             <ShuffleIcon />

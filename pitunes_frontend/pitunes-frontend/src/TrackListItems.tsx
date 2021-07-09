@@ -13,6 +13,7 @@ import {
 import React, { useContext, useState } from 'react';
 import { AppActionType, AppContext } from './App';
 import { ConfirmationDialogComponent } from './ConfirmationDialogComponent';
+import { formatDuration } from './formatDuration';
 import { FormDialogComponent } from './FormDialogComponent';
 import * as API from './graphql/api';
 import { fetcher } from './graphql/fetcher';
@@ -169,6 +170,7 @@ export const TrackListItems = ({
                   </Typography>
                 }
               />
+              {formatDuration(track.duration)}
               <ListItemSecondaryAction>
                 <MenuComponent
                   items={[
