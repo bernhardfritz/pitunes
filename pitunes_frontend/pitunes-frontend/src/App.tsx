@@ -168,16 +168,18 @@ const App = (props: AppProps) => {
     },
   ];
 
-  const tabIndex = tabs.findIndex((tab) =>
-    !location.pathname.startsWith('/tracks/')
-      && location.pathname.startsWith(tab.to)
+  const tabIndex = tabs.findIndex(
+    (tab) =>
+      !location.pathname.startsWith('/tracks/') &&
+      location.pathname.startsWith(tab.to)
   );
   const prevTabIndex =
     prevLocation !== undefined
-      ? tabs.findIndex((tab) =>
-        !prevLocation.pathname.startsWith('/tracks/')
-          && prevLocation.pathname.startsWith(tab.to)
-      )
+      ? tabs.findIndex(
+          (tab) =>
+            !prevLocation.pathname.startsWith('/tracks/') &&
+            prevLocation.pathname.startsWith(tab.to)
+        )
       : -1;
   const transitionType =
     tabIndex >= 0 && prevTabIndex >= 0
@@ -222,11 +224,13 @@ const App = (props: AppProps) => {
             !location.pathname.startsWith('/upload') &&
             !location.pathname.startsWith('/graphiql') && (
               <Tabs
-                value={tabIndex >= 0
-                  ? tabIndex
-                  : prevTabIndex >= 0
+                value={
+                  tabIndex >= 0
+                    ? tabIndex
+                    : prevTabIndex >= 0
                     ? prevTabIndex
-                    : false}
+                    : false
+                }
                 onChange={handleTabChange}
                 indicatorColor="primary"
                 textColor="primary"
@@ -281,7 +285,7 @@ const App = (props: AppProps) => {
               {playerVisible && <div className={classes.toolbar} />}
             </TransitionRoute>
             <Route exact path="/upload">
-              <UploadComponent />
+              <UploadComponent playerVisible={playerVisible} />
               {playerVisible && <div className={classes.toolbar} />}
             </Route>
             <Route exact path="/graphiql">
