@@ -10,11 +10,12 @@ import { grey } from '@material-ui/core/colors';
 import AlbumIcon from '@material-ui/icons/Album';
 import PauseIcon from '@material-ui/icons/Pause';
 import PlayArrowIcon from '@material-ui/icons/PlayArrow';
-import React, { useEffect } from 'react';
+import React, { useContext, useEffect } from 'react';
 import { RouteComponentProps, withRouter } from 'react-router-dom';
+import { AppContext } from './App';
 import { Track } from './models';
 import { drawerWidth } from './ResponsiveDrawer';
-import { WithAudio, withAudio } from './withAudio';
+import { useAudio } from './useAudio';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -76,19 +77,21 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
-type PlayerComponentProps = { track: Track } & WithAudio & RouteComponentProps;
+type PlayerComponentProps = { track: Track } & RouteComponentProps;
 
 const PlayerComponent = (props: PlayerComponentProps) => {
   const classes = useStyles();
+  const { state } = useContext(AppContext);
+  const [paused, currentTime, play, togglePaused, seek] = useAudio(state.audio);
 
   useEffect(() => {
-    props.play(`/api/tracks/${props.track.id}.mp3`);
+    play(`/api/tracks/${props.track.id}.mp3`);
   }, [props.track]);
 
   const handleAppBarClick = () =>
     props.history.push(`/tracks/${props.track?.id}`);
   const handlePauseClick = (event: any) => {
-    props.togglePaused();
+    togglePaused();
     event.stopPropagation();
   };
 
@@ -102,9 +105,7 @@ const PlayerComponent = (props: PlayerComponentProps) => {
         <span
           className={classes.indicator}
           style={{
-            width: `${
-              (props.currentTime * 1000 * 100) / props.track?.duration
-            }%`,
+            width: `${(currentTime * 1000 * 100) / props.track?.duration}%`,
           }}
         ></span>
         <div className={classes.flex}>
@@ -117,7 +118,7 @@ const PlayerComponent = (props: PlayerComponentProps) => {
           </div>
           <div className={classes.iconButtonWrapper}>
             <IconButton color="inherit" onClick={handlePauseClick}>
-              {props.paused ? <PlayArrowIcon /> : <PauseIcon />}
+              {paused ? <PlayArrowIcon /> : <PauseIcon />}
             </IconButton>
           </div>
         </div>
@@ -126,4 +127,4 @@ const PlayerComponent = (props: PlayerComponentProps) => {
   );
 };
 
-export const PlayerComponentWithRouter = withRouter(withAudio(PlayerComponent));
+export const PlayerComponentWithRouter = withRouter(PlayerComponent);

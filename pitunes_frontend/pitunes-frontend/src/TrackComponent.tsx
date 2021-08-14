@@ -16,14 +16,15 @@ import RepeatIcon from '@material-ui/icons/Repeat';
 import ShuffleIcon from '@material-ui/icons/Shuffle';
 import SkipNextIcon from '@material-ui/icons/SkipNext';
 import SkipPreviousIcon from '@material-ui/icons/SkipPrevious';
-import React, { useContext, useEffect } from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import { RouteComponentProps, useParams, withRouter } from 'react-router-dom';
 import { AppActionType, AppContext } from './App';
 import { formatDuration } from './formatDuration';
 import * as API from './graphql/api';
+import { Track } from './models';
+import { useAudio } from './useAudio';
 import { useGraphQLData } from './useGraphQLData';
 import { useLoaded } from './useLoaded';
-import { WithAudio, withAudio } from './withAudio';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -88,14 +89,16 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
-type TrackComponentProps = WithAudio & RouteComponentProps;
+type TrackComponentProps = {} & RouteComponentProps;
 
 const TrackComponent = (props: TrackComponentProps) => {
   const classes = useStyles();
   const { id } = useParams<{ id: string }>();
-  const { dispatch } = useContext(AppContext);
+  const { state, dispatch } = useContext(AppContext);
   const { data } = useGraphQLData(API.track(id));
   const loaded = useLoaded();
+  const [paused, currentTime, play, togglePaused, seek] = useAudio(state.audio);
+  const trackRef = useRef<Track>();
 
   useEffect(() => {
     loaded &&
@@ -105,6 +108,13 @@ const TrackComponent = (props: TrackComponentProps) => {
         queue: [data.track],
       });
   }, [loaded, data]);
+
+  useEffect(() => {
+    trackRef.current = state.queue[0];
+    if (trackRef.current !== undefined) {
+      props.history.replace(`/tracks/${trackRef.current.id}`);
+    }
+  }, [state.queue[0]]);
 
   return (
     <div className={classes.container}>
@@ -118,12 +128,12 @@ const TrackComponent = (props: TrackComponentProps) => {
           >
             <CloseIcon />
           </IconButton>
-          {data && (
+          {trackRef.current && (
             <div className={classes.trackMetadataContainer}>
               <div className={`${classes.ellipsis} ${classes.bold}`}>
-                {data.track.name}
+                {trackRef.current.name}
               </div>
-              <div className={classes.ellipsis}>{data.track.artist?.name}</div>
+              <div className={classes.ellipsis}>{trackRef.current.artist?.name}</div>
             </div>
           )}
         </Toolbar>
@@ -133,13 +143,13 @@ const TrackComponent = (props: TrackComponentProps) => {
         <AlbumIcon className={classes.coverArt} />
         <div className={classes.sliderContainerWrapper}>
           <div className={classes.sliderContainer}>
-            <div>{formatDuration(props.currentTime * 1000)}</div>
+            <div>{formatDuration(currentTime * 1000)}</div>
             <Slider
-              value={props.currentTime}
-              max={data?.track.duration / 1000}
-              onChange={(event, value) => props.seek(value as number)}
+              value={currentTime}
+              max={(trackRef.current?.duration ?? NaN) / 1000}
+              onChange={(event, value) => seek(value as number)}
             ></Slider>
-            <div>{formatDuration(data?.track.duration)}</div>
+            <div>{formatDuration(trackRef.current?.duration ?? NaN)}</div>
           </div>
         </div>
         <div className={classes.controls}>
@@ -149,8 +159,8 @@ const TrackComponent = (props: TrackComponentProps) => {
           <IconButton onClick={() => dispatch({ type: AppActionType.PREV })}>
             <SkipPreviousIcon />
           </IconButton>
-          <IconButton onClick={() => props.togglePaused()}>
-            {props.paused ? (
+          <IconButton onClick={() => togglePaused()}>
+            {paused ? (
               <PlayCircleFilledIcon className={classes.playIcon} />
             ) : (
               <PauseCircleFilledIcon className={classes.playIcon} />
@@ -168,4 +178,4 @@ const TrackComponent = (props: TrackComponentProps) => {
   );
 };
 
-export const TrackComponentWithRouter = withRouter(withAudio(TrackComponent));
+export const TrackComponentWithRouter = withRouter(TrackComponent);

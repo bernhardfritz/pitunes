@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react';
 
-const audio = new Audio();
-
-export const useAudio: () => [
+export const useAudio: (audio: HTMLAudioElement) => [
   boolean,
   number,
   (src: string) => void,
   () => void,
   (currentTime: number) => void,
-] = () => {
+] = (audio) => {
   const [paused, setPaused] = useState(audio.paused);
   const [currentTime, setCurrentTime] = useState(audio.currentTime);
   const play = (src: string) => {
@@ -29,7 +27,7 @@ export const useAudio: () => [
       audio.removeEventListener('pause', onPausedChange);
       audio.removeEventListener('timeupdate', onCurrentTimeChange);
     };
-  }, []);
+  }, [audio]);
 
   return [paused, currentTime, play, togglePaused, seek];
 };

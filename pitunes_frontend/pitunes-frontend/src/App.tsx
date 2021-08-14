@@ -9,7 +9,7 @@ import {
   ThemeProvider,
   useMediaQuery,
 } from '@material-ui/core';
-import React, { useReducer } from 'react';
+import React, { useEffect, useReducer } from 'react';
 import {
   Redirect,
   Route,
@@ -54,6 +54,7 @@ export enum TransitionType {
 }
 
 type AppState = {
+  audio: HTMLAudioElement;
   queue: Track[];
   queueUpdatedAt: number;
 };
@@ -93,10 +94,16 @@ const reducer: React.Reducer<AppState, AppAction> = (prevState, action) => {
 };
 
 type AppContextProps = {
+  state: AppState;
   dispatch: React.Dispatch<AppAction>;
 };
 
 export const AppContext = React.createContext<AppContextProps>({
+  state: {
+    audio: new Audio(),
+    queue: [],
+    queueUpdatedAt: Date.now(),
+  },
   dispatch: (action: AppAction) => {},
 });
 
@@ -194,8 +201,9 @@ const App = (props: AppProps) => {
       : TransitionType.FADE;
 
   const [state, dispatch] = useReducer(reducer, {
+    audio: new Audio(),
     queue: [],
-    queueUpdatedAt: 0,
+    queueUpdatedAt: Date.now(),
   });
 
   const playerVisible = state.queue.length > 0;
@@ -204,9 +212,20 @@ const App = (props: AppProps) => {
     history.push(tabs[tabIndex].to);
   };
 
+  useEffect(() => {
+    const onEnded = () => {
+      dispatch({ type: AppActionType.NEXT });
+    };
+    state.audio.addEventListener('ended', onEnded);
+    return () => {
+      state.audio.removeEventListener('ended', onEnded);
+    };
+  }, [state.audio]);
+
   return (
     <AppContext.Provider
       value={{
+        state,
         dispatch,
       }}
     >
