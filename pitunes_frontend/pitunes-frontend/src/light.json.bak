@@ -1,0 +1,29 @@
+{
+  "type": "light",
+  "primary": {
+    "main": "#0074e8"
+  },
+  "secondary": {
+    "main": "#dd00a9"
+  },
+  "background": {
+    "default": "#ffffff",
+    "paper": "#f9f9fa"
+  },
+  "text": {
+    "primary": "#38383d",
+    "secondary": "#939395"
+  },
+  "error": {
+    "main": "#d70022"
+  },
+  "warning": {
+    "main": "#ffbf00"
+  },
+  "info": {
+    "main": "#0074e8"
+  },
+  "success": {
+    "main": "#058b00"
+  }
+}

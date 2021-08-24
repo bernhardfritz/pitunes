@@ -36,6 +36,9 @@ import { TracksComponent } from './TracksComponent';
 import { TransitionRoute } from './TransitionRoute';
 import { UploadComponent } from './UploadComponent';
 import { usePrevious } from './usePrevious';
+import dark from './dark.json';
+import light from './light.json';
+import { PaletteOptions } from '@material-ui/core/styles/createPalette';
 
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
@@ -120,33 +123,7 @@ const App = (props: AppProps) => {
     () =>
       createMuiTheme({
         palette: {
-          type: prefersDarkMode ? 'dark' : 'light',
-          primary: {
-            main: prefersDarkMode ? '#75bfff' : '#0074e8',
-          },
-          secondary: {
-            main: prefersDarkMode ? '#fb7be6' : '#dd00a9',
-          },
-          background: {
-            default: prefersDarkMode ? '#18181a' : '#ffffff',
-            paper: prefersDarkMode ? '#232327' : '#f9f9fa',
-          },
-          text: {
-            primary: prefersDarkMode ? '#ffffff' : '#38383d',
-            secondary: prefersDarkMode ? '#b1b1b3' : '#939395',
-          },
-          error: {
-            main: prefersDarkMode ? '#ff3b6b' : '#d70022',
-          },
-          warning: {
-            main: prefersDarkMode ? '#ffbf00' : '#ffbf00',
-          },
-          info: {
-            main: prefersDarkMode ? '#75bfff' : '#0074e8',
-          },
-          success: {
-            main: prefersDarkMode ? '#86de74' : '#058b00',
-          },
+          ...((prefersDarkMode ? dark : light) as PaletteOptions),
         },
       }),
     [prefersDarkMode]

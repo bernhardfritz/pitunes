@@ -1,0 +1,29 @@
+{
+  "type": "dark",
+  "primary": {
+    "main": "#78c0fc"
+  },
+  "secondary": {
+    "main": "#de84fc"
+  },
+  "background": {
+    "default": "#18181a",
+    "paper": "#232327"
+  },
+  "text": {
+    "primary": "#ffffff",
+    "secondary": "#b3b3b3"
+  },
+  "error": {
+    "main": "#fc3f6d"
+  },
+  "warning": {
+    "main": "#d6b527"
+  },
+  "info": {
+    "main": "#78c0fc"
+  },
+  "success": {
+    "main": "#89dc79"
+  }
+}
