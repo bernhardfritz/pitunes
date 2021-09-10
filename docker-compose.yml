@@ -1,6 +1,7 @@
+version: "3"
 services:
     pitunes:
         image: bernhardfritz/pitunes
         ports:
-            - 8080:8080
-            - 8443:8443
+            - "8080:8080"
+            - "8443:8443"
