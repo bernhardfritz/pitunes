@@ -7,6 +7,7 @@ RUN apt-get update \
     nodejs \
     npm \
     && rm -rf /var/lib/apt/lists/*
+RUN npm set unsafe-perm true
 RUN npm install -g yarn
 WORKDIR /app
 
