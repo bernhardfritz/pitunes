@@ -1,4 +1,4 @@
-use static_files::NpmBuild;
+use actix_web_static_files::NpmBuild;
 
 fn main() -> std::io::Result<()> {
     NpmBuild::new("./pitunes-frontend")
