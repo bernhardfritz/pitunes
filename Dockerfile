@@ -2,13 +2,12 @@ FROM ekidd/rust-musl-builder AS chef
 USER root
 RUN cargo install cargo-chef \
     && rm -rf $CARGO_HOME/registry
-RUN apt-get update \
-    && apt-get -y install --no-install-recommends \
-    nodejs \
-    npm \
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - \
+    && curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | sudo tee /usr/share/keyrings/yarnkey.gpg >/dev/null \
+    && echo "deb [signed-by=/usr/share/keyrings/yarnkey.gpg] https://dl.yarnpkg.com/debian stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
+    && apt-get update \
+    && apt-get -y install yarn \
     && rm -rf /var/lib/apt/lists/*
-RUN npm set unsafe-perm true
-RUN npm install -g yarn
 WORKDIR /app
 
 FROM chef AS planner
