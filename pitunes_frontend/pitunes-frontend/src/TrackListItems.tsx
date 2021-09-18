@@ -40,6 +40,7 @@ const useStyles = makeStyles((theme: Theme) =>
 
 type TrackListItemsProps = {
   tracks: Track[];
+  filteredTrackIndices: number[];
   playlist?: Playlist;
   refresh?: () => void;
 };
@@ -48,14 +49,13 @@ type TrackAndPosition = { track: Track; position: number };
 
 export const TrackListItems = ({
   tracks,
+  filteredTrackIndices,
   playlist,
   refresh,
 }: TrackListItemsProps) => {
   const classes = useStyles();
-  const [
-    newPlaylistTrack,
-    setClickNewPlaylistTrack,
-  ] = useState<TrackAndPosition | null>(null);
+  const [newPlaylistTrack, setClickNewPlaylistTrack] =
+    useState<TrackAndPosition | null>(null);
   const openCreatePlaylistDialog = Boolean(newPlaylistTrack);
   const [editTrack, setEditTrack] = useState<Track | null>(null);
   const openEditTrackDialog = Boolean(editTrack);
@@ -63,6 +63,7 @@ export const TrackListItems = ({
   const openDeleteTrackDialog = Boolean(deleteTrack);
   const { dispatch } = useContext(AppContext);
   const { data } = useGraphQLData(API.albumsArtistsGenresPlaylists());
+  const filteredTracks = filteredTrackIndices.map((index) => tracks[index]);
 
   const handleSubmitCreatePlaylistDialog = async (event: any) => {
     event.preventDefault();
@@ -150,16 +151,16 @@ export const TrackListItems = ({
 
   return (
     <>
-      {tracks && tracks.length > 0 && (
+      {filteredTracks && filteredTracks.length > 0 && (
         <>
-          {tracks.map((track, index) => (
+          {filteredTracks.map((track, index) => (
             <ListItem
               key={track.id}
               button
               onClick={() =>
                 dispatch({
                   type: AppActionType.UPDATE_QUEUE,
-                  queue: rotateRight([...tracks], index),
+                  queue: rotateRight([...tracks], filteredTrackIndices[index]),
                 })
               }
             >
@@ -261,7 +262,9 @@ export const TrackListItems = ({
               >
                 <MenuItem value="">{orNbsp('')}</MenuItem>
                 {(data?.artists ?? []).map((artist: Artist) => (
-                  <MenuItem key={artist.id} value={artist.id}>{orNbsp(artist.name)}</MenuItem>
+                  <MenuItem key={artist.id} value={artist.id}>
+                    {orNbsp(artist.name)}
+                  </MenuItem>
                 ))}
               </TextField>
               <TextField
@@ -272,7 +275,9 @@ export const TrackListItems = ({
               >
                 <MenuItem value="">{orNbsp('')}</MenuItem>
                 {(data?.albums ?? []).map((album: Album) => (
-                  <MenuItem key={album.id} value={album.id}>{orNbsp(album.name)}</MenuItem>
+                  <MenuItem key={album.id} value={album.id}>
+                    {orNbsp(album.name)}
+                  </MenuItem>
                 ))}
               </TextField>
               <TextField
@@ -289,7 +294,9 @@ export const TrackListItems = ({
               >
                 <MenuItem value="">{orNbsp('')}</MenuItem>
                 {(data?.genres ?? []).map((genre: Genre) => (
-                  <MenuItem key={genre.id} value={genre.id}>{orNbsp(genre.name)}</MenuItem>
+                  <MenuItem key={genre.id} value={genre.id}>
+                    {orNbsp(genre.name)}
+                  </MenuItem>
                 ))}
               </TextField>
             </FormGroup>

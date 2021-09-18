@@ -1,5 +1,6 @@
 import { List, TextField } from '@material-ui/core';
-import React, { useState } from 'react';
+import Fuse from 'fuse.js';
+import React, { useEffect, useState } from 'react';
 import { ConfirmationDialogComponent } from './ConfirmationDialogComponent';
 import { EmptyListComponent } from './EmptyListComponent';
 import { FormDialogComponent } from './FormDialogComponent';
@@ -9,6 +10,7 @@ import { ListItemLink } from './ListItemLink';
 import { LoadingComponent } from './LoadingComponent';
 import { MenuComponent } from './MenuComponent';
 import { Artist } from './models';
+import { SearchComponent } from './SearchComponent';
 import { TitleComponent } from './TitleComponent';
 import { useGraphQLData } from './useGraphQLData';
 
@@ -45,13 +47,30 @@ export const ArtistsComponent = () => {
     refresh();
   };
 
+  const [pattern, setPattern] = useState('');
+  const [artistFuse, setArtistFuse] = useState<Fuse<Artist>>();
+  const handleSearch = (pattern: string) => setPattern(pattern);
+  useEffect(() => {
+    if (data) {
+      if (data.artists) {
+        setArtistFuse(new Fuse(data.artists, { keys: ['name'] }));
+      }
+    }
+  }, [data]);
+  const artists = data?.artists ?? [];
+  const filteredArtists =
+    artistFuse !== undefined && pattern.length > 0
+      ? artistFuse.search(pattern).map((result) => result.item)
+      : artists;
+
   return data ? (
     <>
       <TitleComponent title="Artists"></TitleComponent>
-      {data.artists && data.artists.length > 0 ? (
+      {artists.length > 0 ? (
         <>
+          <SearchComponent onSearch={handleSearch}></SearchComponent>
           <List>
-            {data.artists.map((artist: Artist) => (
+            {filteredArtists.map((artist: Artist) => (
               <ListItemLink
                 key={artist.id}
                 to={`/artists/${artist.id}`}
