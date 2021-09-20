@@ -13,6 +13,7 @@ import {
 import React, { useContext, useState } from 'react';
 import { AppActionType, AppContext } from './App';
 import { ConfirmationDialogComponent } from './ConfirmationDialogComponent';
+import { FilterableItems } from './FilterableItems';
 import { formatDuration } from './formatDuration';
 import { FormDialogComponent } from './FormDialogComponent';
 import * as API from './graphql/api';
@@ -40,7 +41,7 @@ const useStyles = makeStyles((theme: Theme) =>
 
 type TrackListItemsProps = {
   tracks: Track[];
-  filteredTrackIndices: number[];
+  pattern: string;
   playlist?: Playlist;
   refresh?: () => void;
 };
@@ -49,7 +50,7 @@ type TrackAndPosition = { track: Track; position: number };
 
 export const TrackListItems = ({
   tracks,
-  filteredTrackIndices,
+  pattern,
   playlist,
   refresh,
 }: TrackListItemsProps) => {
@@ -63,7 +64,6 @@ export const TrackListItems = ({
   const openDeleteTrackDialog = Boolean(deleteTrack);
   const { dispatch } = useContext(AppContext);
   const { data } = useGraphQLData(API.albumsArtistsGenresPlaylists());
-  const filteredTracks = filteredTrackIndices.map((index) => tracks[index]);
 
   const handleSubmitCreatePlaylistDialog = async (event: any) => {
     event.preventDefault();
@@ -151,85 +151,93 @@ export const TrackListItems = ({
 
   return (
     <>
-      {filteredTracks && filteredTracks.length > 0 && (
+      {tracks && tracks.length > 0 && (
         <>
-          {filteredTracks.map((track, index) => (
-            <ListItem
-              key={track.id}
-              button
-              onClick={() =>
-                dispatch({
-                  type: AppActionType.UPDATE_QUEUE,
-                  queue: rotateRight([...tracks], filteredTrackIndices[index]),
-                })
-              }
-            >
-              <ListItemText
-                primary={
-                  <Typography className={classes.ellipsis}>
-                    {orNbsp(track.name)}
-                  </Typography>
+          <FilterableItems
+            items={tracks}
+            fuseOptions={{ keys: ['name'] }}
+            pattern={pattern}
+            render={(track, index) => (
+              <ListItem
+                key={track.id}
+                button
+                onClick={() =>
+                  dispatch({
+                    type: AppActionType.UPDATE_QUEUE,
+                    queue: rotateRight(
+                      [...tracks],
+                      index
+                    ),
+                  })
                 }
-              />
-              {formatDuration(track.duration)}
-              <ListItemSecondaryAction>
-                <MenuComponent
-                  items={[
-                    ...(playlist
-                      ? [
+              >
+                <ListItemText
+                  primary={
+                    <Typography className={classes.ellipsis}>
+                      {orNbsp(track.name)}
+                    </Typography>
+                  }
+                />
+                {formatDuration(track.duration)}
+                <ListItemSecondaryAction>
+                  <MenuComponent
+                    items={[
+                      ...(playlist
+                        ? [
+                            {
+                              key: 'remove',
+                              name: 'Remove from this playlist',
+                              onClick: () =>
+                                handleClickRemoveFromPlaylist(
+                                  playlist,
+                                  track,
+                                  index
+                                ),
+                            },
+                          ]
+                        : []),
+                      {
+                        key: 'add',
+                        name: 'Add to playlist',
+                        items: [
                           {
-                            key: 'remove',
-                            name: 'Remove from this playlist',
+                            key: 'new',
+                            name: 'New playlist',
                             onClick: () =>
-                              handleClickRemoveFromPlaylist(
-                                playlist,
+                              setClickNewPlaylistTrack({
                                 track,
-                                index
-                              ),
+                                position: index,
+                              }),
                           },
-                        ]
-                      : []),
-                    {
-                      key: 'add',
-                      name: 'Add to playlist',
-                      items: [
-                        {
-                          key: 'new',
-                          name: 'New playlist',
-                          onClick: () =>
-                            setClickNewPlaylistTrack({
-                              track,
-                              position: index,
-                            }),
-                        },
-                        ...(data?.playlists ?? []).map(
-                          (playlist: Playlist) => ({
-                            key: playlist.id,
-                            name: playlist.name,
-                            onClick: () =>
-                              handleClickAddToPlaylist(playlist, track),
-                          })
-                        ),
-                      ],
-                    },
-                    {
-                      key: 'divider',
-                    },
-                    {
-                      key: 'edit',
-                      name: 'Edit',
-                      onClick: () => setEditTrack(track),
-                    },
-                    {
-                      key: 'delete',
-                      name: 'Delete',
-                      onClick: () => setDeleteTrack(track),
-                    },
-                  ]}
-                ></MenuComponent>
-              </ListItemSecondaryAction>
-            </ListItem>
-          ))}
+                          ...(data?.playlists ?? []).map(
+                            (playlist: Playlist) => ({
+                              key: playlist.id,
+                              name: playlist.name,
+                              onClick: () =>
+                                handleClickAddToPlaylist(playlist, track),
+                            })
+                          ),
+                        ],
+                      },
+                      {
+                        key: 'divider',
+                      },
+                      {
+                        key: 'edit',
+                        name: 'Edit',
+                        onClick: () => setEditTrack(track),
+                      },
+                      {
+                        key: 'delete',
+                        name: 'Delete',
+                        onClick: () => setDeleteTrack(track),
+                      },
+                    ]}
+                  ></MenuComponent>
+                </ListItemSecondaryAction>
+              </ListItem>
+            )}
+          ></FilterableItems>
           <FormDialogComponent
             open={openCreatePlaylistDialog}
             onClose={() => setClickNewPlaylistTrack(null)}

@@ -1,6 +1,5 @@
-import { List, TextField } from '@material-ui/core';
-import Fuse from 'fuse.js';
-import React, { useEffect, useState } from 'react';
+import { TextField } from '@material-ui/core';
+import React, { useState } from 'react';
 import { ConfirmationDialogComponent } from './ConfirmationDialogComponent';
 import { EmptyListComponent } from './EmptyListComponent';
 import { FormDialogComponent } from './FormDialogComponent';
@@ -10,7 +9,7 @@ import { ListItemLink } from './ListItemLink';
 import { LoadingComponent } from './LoadingComponent';
 import { MenuComponent } from './MenuComponent';
 import { Playlist } from './models';
-import { SearchComponent } from './SearchComponent';
+import { SearchableList } from './SearchableList';
 import { TitleComponent } from './TitleComponent';
 import { useGraphQLData } from './useGraphQLData';
 
@@ -47,30 +46,15 @@ export const PlaylistsComponent = () => {
     refresh();
   };
 
-  const [pattern, setPattern] = useState('');
-  const [playlistFuse, setPlaylistFuse] = useState<Fuse<Playlist>>();
-  const handleSearch = (pattern: string) => setPattern(pattern);
-  useEffect(() => {
-    if (data) {
-      if (data.playlists) {
-        setPlaylistFuse(new Fuse(data.playlists, { keys: ['name'] }));
-      }
-    }
-  }, [data]);
-  const playlists = data?.playlists ?? [];
-  const filteredPlaylists =
-    playlistFuse !== undefined && pattern.length > 0
-      ? playlistFuse.search(pattern).map((result) => result.item)
-      : playlists;
-
   return data ? (
     <>
       <TitleComponent title="Playlists"></TitleComponent>
-      {playlists.length > 0 ? (
+      {data.playlists && data.playlists.length > 0 ? (
         <>
-          <SearchComponent onSearch={handleSearch}></SearchComponent>
-          <List>
-            {filteredPlaylists.map((playlist: Playlist) => (
+          <SearchableList
+            items={data.playlists}
+            fuseOptions={{ keys: ['name'] }}
+            render={(playlist: Playlist) => (
               <ListItemLink
                 key={playlist.id}
                 to={`/playlists/${playlist.id}`}
@@ -92,8 +76,8 @@ export const PlaylistsComponent = () => {
                   ></MenuComponent>
                 }
               />
-            ))}
-          </List>
+            )}
+          ></SearchableList>
           <FormDialogComponent
             open={openEditPlaylistDialog}
             onClose={() => setEditPlaylist(null)}

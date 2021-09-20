@@ -1,6 +1,7 @@
 import { TextField } from '@material-ui/core';
 import React, { useState } from 'react';
 import { ConfirmationDialogComponent } from './ConfirmationDialogComponent';
+import { FilterableItems } from './FilterableItems';
 import { FormDialogComponent } from './FormDialogComponent';
 import * as API from './graphql/api';
 import { fetcher } from './graphql/fetcher';
@@ -10,10 +11,15 @@ import { Album } from './models';
 
 type AlbumListItemsProps = {
   albums: Album[];
+  pattern: string;
   refresh?: () => void;
 };
 
-export const AlbumListItems = ({ albums, refresh }: AlbumListItemsProps) => {
+export const AlbumListItems = ({
+  albums,
+  pattern,
+  refresh,
+}: AlbumListItemsProps) => {
   const [editAlbum, setEditAlbum] = useState<Album | null>(null);
   const openEditAlbumDialog = Boolean(editAlbum);
 
@@ -54,29 +60,34 @@ export const AlbumListItems = ({ albums, refresh }: AlbumListItemsProps) => {
     <>
       {albums && albums.length > 0 && (
         <>
-          {albums.map((album: Album) => (
-            <ListItemLink
-              key={album.id}
-              to={`/albums/${album.id}`}
-              primary={album.name}
-              menu={
-                <MenuComponent
-                  items={[
-                    {
-                      key: 'edit',
-                      name: 'Edit',
-                      onClick: () => setEditAlbum(album),
-                    },
-                    {
-                      key: 'delete',
-                      name: 'Delete',
-                      onClick: () => setDeleteAlbum(album),
-                    },
-                  ]}
-                ></MenuComponent>
-              }
-            />
-          ))}
+          <FilterableItems
+            items={albums}
+            fuseOptions={{ keys: ['name'] }}
+            pattern={pattern}
+            render={(album) => (
+              <ListItemLink
+                key={album.id}
+                to={`/albums/${album.id}`}
+                primary={album.name}
+                menu={
+                  <MenuComponent
+                    items={[
+                      {
+                        key: 'edit',
+                        name: 'Edit',
+                        onClick: () => setEditAlbum(album),
+                      },
+                      {
+                        key: 'delete',
+                        name: 'Delete',
+                        onClick: () => setDeleteAlbum(album),
+                      },
+                    ]}
+                  ></MenuComponent>
+                }
+              />
+            )}
+          ></FilterableItems>
           <FormDialogComponent
             open={openEditAlbumDialog}
             onClose={() => setEditAlbum(null)}

@@ -1,6 +1,5 @@
-import { List, TextField } from '@material-ui/core';
-import Fuse from 'fuse.js';
-import React, { useEffect, useState } from 'react';
+import { TextField } from '@material-ui/core';
+import React, { useState } from 'react';
 import { ConfirmationDialogComponent } from './ConfirmationDialogComponent';
 import { EmptyListComponent } from './EmptyListComponent';
 import { FormDialogComponent } from './FormDialogComponent';
@@ -10,7 +9,7 @@ import { ListItemLink } from './ListItemLink';
 import { LoadingComponent } from './LoadingComponent';
 import { MenuComponent } from './MenuComponent';
 import { Genre } from './models';
-import { SearchComponent } from './SearchComponent';
+import { SearchableList } from './SearchableList';
 import { TitleComponent } from './TitleComponent';
 import { useGraphQLData } from './useGraphQLData';
 
@@ -47,30 +46,15 @@ export const GenresComponent = () => {
     refresh();
   };
 
-  const [pattern, setPattern] = useState('');
-  const [genreFuse, setGenreFuse] = useState<Fuse<Genre>>();
-  const handleSearch = (pattern: string) => setPattern(pattern);
-  useEffect(() => {
-    if (data) {
-      if (data.genres) {
-        setGenreFuse(new Fuse(data.genres, { keys: ['name'] }));
-      }
-    }
-  }, [data]);
-  const genres = data?.genres ?? [];
-  const filteredGenres =
-    genreFuse !== undefined && pattern.length > 0
-      ? genreFuse.search(pattern).map((result) => result.item)
-      : genres;
-
   return data ? (
     <>
       <TitleComponent title="Genres"></TitleComponent>
-      {genres.length > 0 ? (
+      {data.genres && data.genres.length > 0 ? (
         <>
-          <SearchComponent onSearch={handleSearch}></SearchComponent>
-          <List>
-            {filteredGenres.map((genre: Genre) => (
+          <SearchableList
+            items={data.genres}
+            fuseOptions={{ keys: ['name'] }}
+            render={(genre: Genre) => (
               <ListItemLink
                 key={genre.id}
                 to={`/genres/${genre.id}`}
@@ -92,8 +76,8 @@ export const GenresComponent = () => {
                   ></MenuComponent>
                 }
               />
-            ))}
-          </List>
+            )}
+          ></SearchableList>
           <FormDialogComponent
             open={openEditGenreDialog}
             onClose={() => setEditGenre(null)}
