@@ -16,7 +16,7 @@ export const AlbumsComponent = () => {
   return data ? (
     <>
       <TitleComponent title="Albums"></TitleComponent>
-      {data.albums ?? data.albums.length > 0 ? (
+      {data.albums && data.albums.length > 0 ? (
         <>
           <SearchComponent onSearch={handleSearch}></SearchComponent>
           <List>

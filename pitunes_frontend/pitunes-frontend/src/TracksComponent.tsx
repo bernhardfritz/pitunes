@@ -16,7 +16,7 @@ export const TracksComponent = () => {
   return data ? (
     <>
       <TitleComponent title="Tracks"></TitleComponent>
-      {data.tracks.length > 0 ? (
+      {data.tracks && data.tracks.length > 0 ? (
         <>
           <SearchComponent onSearch={handleSearch}></SearchComponent>
           <List>
