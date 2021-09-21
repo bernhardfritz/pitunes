@@ -23,8 +23,10 @@ jobs:
         with:
           toolchain: stable
           target: ${{ matrix.target }}
+          override: true
       - uses: actions-rs/cargo@v1
         with:
+          use-cross: true
           command: build
           args: --release --target ${{ matrix.target }}
       - run: tar -cJf pitunes-${{ matrix.target }}.tar.xz target/${{ matrix.target }}/release/pitunes
