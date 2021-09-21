@@ -6,6 +6,31 @@ on:
       - 'master'
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-musl
+          - arm-unknown-linux-musleabihf
+          - armv7-unknown-linux-musleabihf
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: ${{ matrix.target }}
+      - uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --target ${{ matrix.target }}
+      - run: tar -cJf pitunes-${{ matrix.target }}.tar.xz target/${{ matrix.target }}/release/pitunes
+      - uses: softprops/action-gh-release@v1
+        with:
+          files: pitunes-${{ matrix.target }}.tar.xz
   docker:
     runs-on: ubuntu-latest
     steps:
