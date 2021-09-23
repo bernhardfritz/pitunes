@@ -16,9 +16,13 @@ jobs:
           - armv7-unknown-linux-musleabihf
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
-        with:
-          node-version: lts/*
+      - run: |
+        curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - \
+        && curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | sudo tee /usr/share/keyrings/yarnkey.gpg >/dev/null \
+        && echo "deb [signed-by=/usr/share/keyrings/yarnkey.gpg] https://dl.yarnpkg.com/debian stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
+        && apt-get update \
+        && apt-get -y install yarn \
+        && rm -rf /var/lib/apt/lists/*
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
