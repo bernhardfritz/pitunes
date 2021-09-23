@@ -22,7 +22,7 @@ jobs:
           && echo "deb [signed-by=/usr/share/keyrings/yarnkey.gpg] https://dl.yarnpkg.com/debian stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
           && sudo apt-get update \
           && sudo apt-get -y install yarn \
-          && rm -rf /var/lib/apt/lists/*
+          && sudo rm -rf /var/lib/apt/lists/*
       -
         uses: actions/checkout@v2
       -
