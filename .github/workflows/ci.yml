@@ -23,6 +23,7 @@ jobs:
           && apt-get update \
           && apt-get -y install yarn \
           && rm -rf /var/lib/apt/lists/*
+      -
         uses: actions/checkout@v2
       -
         uses: actions-rs/toolchain@v1
