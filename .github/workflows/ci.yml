@@ -28,7 +28,7 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --release --target ${{ matrix.target }} --lib
+          args: --release --target ${{ matrix.target }}
       -
         run: tar -cJf pitunes-${{ matrix.target }}.tar.xz target/${{ matrix.target }}/release/pitunes
       -
