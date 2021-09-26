@@ -12,6 +12,7 @@ build = "build.rs"
 
 [dependencies]
 actix-web-static-files = "3.0.5"
+static-files = "0.2.3"
 
 [build-dependencies]
-actix-web-static-files = "3.0.5"
+static-files = "0.2.3"
