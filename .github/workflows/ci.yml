@@ -12,45 +12,41 @@ jobs:
       matrix:
         target:
           - x86_64-unknown-linux-musl
-          - arm-unknown-linux-musleabihf
-          - armv7-unknown-linux-musleabihf
+          # - arm-unknown-linux-musleabihf
+          # - armv7-unknown-linux-musleabihf
     steps:
+      -
+        uses: docker://ekidd/rust-musl-builder
+      -
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - \
+          && curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | sudo tee /usr/share/keyrings/yarnkey.gpg >/dev/null \
+          && echo "deb [signed-by=/usr/share/keyrings/yarnkey.gpg] https://dl.yarnpkg.com/debian stable main" | sudo tee /etc/apt/sources.list.d/yarn.list \
+          && sudo apt-get update \
+          && sudo apt-get -y install yarn \
+          && sudo rm -rf /var/lib/apt/lists/*
       -
         uses: actions/checkout@v2
       -
-        uses: actions/setup-node@v2
-        with:
-          node-version: 'lts/*'
-      -
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
-      -
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} --lib
       -
         run: tar -cJf pitunes-${{ matrix.target }}.tar.xz target/${{ matrix.target }}/release/pitunes
       -
         uses: softprops/action-gh-release@v1
         with:
           files: pitunes-${{ matrix.target }}.tar.xz
-  docker:
-    runs-on: ubuntu-latest
-    steps:
-      -
-        name: Login to DockerHub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-      -
-        name: Build and push
-        uses: docker/build-push-action@v2
-        with:
-          push: true
-          tags: bernhardfritz/pitunes
+  # docker:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     -
+  #       name: Login to DockerHub
+  #       uses: docker/login-action@v1
+  #       with:
+  #         username: ${{ secrets.DOCKERHUB_USERNAME }}
+  #         password: ${{ secrets.DOCKERHUB_TOKEN }}
+  #     -
+  #       name: Build and push
+  #       uses: docker/build-push-action@v2
+  #       with:
+  #         push: true
+  #         tags: bernhardfritz/pitunes
