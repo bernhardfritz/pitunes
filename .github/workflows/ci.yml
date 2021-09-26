@@ -42,6 +42,7 @@ jobs:
     steps:
       -
         name: Docker meta
+        id: meta
         uses: docker/metadata-action@v3
         with:
           images: bernhardfritz/pitunes
