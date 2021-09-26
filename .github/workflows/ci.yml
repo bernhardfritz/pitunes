@@ -8,6 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: ekidd/rust-musl-builder
     strategy:
       matrix:
         target:
@@ -15,8 +16,6 @@ jobs:
           # - arm-unknown-linux-musleabihf
           # - armv7-unknown-linux-musleabihf
     steps:
-      -
-        uses: docker://ekidd/rust-musl-builder
       -
         run: |
           curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - \
