@@ -8,7 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: node:lts
     strategy:
       matrix:
         target:
@@ -23,9 +22,11 @@ jobs:
         with:
           toolchain: stable
           target: ${{ matrix.target }}
+          override: true
       -
         uses: actions-rs/cargo@v1
         with:
+          use-cross: true
           command: build
           args: --release --target ${{ matrix.target }} --lib
       -
