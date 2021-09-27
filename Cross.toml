@@ -1,2 +1,8 @@
 [target.x86_64-unknown-linux-musl]
 image = "bernhardfritz/cross:x86_64-unknown-linux-musl-0.2.1"
+
+[target.arm-unknown-linux-musleabihf]
+linker = "bernhardfritz/cross:arm-unknown-linux-musleabihf-0.2.1"
+
+[target.armv7-unknown-linux-musleabihf]
+linker = "bernhardfritz/cross:armv7-unknown-linux-musleabihf-0.2.1"
