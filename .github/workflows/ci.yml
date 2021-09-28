@@ -32,7 +32,7 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }}
       -
-        run: tar -cJf pitunes-${{ matrix.target }}.tar.xz target/${{ matrix.target }}/release/pitunes
+        run: tar -cJf pitunes-${{ matrix.target }}.tar.xz -C target/${{ matrix.target }}/release pitunes
       -
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
