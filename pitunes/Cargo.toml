@@ -23,7 +23,7 @@ base64 = "0.13.0"
 chrono = { version = "0.4.10", features = ["serde"] }
 clap = "2.33.0"
 dataloader = "0.12.0"
-diesel = { version = "1.4.3", features = ["chrono", "r2d2", "sqlite"] }
+diesel = { version = "1.4.6", features = ["chrono", "r2d2", "sqlite"] }
 diesel_migrations = "1.4.0"
 dirs = "3.0.1"
 futures = "0.3.1"
