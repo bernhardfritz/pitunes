@@ -1,4 +1,4 @@
-# piTunes monorepo [![ci](https://github.com/bernhardfritz/pitunes/actions/workflows/ci.yml/badge.svg)](https://github.com/bernhardfritz/pitunes/actions/workflows/ci.yml)
+# pitunes has been archived and will no longer be maintained. Please switch to https://github.com/bernhardfritz/pytunes for continued support. Thanks!
 
 <img src="pitunes.png" align="right">
 
